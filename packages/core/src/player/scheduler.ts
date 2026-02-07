@@ -91,6 +91,17 @@ export function scheduleNotes(score: Score): ScheduledNote[] {
       const beats = durationInBeats(note);
       const durationSec = beats * secondsPerBeat;
 
+      // 延长线：将时值合并到前一个有效音符，不产生新事件
+      if (note.type === 'tie') {
+        const lastScheduled = scheduled.length > 0 ? scheduled[scheduled.length - 1] : null;
+        if (lastScheduled && lastScheduled.frequency !== null) {
+          lastScheduled.duration += durationSec;
+        }
+        currentTime += durationSec;
+        globalIndex++;
+        continue;
+      }
+
       let frequency: number | null = null;
       if (note.type === 'note') {
         frequency = noteToFrequency(note, keyOffset);

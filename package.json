@@ -11,6 +11,14 @@
     "lint": "pnpm -r lint",
     "test": "pnpm -r test"
   },
-  "keywords": ["jianpu", "numbered-musical-notation", "music", "sheet-music"],
-  "license": "MIT"
+  "keywords": [
+    "jianpu",
+    "numbered-musical-notation",
+    "music",
+    "sheet-music"
+  ],
+  "license": "MIT",
+  "devDependencies": {
+    "tsx": "^4.21.0"
+  }
 }

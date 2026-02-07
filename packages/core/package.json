@@ -21,6 +21,7 @@
     "tone": "^15.0.4"
   },
   "devDependencies": {
+    "tsx": "^4.21.0",
     "typescript": "^5.4.0",
     "vitest": "^2.0.0"
   },
