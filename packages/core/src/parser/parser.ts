@@ -176,10 +176,13 @@ function associateLyricsToMeasures(
   
   // 检测数量不匹配
   if (allSyllables.length !== totalEffectiveNotes) {
-    errors.push({
-      message: `歌词数量（${allSyllables.length}）与有效音符数量（${totalEffectiveNotes}）不匹配`,
-      position: { line: lyricsLines[0].line, column: 1, offset: 0 },
-      length: 1,
+    // 为每个歌词行都添加错误标记
+    lyricsLines.forEach(({ line }) => {
+      errors.push({
+        message: `歌词数量（${allSyllables.length}）与有效音符数量（${totalEffectiveNotes}）不匹配`,
+        position: { line, column: 1, offset: 0 },
+        length: 1,
+      });
     });
   }
   

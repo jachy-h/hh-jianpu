@@ -54,7 +54,7 @@ const Editor: React.FC<EditorProps> = ({ value, onChange, parseErrors = [] }) =>
         {/* 行号列 */}
         <div
           ref={highlightRef}
-          className="line-numbers flex-shrink-0 w-12 py-4 pr-2 text-right text-xs font-mono text-played border-r border-barline overflow-auto select-none"
+          className="line-numbers flex-shrink-0 w-12 pt-4 pb-4 pr-2 text-right text-sm font-mono text-played border-r border-barline overflow-auto select-none"
           style={{ lineHeight: '1.5' }}
         >
           {value.split('\n').map((_, index) => (
