@@ -177,8 +177,13 @@ export function tokenize(source: string): Token[] {
       }
       // 高八度（'）在数字前（前缀）
       else if (ch === "'") {
-        const nextCh = i + 1 < bodyLine.length ? bodyLine[i + 1] : '';
-        if (nextCh >= '1' && nextCh <= '7') {
+        // 向后查找：跳过连续的单引号，检查最后是否为数字
+        let lookAhead = i + 1;
+        while (lookAhead < bodyLine.length && bodyLine[lookAhead] === "'") {
+          lookAhead++;
+        }
+        const finalCh = lookAhead < bodyLine.length ? bodyLine[lookAhead] : '';
+        if (finalCh >= '1' && finalCh <= '7') {
           tokens.push({ 
             type: 'OCTAVE_UP', 
             value: ch, 
@@ -216,9 +221,14 @@ export function tokenize(source: string): Token[] {
       }
       // 点号：根据上下文判断是低八度前缀还是附点后缀
       else if (ch === '.') {
-        // 向后看：如果下一个字符是数字 1-7，则为低八度前缀
-        const nextCh = i + 1 < bodyLine.length ? bodyLine[i + 1] : '';
-        if (nextCh >= '1' && nextCh <= '7') {
+        // 向后查找：跳过连续的点号，检查最后是否为数字
+        let lookAhead = i + 1;
+        while (lookAhead < bodyLine.length && bodyLine[lookAhead] === '.') {
+          lookAhead++;
+        }
+        const finalCh = lookAhead < bodyLine.length ? bodyLine[lookAhead] : '';
+        if (finalCh >= '1' && finalCh <= '7') {
+          // 低八度前缀
           tokens.push({ 
             type: 'OCTAVE_DOWN', 
             value: ch, 
@@ -228,6 +238,7 @@ export function tokenize(source: string): Token[] {
             hasSpaceBefore: hasSpaceBeforeNext 
           });
         } else {
+          // 附点后缀
           tokens.push({ 
             type: 'DOT', 
             value: ch, 

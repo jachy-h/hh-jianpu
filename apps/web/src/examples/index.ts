@@ -43,6 +43,16 @@ export const EXAMPLES = {
 
 (1 2 3) 4 | (5 6 | 7 '1) '2 | ('3_ '3_ '2 '1) 7 | '1 - - - |`,
   },
+
+  octaveDemo: {
+    name: '八度示例',
+    source: `标题: 八度示例
+调号: C
+拍号: 4/4
+速度: 100
+
+..1 ..2 ..3 ..4 | .5 .6 .7 .1 | 1 2 3 4 | 5 6 7 '1 | '2 '3 '4 '5 | ''1 ''2 ''3 ''4 |`,
+  },
 } as const;
 
 export type ExampleKey = keyof typeof EXAMPLES;

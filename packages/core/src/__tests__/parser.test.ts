@@ -72,6 +72,43 @@ describe('Parser', () => {
     }
   });
 
+  it('should parse multiple octave markers', () => {
+    const source = `调号: C
+拍号: 4/4
+速度: 120
+
+..1 .1 1 '1 ''1 |`;
+
+    const result = parse(source);
+    const notes = result.score!.measures[0].notes;
+    
+    // ..1 = 低两个八度
+    if (notes[0].type === 'note') {
+      expect(notes[0].pitch).toBe(1);
+      expect(notes[0].octave).toBe(-2);
+    }
+    // .1 = 低一个八度
+    if (notes[1].type === 'note') {
+      expect(notes[1].pitch).toBe(1);
+      expect(notes[1].octave).toBe(-1);
+    }
+    // 1 = 标准八度
+    if (notes[2].type === 'note') {
+      expect(notes[2].pitch).toBe(1);
+      expect(notes[2].octave).toBe(0);
+    }
+    // '1 = 高一个八度
+    if (notes[3].type === 'note') {
+      expect(notes[3].pitch).toBe(1);
+      expect(notes[3].octave).toBe(1);
+    }
+    // ''1 = 高两个八度
+    if (notes[4].type === 'note') {
+      expect(notes[4].pitch).toBe(1);
+      expect(notes[4].octave).toBe(2);
+    }
+  });
+
   it('should parse rests and ties', () => {
     const source = `调号: C
 拍号: 4/4

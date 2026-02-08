@@ -130,7 +130,7 @@ export const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
                       ))}
                     </tbody>
                   </table>
-                  <p className="text-sm text-gray-600 mt-2">示例：<code className="bg-gray-100 px-2 py-1 rounded">..1 .1 1 '1 ''1</code></p>
+                  <p className="text-sm text-gray-600 mt-2">示例：<code className="bg-gray-100 px-2 py-1 rounded">..1 .1 1 '1 ''1</code>（低两个八度 → 标准 → 高两个八度）</p>
                 </div>
 
                 {/* 变音记号 */}
