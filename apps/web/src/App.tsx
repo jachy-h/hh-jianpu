@@ -55,10 +55,25 @@ const App: React.FC = () => {
           left={<Editor value={source} onChange={setSource} />}
           right={
             score ? (
-              <ScoreView
-                score={score}
-                currentNoteIndex={-1}
-              />
+              <div className="h-full flex flex-col">
+                {/* 错误提示条 */}
+                {parseErrors.length > 0 && (
+                  <div className="bg-error/10 border-l-4 border-error px-4 py-3 space-y-1">
+                    {parseErrors.map((err, i) => (
+                      <div key={i} className="text-error text-sm">
+                        ⚠️ 行 {err.position.line}: {err.message}
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {/* 曲谱预览 */}
+                <div className="flex-1 overflow-auto">
+                  <ScoreView
+                    score={score}
+                    currentNoteIndex={-1}
+                  />
+                </div>
+              </div>
             ) : (
               <div className="flex items-center justify-center h-full text-played">
                 {parseErrors.length > 0 ? (

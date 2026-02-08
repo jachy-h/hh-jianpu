@@ -474,13 +474,76 @@ function consumeUnderlines(tokens: Token[], startIndex: number): { base: 1 | 2 |
 }
 
 /**
+ * 计算音符的时值（以"拍"为单位）
+ */
+function calculateBeats(note: NoteElement, beatValue: number): number {
+  // 换气记号不占时间
+  if (note.type === 'breath') {
+    return 0;
+  }
+
+  const { base, dots } = note.duration;
+  
+  // 倚音不占独立时间
+  if (note.type === 'note' && note.isGrace) {
+    return 0;
+  }
+
+  // 基础时值：beatValue/base
+  // 例如 4/4 拍中，beatValue=4
+  // 四分音符(base=4): 4/4 = 1 拍
+  // 八分音符(base=8): 4/8 = 0.5 拍
+  // 二分音符(base=2): 4/2 = 2 拍
+  let beats = beatValue / base;
+
+  // 附点延长 50%
+  if (dots > 0) {
+    beats *= (1 + 0.5 * dots);
+  }
+
+  return beats;
+}
+
+/**
+ * 验证小节时值是否符合拍号
+ */
+function validateMeasureBeats(
+  measures: Measure[],
+  timeSignature: TimeSignature
+): ParseError[] {
+  const errors: ParseError[] = [];
+  const expectedBeats = timeSignature.beats;
+  const beatValue = timeSignature.beatValue;
+
+  for (const measure of measures) {
+    let totalBeats = 0;
+    
+    for (const note of measure.notes) {
+      totalBeats += calculateBeats(note, beatValue);
+    }
+
+    // 允许小数误差（浮点运算）
+    const diff = Math.abs(totalBeats - expectedBeats);
+    if (diff > 0.001) {
+      errors.push({
+        message: `小节 ${measure.number} 时值不符：期望 ${expectedBeats} 拍，实际 ${totalBeats.toFixed(2)} 拍`,
+        position: { line: 1, column: 1, offset: 0 }, // TODO: 记录小节的实际位置
+        length: 0,
+      });
+    }
+  }
+
+  return errors;
+}
+
+/**
  * 解析简谱文本，返回 Score AST
  */
 export function parse(source: string): ParseResult {
   try {
     const tokens = tokenize(source);
     const metadata = parseMetadata(tokens);
-    const { measures, errors } = parseBody(tokens);
+    const { measures, errors: parseErrors } = parseBody(tokens);
 
     if (measures.length === 0) {
       return {
@@ -495,9 +558,12 @@ export function parse(source: string): ParseResult {
       };
     }
 
+    // 验证小节时值
+    const beatErrors = validateMeasureBeats(measures, metadata.timeSignature);
+
     return {
       score: { metadata, measures },
-      errors,
+      errors: [...parseErrors, ...beatErrors],
     };
   } catch (err) {
     return {

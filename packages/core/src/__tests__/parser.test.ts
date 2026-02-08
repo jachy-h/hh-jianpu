@@ -298,3 +298,111 @@ describe('Parser', () => {
     }
   });
 });
+
+describe('Beat Validation', () => {
+  it('should validate correct 4/4 measure', () => {
+    const source = `调号: C
+拍号: 4/4
+速度: 120
+
+1 2 3 4 |`;
+    
+    const result = parse(source);
+    expect(result.errors).toHaveLength(0);
+  });
+
+  it('should detect too many beats in 4/4', () => {
+    const source = `调号: C
+拍号: 4/4
+速度: 120
+
+1 2 3 4 5 |`;
+    
+    const result = parse(source);
+    expect(result.errors.length).toBeGreaterThan(0);
+    expect(result.errors[0].message).toContain('时值不符');
+    expect(result.errors[0].message).toContain('期望 4 拍');
+    expect(result.errors[0].message).toContain('实际 5');
+  });
+
+  it('should detect too few beats in 4/4', () => {
+    const source = `调号: C
+拍号: 4/4
+速度: 120
+
+1 2 |`;
+    
+    const result = parse(source);
+    expect(result.errors.length).toBeGreaterThan(0);
+    expect(result.errors[0].message).toContain('时值不符');
+    expect(result.errors[0].message).toContain('期望 4 拍');
+    expect(result.errors[0].message).toContain('实际 2');
+  });
+
+  it('should validate 3/4 measures correctly', () => {
+    const source = `调号: C
+拍号: 3/4
+速度: 120
+
+1 2 3 | 4 5 6 |`;
+    
+    const result = parse(source);
+    expect(result.errors).toHaveLength(0);
+  });
+
+  it('should handle ties correctly in beat calculation', () => {
+    const source = `调号: C
+拍号: 4/4
+速度: 120
+
+1 - - - |`;
+    
+    const result = parse(source);
+    expect(result.errors).toHaveLength(0);
+  });
+
+  it('should handle eighth notes correctly', () => {
+    const source = `调号: C
+拍号: 4/4
+速度: 120
+
+1_ 2_ 3_ 4_ 5_ 6_ 7_ 1'_ |`;
+    
+    const result = parse(source);
+    expect(result.errors).toHaveLength(0);
+  });
+
+  it('should ignore grace notes in beat calculation', () => {
+    const source = `调号: C
+拍号: 4/4
+速度: 120
+
+^3_ 1 2 3 4 |`;
+    
+    const result = parse(source);
+    expect(result.errors).toHaveLength(0);
+  });
+
+  it('should ignore breath marks in beat calculation', () => {
+    const source = `调号: C
+拍号: 4/4
+速度: 120
+
+1 2 v 3 4 |`;
+    
+    const result = parse(source);
+    expect(result.errors).toHaveLength(0);
+  });
+
+  it('should validate multiple measures', () => {
+    const source = `调号: C
+拍号: 4/4
+速度: 120
+
+1 2 3 4 | 5 6 | 1 2 3 4 |`;
+    
+    const result = parse(source);
+    expect(result.errors).toHaveLength(1); // 第2小节错误
+    expect(result.errors[0].message).toContain('小节 2');
+  });
+});
