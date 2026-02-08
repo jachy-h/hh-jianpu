@@ -109,6 +109,40 @@ describe('Parser', () => {
     }
   });
 
+  it('should parse octave markers after underlines', () => {
+    const source = `调号: C
+拍号: 4/4
+速度: 120
+
+5,_ 5_, 5'_ 5_' |`;
+
+    const result = parse(source);
+    const notes = result.score!.measures[0].notes;
+    
+    // 5,_ 和 5_, 都应该是低八度的八分音符
+    if (notes[0].type === 'note') {
+      expect(notes[0].pitch).toBe(5);
+      expect(notes[0].octave).toBe(-1);
+      expect(notes[0].duration.base).toBe(8);
+    }
+    if (notes[1].type === 'note') {
+      expect(notes[1].pitch).toBe(5);
+      expect(notes[1].octave).toBe(-1);
+      expect(notes[1].duration.base).toBe(8);
+    }
+    // 5'_ 和 5_' 都应该是高八度的八分音符
+    if (notes[2].type === 'note') {
+      expect(notes[2].pitch).toBe(5);
+      expect(notes[2].octave).toBe(1);
+      expect(notes[2].duration.base).toBe(8);
+    }
+    if (notes[3].type === 'note') {
+      expect(notes[3].pitch).toBe(5);
+      expect(notes[3].octave).toBe(1);
+      expect(notes[3].duration.base).toBe(8);
+    }
+  });
+
   it('should parse rests and ties', () => {
     const source = `调号: C
 拍号: 4/4

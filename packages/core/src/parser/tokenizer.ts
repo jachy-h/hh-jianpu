@@ -244,7 +244,7 @@ export function tokenize(source: string): Token[] {
         });
         hasSpaceBeforeNext = false;
       }
-      // 高八度（'）只能在数字后面
+      // 高八度（'）可以在数字或下划线后面
       else if (ch === "'") {
         // 向后查找：跳过连续的单引号
         let lookAhead = i + 1;
@@ -252,15 +252,15 @@ export function tokenize(source: string): Token[] {
           lookAhead++;
         }
         
-        // 向前查找：检查前面是否有数字（可能跳过其他单引号）
+        // 向前查找：检查前面是否有数字或下划线（可能跳过其他单引号）
         let lookBehind = i - 1;
         while (lookBehind >= 0 && lineContent[lookBehind] === "'") {
           lookBehind--;
         }
         const prevCh = lookBehind >= 0 ? lineContent[lookBehind] : '';
         
-        // 只有在前面是数字时，才是高八度标记
-        if (prevCh >= '1' && prevCh <= '7') {
+        // 在数字或下划线后面，才是高八度标记
+        if ((prevCh >= '1' && prevCh <= '7') || prevCh === '_') {
           tokens.push({ 
             type: 'OCTAVE_UP', 
             value: ch, 
@@ -271,7 +271,7 @@ export function tokenize(source: string): Token[] {
           });
           hasSpaceBeforeNext = false;
         }
-        // 如果不在数字后面，就忽略这个字符（不生成token）
+        // 如果不在数字或下划线后面，就忽略这个字符（不生成token）
       }
       // 减时线
       else if (ch === '_') {
@@ -297,17 +297,17 @@ export function tokenize(source: string): Token[] {
         });
         hasSpaceBeforeNext = false;
       }
-      // 逗号：低八度标记
+      // 逗号：低八度标记（可以在数字或下划线后面）
       else if (ch === ',') {
-        // 向前查找：检查前面是否有数字（可能跳过其他逗号）
+        // 向前查找：检查前面是否有数字或下划线（可能跳过其他逗号）
         let lookBehind = i - 1;
         while (lookBehind >= 0 && lineContent[lookBehind] === ',') {
           lookBehind--;
         }
         const prevCh = lookBehind >= 0 ? lineContent[lookBehind] : '';
         
-        // 只有在前面是数字时，才是低八度标记
-        if (prevCh >= '1' && prevCh <= '7') {
+        // 在数字或下划线后面，才是低八度标记
+        if ((prevCh >= '1' && prevCh <= '7') || prevCh === '_') {
           tokens.push({ 
             type: 'OCTAVE_DOWN', 
             value: ch, 

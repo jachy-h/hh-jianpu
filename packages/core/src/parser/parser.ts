@@ -541,7 +541,7 @@ function parseNote(tokens: Token[], startIndex: number): { note: Note; nextIndex
   const pitch = parseInt(tokens[i].value, 10);
   i++;
 
-  // 后置修饰符：八度标记、附点
+  // 后置修饰符：八度标记、附点（减时线前）
   while (i < tokens.length) {
     if (tokens[i].type === 'OCTAVE_UP') {
       octave++;
@@ -559,6 +559,21 @@ function parseNote(tokens: Token[], startIndex: number): { note: Note; nextIndex
 
   // 减时线
   const underlineResult = consumeUnderlines(tokens, i);
+  i = underlineResult.nextIndex;
+
+  // 后置修饰符：八度标记（减时线后）
+  // 支持 5,_ 和 5_, 两种写法
+  while (i < tokens.length) {
+    if (tokens[i].type === 'OCTAVE_UP') {
+      octave++;
+      i++;
+    } else if (tokens[i].type === 'OCTAVE_DOWN') {
+      octave--;
+      i++;
+    } else {
+      break;
+    }
+  }
 
   const duration: Duration = {
     base: underlineResult.base,
@@ -574,7 +589,7 @@ function parseNote(tokens: Token[], startIndex: number): { note: Note; nextIndex
       duration,
       dot,
     },
-    nextIndex: underlineResult.nextIndex,
+    nextIndex: i,
   };
 }
 
