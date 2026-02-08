@@ -302,6 +302,23 @@ export const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
                     示例：<code className="bg-gray-100 px-2 py-1 rounded">1 2 3 4 | 5 v 6 7</code>
                   </p>
                 </div>
+
+                {/* 倚音 */}
+                <div>
+                  <h4 className="font-semibold text-gray-800 mb-2">10. 倚音（Grace Note）✨</h4>
+                  <p className="text-sm text-gray-700 mb-2">
+                    使用 <code className="bg-gray-100 px-2 py-1 rounded">^</code> 前缀标记倚音（装饰音）
+                  </p>
+                  <p className="text-sm text-gray-700 mb-2">
+                    示例：<code className="bg-gray-100 px-2 py-1 rounded">^4 5</code>（小号4显示在5的左上角）
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    ✨ 倚音<strong>不占用节拍时间</strong>，从主音符中“借用”时间
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    支持八度和升降号：<code className="bg-gray-100 px-2 py-1 rounded">^'1 2</code> <code className="bg-gray-100 px-2 py-1 rounded">^#4 5</code>
+                  </p>
+                </div>
               </div>
             </section>
 

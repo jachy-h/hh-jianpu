@@ -63,7 +63,15 @@ export const EXAMPLES = {
 
 1 2 3 4 | 5 6 v 0_6_ 7 | '1 '2 v '3 '4 | 5 4 3 2 | 1 - v - |`,
   },
-} as const;
+  graceNoteDemo: {
+    name: '倚音示例',
+    source: `标题: 倚音示例
+调号: C
+拍号: 4/4
+速度: 100
+
+^4 5 - - - | ^6 5 - - - | ^'1 7 - 6 5 | ^3 4 - ^2 3 - |`,
+  },} as const;
 
 export type ExampleKey = keyof typeof EXAMPLES;
 export const EXAMPLE_KEYS = Object.keys(EXAMPLES) as ExampleKey[];

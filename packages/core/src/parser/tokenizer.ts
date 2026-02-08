@@ -18,6 +18,7 @@ export type TokenType =
   | 'SLUR_START'     // ( 圆滑线开始
   | 'SLUR_END'       // ) 圆滑线结束
   | 'BREATH'         // v 换气记号
+  | 'GRACE_PREFIX'   // ^ 倚音前缀
   | 'NEWLINE'        // 换行
   | 'EOF'            // 结束
   | 'ERROR';         // 无法识别
@@ -270,6 +271,18 @@ export function tokenize(source: string): Token[] {
       else if (ch === 'v' || ch === 'V') {
         tokens.push({ 
           type: 'BREATH', 
+          value: ch, 
+          line, 
+          column, 
+          offset: pos + i,
+          hasSpaceBefore: hasSpaceBeforeNext 
+        });
+        hasSpaceBeforeNext = false;
+      }
+      // 倚音前缀
+      else if (ch === '^') {
+        tokens.push({ 
+          type: 'GRACE_PREFIX', 
           value: ch, 
           line, 
           column, 

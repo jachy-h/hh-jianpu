@@ -142,6 +142,46 @@ describe('Parser', () => {
     expect(notes[4].type).toBe('note');
   });
 
+  it('should parse grace notes', () => {
+    const source = `调号: C
+拍号: 4/4
+速度: 120
+
+^4 5 ^'1 2 |`;
+
+    const result = parse(source);
+    const notes = result.score!.measures[0].notes;
+    
+    // ^4 是倚音
+    expect(notes[0].type).toBe('note');
+    if (notes[0].type === 'note') {
+      expect(notes[0].pitch).toBe(4);
+      expect(notes[0].isGrace).toBe(true);
+    }
+    
+    // 5 是主音
+    expect(notes[1].type).toBe('note');
+    if (notes[1].type === 'note') {
+      expect(notes[1].pitch).toBe(5);
+      expect(notes[1].isGrace).toBeUndefined();
+    }
+    
+    // ^'1 是高音倚音
+    expect(notes[2].type).toBe('note');
+    if (notes[2].type === 'note') {
+      expect(notes[2].pitch).toBe(1);
+      expect(notes[2].octave).toBe(1);
+      expect(notes[2].isGrace).toBe(true);
+    }
+    
+    // 2 是主音
+    expect(notes[3].type).toBe('note');
+    if (notes[3].type === 'note') {
+      expect(notes[3].pitch).toBe(2);
+      expect(notes[3].isGrace).toBeUndefined();
+    }
+  });
+
   it('should parse underlines (eighth notes)', () => {
     const source = `调号: C
 拍号: 4/4

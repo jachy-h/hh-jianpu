@@ -56,10 +56,16 @@ export function noteToFrequency(note: Note, keyOffset: number): number {
 
 /**
  * 计算音符的持续时间（以拍为单位）
+ * 注意：倚音不占用独立的节拍时间
  */
 function durationInBeats(note: NoteElement): number {
   // 换气符号不占用时间
   if (note.type === 'breath') {
+    return 0;
+  }
+
+  // 倚音不占用独立时间（从主音符中借用）
+  if (note.type === 'note' && note.isGrace) {
     return 0;
   }
 
@@ -92,9 +98,28 @@ export function scheduleNotes(score: Score): ScheduledNote[] {
   let globalIndex = 0;
 
   for (const measure of score.measures) {
-    for (const note of measure.notes) {
+    for (let i = 0; i < measure.notes.length; i++) {
+      const note = measure.notes[i];
       const beats = durationInBeats(note);
       const durationSec = beats * secondsPerBeat;
+
+      // 倚音特殊处理：极短播放时长，从当前时间（主音符开始时间）往前推
+      if (note.type === 'note' && note.isGrace) {
+        const graceDuration = 0.05; // 50ms
+        const frequency = noteToFrequency(note, keyOffset);
+        
+        scheduled.push({
+          index: globalIndex,
+          startTime: currentTime - graceDuration,
+          duration: graceDuration,
+          frequency,
+          note,
+        });
+        
+        globalIndex++;
+        // 倚音不推进 currentTime
+        continue;
+      }
 
       // 延长线：将时值合并到前一个有效音符的发音时长，
       // 但仍产生一个静默事件用于 UI 高亮

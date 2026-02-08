@@ -55,8 +55,8 @@ export interface Note {
   /** 时值 */
   duration: Duration;
   /** 是否附点 */
-  dot: boolean;
-  /** 连音组ID（用于渲染连音线beam），相同ID的音符共享一条横线 */
+  dot: boolean;  /** 是否为倚音（装饰音） */
+  isGrace?: boolean;  /** 连音组ID（用于渲染连音线beam），相同ID的音符共享一条横线 */
   beamGroup?: number;
   /** 圆滑线组ID（用于渲染圆滑线slur），相同ID的音符共享一条弧线 */
   slurGroup?: number;

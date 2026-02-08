@@ -73,7 +73,25 @@ export function createLayout(score: Score, config: Partial<LayoutConfig> = {}): 
 
       for (let nIdx = 0; nIdx < measure.notes.length; nIdx++) {
         const note = measure.notes[nIdx];
-        const noteX = measureX + spacing * (nIdx + 1);
+        const isGrace = note.type === 'note' && note.isGrace;
+        
+        // 倚音使用下一个音符的位置，主音符正常布局
+        let noteX: number;
+        if (isGrace) {
+          // 找到下一个非倚音的音符位置
+          let nextNonGraceIdx = nIdx + 1;
+          while (nextNonGraceIdx < measure.notes.length) {
+            const nextNote = measure.notes[nextNonGraceIdx];
+            if (!(nextNote.type === 'note' && nextNote.isGrace)) {
+              break;
+            }
+            nextNonGraceIdx++;
+          }
+          noteX = measureX + spacing * (nextNonGraceIdx + 1);
+        } else {
+          noteX = measureX + spacing * (nIdx + 1);
+        }
+        
         const noteY = lineY + cfg.lineHeight / 2;
 
         const notePos: NotePosition = {

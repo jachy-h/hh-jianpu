@@ -99,6 +99,45 @@ function parseBody(tokens: Token[]): { measures: Measure[]; errors: ParseError[]
         break;
       }
 
+      case 'GRACE_PREFIX': {
+        // 跳过倚音前缀，找到下一个音符并标记为倚音
+        i++;
+        // 跳过可能的前置修饰符（八度、升降号）直到找到音符
+        let foundNote = false;
+        let noteIndex = i;
+        while (noteIndex < bodyTokens.length) {
+          const nextToken = bodyTokens[noteIndex];
+          if (nextToken.type === 'NOTE') {
+            foundNote = true;
+            break;
+          } else if (['OCTAVE_UP', 'OCTAVE_DOWN', 'SHARP', 'FLAT'].includes(nextToken.type)) {
+            // 前置修饰符，继续查找
+            noteIndex++;
+          } else {
+            // 遇到其他token，停止查找
+            break;
+          }
+        }
+        
+        if (foundNote) {
+          const noteResult = parseNote(bodyTokens, noteIndex);
+          const note = noteResult.note;
+          note.isGrace = true; // 标记为倚音
+          note.hasSpaceBefore = bodyTokens[noteIndex]?.hasSpaceBefore || false;
+          currentNotes.push(note);
+          i = noteResult.nextIndex;
+        } else {
+          // 如果^后面没有找到音符，报错
+          errors.push({
+            message: `倚音标记 ^ 后面必须跟随音符`,
+            position: { line: token.line, column: token.column, offset: token.offset },
+            length: 1,
+          });
+          i++;
+        }
+        break;
+      }
+
       case 'NOTE': {
         const noteResult = parseNote(bodyTokens, i);
         const note = noteResult.note;

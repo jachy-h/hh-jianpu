@@ -62,6 +62,12 @@ const NoteView: React.FC<NoteViewProps> = ({ note, x, y, index, isActive, isPlay
     );
   }
 
+  // 倚音（装饰音）特殊渲染：小号字体，位置左上（已在 layout 中使用主音符的X坐标）
+  const isGrace = note.type === 'note' && note.isGrace;
+  const fontSize = isGrace ? 12 : 18;
+  const graceOffsetX = isGrace ? -12 : 0; // 左偏更多
+  const graceOffsetY = isGrace ? -10 : 0;  // 上偏更多
+
   return (
     <g
       className="score-note"
@@ -83,14 +89,15 @@ const NoteView: React.FC<NoteViewProps> = ({ note, x, y, index, isActive, isPlay
 
       {/* 音符数字 */}
       <text
-        x={x}
-        y={y}
+        x={x + graceOffsetX}
+        y={y + graceOffsetY}
         textAnchor="middle"
         dominantBaseline="central"
         fontFamily="'JetBrains Mono', monospace"
-        fontSize={18}
+        fontSize={fontSize}
         fontWeight={isActive ? 600 : 400}
         fill={fillColor}
+        opacity={isGrace ? 0.7 : 1}
       >
         {display}
       </text>
@@ -101,10 +108,11 @@ const NoteView: React.FC<NoteViewProps> = ({ note, x, y, index, isActive, isPlay
           {Array.from({ length: note.octave }).map((_, i) => (
             <circle
               key={`up-${i}`}
-              cx={x}
-              cy={y - 18 - i * 6}
-              r={2}
+              cx={x + graceOffsetX}
+              cy={y + graceOffsetY - (isGrace ? 12 : 18) - i * 6}
+              r={isGrace ? 1.5 : 2}
               fill={fillColor}
+              opacity={isGrace ? 0.7 : 1}
             />
           ))}
         </>
@@ -116,17 +124,18 @@ const NoteView: React.FC<NoteViewProps> = ({ note, x, y, index, isActive, isPlay
           {Array.from({ length: Math.abs(note.octave) }).map((_, i) => (
             <circle
               key={`down-${i}`}
-              cx={x}
-              cy={y + 16 + i * 6}
-              r={2}
+              cx={x + graceOffsetX}
+              cy={y + graceOffsetY + (isGrace ? 12 : 16) + i * 6}
+              r={isGrace ? 1.5 : 2}
               fill={fillColor}
+              opacity={isGrace ? 0.7 : 1}
             />
           ))}
         </>
       )}
 
-      {/* 减时线（八分音符及更短，但不在连音组中的才单独渲染） */}
-      {note.duration.base >= 8 && beamGroup === undefined && (
+      {/* 减时线（八分音符及更短，但不在连音组中的才单独渲染，倚音不显示） */}
+      {!isGrace && note.duration.base >= 8 && beamGroup === undefined && (
         <>
           <line
             x1={x - 8}
