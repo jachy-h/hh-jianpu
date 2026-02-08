@@ -8,6 +8,7 @@ interface NoteViewProps {
   index: number;
   isActive: boolean;
   isPlayed: boolean;
+  beamGroup?: number;
   onClick?: (index: number) => void;
 }
 
@@ -27,7 +28,7 @@ function getNoteDisplay(note: NoteElement): string {
   }
 }
 
-const NoteView: React.FC<NoteViewProps> = ({ note, x, y, index, isActive, isPlayed, onClick }) => {
+const NoteView: React.FC<NoteViewProps> = ({ note, x, y, index, isActive, isPlayed, beamGroup, onClick }) => {
   const display = getNoteDisplay(note);
 
   // 确定样式类
@@ -98,8 +99,8 @@ const NoteView: React.FC<NoteViewProps> = ({ note, x, y, index, isActive, isPlay
         </>
       )}
 
-      {/* 减时线（八分音符及更短） */}
-      {note.duration.base >= 8 && (
+      {/* 减时线（八分音符及更短，但不在连音组中的才单独渲染） */}
+      {note.duration.base >= 8 && beamGroup === undefined && (
         <>
           <line
             x1={x - 8}

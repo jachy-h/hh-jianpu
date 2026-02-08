@@ -99,9 +99,12 @@ function parseBody(tokens: Token[]): { measures: Measure[]; errors: ParseError[]
       }
 
       case 'NOTE': {
-        const note = parseNote(bodyTokens, i);
-        currentNotes.push(note.note);
-        i = note.nextIndex;
+        const noteResult = parseNote(bodyTokens, i);
+        const note = noteResult.note;
+        // 记录空格信息
+        note.hasSpaceBefore = bodyTokens[i]?.hasSpaceBefore || false;
+        currentNotes.push(note);
+        i = noteResult.nextIndex;
         break;
       }
 
@@ -150,7 +153,63 @@ function parseBody(tokens: Token[]): { measures: Measure[]; errors: ParseError[]
     measures.push({ number: measureNumber, notes: currentNotes });
   }
 
+  // 为所有小节识别连音组（基于空格分隔）
+  assignBeamGroups(measures, bodyTokens);
+
   return { measures, errors };
+}
+
+/**
+ * 识别并标记连音组
+ * 规则：相邻的八分音符（duration.base >= 8），且中间没有空格，属于同一个连音组
+ */
+function assignBeamGroups(measures: Measure[], tokens: Token[]): void {
+  let globalBeamGroupId = 0;
+  
+  for (const measure of measures) {
+    const notes = measure.notes;
+    let i = 0;
+    
+    while (i < notes.length) {
+      const note = notes[i];
+      
+      // 只处理普通音符且是八分音符及更短
+      if (note.type === 'note' && note.duration.base >= 8) {
+        // 找到当前连音组的范围
+        const groupStart = i;
+        let groupEnd = i;
+        
+        // 向后查找连续的相同时值音符（无空格分隔）
+        while (groupEnd + 1 < notes.length) {
+          const nextNote = notes[groupEnd + 1];
+          
+          // 检查下一个音符是否满足连音条件
+          if (nextNote.type === 'note' && 
+              nextNote.duration.base === note.duration.base &&
+              !nextNote.hasSpaceBefore) { // 前面没有空格才连接
+            groupEnd++;
+          } else {
+            break; // 有空格或不满足条件，断开连音组
+          }
+        }
+        
+        // 如果找到至少2个音符，分配连音组ID
+        if (groupEnd > groupStart) {
+          globalBeamGroupId++;
+          for (let j = groupStart; j <= groupEnd; j++) {
+            const noteInGroup = notes[j];
+            if (noteInGroup.type === 'note') {
+              noteInGroup.beamGroup = globalBeamGroupId;
+            }
+          }
+        }
+        
+        i = groupEnd + 1;
+      } else {
+        i++;
+      }
+    }
+  }
 }
 
 /**

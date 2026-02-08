@@ -25,6 +25,8 @@ export interface Token {
   line: number;
   column: number;
   offset: number;
+  /** 此 token 前是否有空格/制表符（用于连音组分隔判断） */
+  hasSpaceBefore?: boolean;
 }
 
 /** 元信息关键字映射 */
@@ -87,34 +89,77 @@ export function tokenize(source: string): Token[] {
 
   for (const bodyLine of bodyLines) {
     column = 1;
+    let hasSpaceBeforeNext = false; // 跟踪是否遇到过空格
+    
     for (let i = 0; i < bodyLine.length; i++) {
       const ch = bodyLine[i];
 
-      // 跳过空格
+      // 记录空格
       if (ch === ' ' || ch === '\t') {
+        hasSpaceBeforeNext = true;
         column++;
         continue;
       }
 
       // 音符 1-7
       if (ch >= '1' && ch <= '7') {
-        tokens.push({ type: 'NOTE', value: ch, line, column, offset: pos + i });
+        tokens.push({ 
+          type: 'NOTE', 
+          value: ch, 
+          line, 
+          column, 
+          offset: pos + i,
+          hasSpaceBefore: hasSpaceBeforeNext 
+        });
+        hasSpaceBeforeNext = false;
       }
       // 休止符
       else if (ch === '0') {
-        tokens.push({ type: 'REST', value: ch, line, column, offset: pos + i });
+        tokens.push({ 
+          type: 'REST', 
+          value: ch, 
+          line, 
+          column, 
+          offset: pos + i,
+          hasSpaceBefore: hasSpaceBeforeNext 
+        });
+        hasSpaceBeforeNext = false;
       }
       // 延长线
       else if (ch === '-') {
-        tokens.push({ type: 'TIE', value: ch, line, column, offset: pos + i });
+        tokens.push({ 
+          type: 'TIE', 
+          value: ch, 
+          line, 
+          column, 
+          offset: pos + i,
+          hasSpaceBefore: hasSpaceBeforeNext 
+        });
+        hasSpaceBeforeNext = false;
       }
       // 小节线
       else if (ch === '|') {
-        tokens.push({ type: 'BARLINE', value: ch, line, column, offset: pos + i });
+        tokens.push({ 
+          type: 'BARLINE', 
+          value: ch, 
+          line, 
+          column, 
+          offset: pos + i,
+          hasSpaceBefore: hasSpaceBeforeNext 
+        });
+        hasSpaceBeforeNext = false;
       }
       // 高八度（'）在数字后
       else if (ch === "'") {
-        tokens.push({ type: 'OCTAVE_UP', value: ch, line, column, offset: pos + i });
+        tokens.push({ 
+          type: 'OCTAVE_UP', 
+          value: ch, 
+          line, 
+          column, 
+          offset: pos + i,
+          hasSpaceBefore: hasSpaceBeforeNext 
+        });
+        hasSpaceBeforeNext = false;
       }
       // 低八度（'）在数字前 - 暂不支持，用点号代替
       // else if (ch === "'" && i + 1 < bodyLine.length && bodyLine[i + 1] >= '1' && bodyLine[i + 1] <= '7') {
@@ -122,32 +167,79 @@ export function tokenize(source: string): Token[] {
       // }
       // 减时线
       else if (ch === '_') {
-        tokens.push({ type: 'UNDERLINE', value: ch, line, column, offset: pos + i });
+        tokens.push({ 
+          type: 'UNDERLINE', 
+          value: ch, 
+          line, 
+          column, 
+          offset: pos + i,
+          hasSpaceBefore: hasSpaceBeforeNext 
+        });
+        hasSpaceBeforeNext = false;
       }
       // 升号
       else if (ch === '#') {
-        tokens.push({ type: 'SHARP', value: ch, line, column, offset: pos + i });
+        tokens.push({ 
+          type: 'SHARP', 
+          value: ch, 
+          line, 
+          column, 
+          offset: pos + i,
+          hasSpaceBefore: hasSpaceBeforeNext 
+        });
+        hasSpaceBeforeNext = false;
       }
       // 点号：根据上下文判断是低八度前缀还是附点后缀
       else if (ch === '.') {
         // 向后看：如果下一个字符是数字 1-7，则为低八度前缀
         const nextCh = i + 1 < bodyLine.length ? bodyLine[i + 1] : '';
         if (nextCh >= '1' && nextCh <= '7') {
-          tokens.push({ type: 'OCTAVE_DOWN', value: ch, line, column, offset: pos + i });
+          tokens.push({ 
+            type: 'OCTAVE_DOWN', 
+            value: ch, 
+            line, 
+            column, 
+            offset: pos + i,
+            hasSpaceBefore: hasSpaceBeforeNext 
+          });
         } else {
-          tokens.push({ type: 'DOT', value: ch, line, column, offset: pos + i });
+          tokens.push({ 
+            type: 'DOT', 
+            value: ch, 
+            line, 
+            column, 
+            offset: pos + i,
+            hasSpaceBefore: hasSpaceBeforeNext 
+          });
         }
+        hasSpaceBeforeNext = false;
       }
       // 降号
       else if (ch === 'b') {
         const nextCh = i + 1 < bodyLine.length ? bodyLine[i + 1] : '';
         if (nextCh >= '1' && nextCh <= '7') {
-          tokens.push({ type: 'FLAT', value: ch, line, column, offset: pos + i });
+          tokens.push({ 
+            type: 'FLAT', 
+            value: ch, 
+            line, 
+            column, 
+            offset: pos + i,
+            hasSpaceBefore: hasSpaceBeforeNext 
+          });
+          hasSpaceBeforeNext = false;
         }
       }
       // 其它字符忽略或标记错误
       else {
-        tokens.push({ type: 'ERROR', value: ch, line, column, offset: pos + i });
+        tokens.push({ 
+          type: 'ERROR', 
+          value: ch, 
+          line, 
+          column, 
+          offset: pos + i,
+          hasSpaceBefore: hasSpaceBeforeNext 
+        });
+        hasSpaceBeforeNext = false;
       }
 
       column++;

@@ -56,6 +56,10 @@ export interface Note {
   duration: Duration;
   /** 是否附点 */
   dot: boolean;
+  /** 连音组ID（用于渲染连音线beam），相同ID的音符共享一条横线 */
+  beamGroup?: number;
+  /** 此音符前是否有空格（用于连音组判断，内部使用） */
+  hasSpaceBefore?: boolean;
 }
 
 /** 休止符 */
@@ -149,6 +153,8 @@ export interface NotePosition {
   note: NoteElement;
   /** 所属小节编号 */
   measureNumber: number;
+  /** 连音组编号（用于渲染连音线 beam），相同编号的音符共享一条横线 */
+  beamGroup?: number;
 }
 
 /** 小节渲染布局 */
