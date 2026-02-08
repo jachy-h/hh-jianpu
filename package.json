@@ -1,6 +1,6 @@
 {
   "name": "as-nmn",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "description": "Add Seven - A library for rendering numbered musical notation (jianpu) in web applications",
   "scripts": {

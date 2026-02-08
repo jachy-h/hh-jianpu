@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-02-08
+
 ### Added
 - 🎵 **波音（Trill）功能** - 使用 `~` 前缀标记快速颤音装饰
   - **语法**: 
