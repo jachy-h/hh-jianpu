@@ -6,6 +6,8 @@ import ScoreView from './components/ScoreView/ScoreView';
 import PlayerBar from './components/Player/PlayerBar';
 import { HelpModal } from './components/HelpModal';
 import { ResizablePanels } from './components/ResizablePanels';
+import { SettingsModal } from './components/Settings';
+import { ImageImportModal } from './components/ImageImport';
 
 const App: React.FC = () => {
   const {
@@ -27,6 +29,8 @@ const App: React.FC = () => {
   } = useStore();
 
   const [isHelpOpen, setIsHelpOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isImageImportOpen, setIsImageImportOpen] = useState(false);
 
   const handleModeToggle = useCallback(() => {
     setMode(mode === 'edit' ? 'play' : 'edit');
@@ -40,6 +44,22 @@ const App: React.FC = () => {
     setIsHelpOpen(false);
   }, []);
 
+  const handleSettingsClick = useCallback(() => {
+    setIsSettingsOpen(true);
+  }, []);
+
+  const handleSettingsClose = useCallback(() => {
+    setIsSettingsOpen(false);
+  }, []);
+
+  const handleImageImportClick = useCallback(() => {
+    setIsImageImportOpen(true);
+  }, []);
+
+  const handleImageImportClose = useCallback(() => {
+    setIsImageImportOpen(false);
+  }, []);
+
   return (
     <>
     <AppLayout
@@ -48,6 +68,8 @@ const App: React.FC = () => {
       onModeToggle={handleModeToggle}
       onLoadExample={loadExample}
       onHelpClick={handleHelpClick}
+      onSettingsClick={handleSettingsClick}
+      onImageImportClick={handleImageImportClick}
     >
       {mode === 'edit' ? (
         /* ===== 编辑模式 ===== */
@@ -126,6 +148,12 @@ const App: React.FC = () => {
 
     {/* 帮助模态框 */}
     <HelpModal isOpen={isHelpOpen} onClose={handleHelpClose} />
+
+    {/* 设置模态框 */}
+    <SettingsModal isOpen={isSettingsOpen} onClose={handleSettingsClose} />
+
+    {/* 图片导入模态框 */}
+    <ImageImportModal isOpen={isImageImportOpen} onClose={handleImageImportClose} />
     </>
   );
 };

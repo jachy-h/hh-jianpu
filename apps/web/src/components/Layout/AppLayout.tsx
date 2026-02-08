@@ -1,6 +1,7 @@
 import React from 'react';
 import type { ViewMode } from '../../store/useStore';
 import { EXAMPLES, EXAMPLE_KEYS } from '../../examples';
+import { ImageImportButton } from '../ImageImport';
 
 interface AppLayoutProps {
   mode: ViewMode;
@@ -8,6 +9,8 @@ interface AppLayoutProps {
   onModeToggle: () => void;
   onLoadExample: (key: string) => void;
   onHelpClick: () => void;
+  onSettingsClick: () => void;
+  onImageImportClick: () => void;
   children: React.ReactNode;
 }
 
@@ -17,6 +20,8 @@ const AppLayout: React.FC<AppLayoutProps> = ({
   onModeToggle,
   onLoadExample,
   onHelpClick,
+  onSettingsClick,
+  onImageImportClick,
   children,
 }) => {
   return (
@@ -48,6 +53,21 @@ const AppLayout: React.FC<AppLayoutProps> = ({
               ))}
             </div>
           )}
+
+          {/* 图片识别按钮（仅编辑模式） */}
+          {mode === 'edit' && (
+            <ImageImportButton onClick={onImageImportClick} />
+          )}
+
+          {/* 设置按钮 */}
+          <button
+            onClick={onSettingsClick}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg border border-barline hover:bg-gray-50 transition-colors"
+            title="设置"
+          >
+            <span>⚙️</span>
+            <span className="hidden sm:inline">设置</span>
+          </button>
 
           {/* 帮助按钮 */}
           <button

@@ -2,6 +2,14 @@ import { create } from 'zustand';
 import { parse, Player } from '@as-nmn/core';
 import type { Score, ParseError, PlaybackStatus } from '@as-nmn/core';
 import { EXAMPLES } from '../examples';
+import {
+  recognizeImage,
+  loadLLMConfig,
+  type OCRStatus,
+  type OCRResult,
+  type OCRError,
+  type ImportMode,
+} from '../services/ocr';
 
 /** 视图模式 */
 export type ViewMode = 'edit' | 'play';
@@ -30,11 +38,21 @@ interface AppState {
   // 播放器实例
   player: Player;
 
+  // OCR 相关（新增）
+  ocrStatus: OCRStatus;
+  ocrResult: OCRResult | null;
+  ocrError: OCRError | null;
+
   // 操作
   play: () => Promise<void>;
   pause: () => void;
   stop: () => void;
   loadExample: (key: string) => void;
+
+  // OCR 操作（新增）
+  recognizeImage: (file: File) => Promise<void>;
+  applyOCRResult: (mode: ImportMode) => void;
+  clearOCRState: () => void;
 }
 
 /** 解析源文本并更新 store */
@@ -106,6 +124,11 @@ export const useStore = create<AppState>((set, get) => {
 
     player,
 
+    // OCR 状态初始化（新增）
+    ocrStatus: 'idle',
+    ocrResult: null,
+    ocrError: null,
+
     play: async () => {
       const { score, player } = get();
       if (!score) return;
@@ -134,6 +157,63 @@ export const useStore = create<AppState>((set, get) => {
       if (example) {
         get().setSourceImmediate(example.source);
       }
+    },
+
+    // OCR 操作实现（新增）
+    recognizeImage: async (file: File) => {
+      // 清除之前的状态
+      set({ ocrStatus: 'idle', ocrResult: null, ocrError: null });
+
+      // 加载配置
+      const config = loadLLMConfig();
+      if (!config) {
+        set({
+          ocrStatus: 'error',
+          ocrError: {
+            code: 'INVALID_API_KEY',
+            message: '请先在设置中配置 API Key',
+          },
+        });
+        return;
+      }
+
+      try {
+        // 开始识别
+        const result = await recognizeImage(
+          file,
+          config,
+          (progress) => {
+            set({ ocrStatus: progress.status });
+          }
+        );
+
+        set({ ocrStatus: 'done', ocrResult: result, ocrError: null });
+      } catch (error) {
+        set({
+          ocrStatus: 'error',
+          ocrError: error as OCRError,
+          ocrResult: null,
+        });
+      }
+    },
+
+    applyOCRResult: (mode: ImportMode) => {
+      const { ocrResult, source } = get();
+      if (!ocrResult) return;
+
+      if (mode === 'replace') {
+        get().setSourceImmediate(ocrResult.source);
+      } else if (mode === 'append') {
+        const newSource = source + '\n\n' + ocrResult.source;
+        get().setSourceImmediate(newSource);
+      }
+
+      // 应用后清除 OCR 状态
+      get().clearOCRState();
+    },
+
+    clearOCRState: () => {
+      set({ ocrStatus: 'idle', ocrResult: null, ocrError: null });
     },
   };
 });
