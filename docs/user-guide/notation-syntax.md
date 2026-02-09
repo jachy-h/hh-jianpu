@@ -1308,7 +1308,7 @@ composer: Beethoven
 
 ## 💬 获取帮助
 
-- **GitHub Issues**: [as-nmn/issues](https://github.com/your-org/as-nmn/issues)
+- **GitHub Issues**: [hh-jianpu/issues](https://github.com/your-org/hh-jianpu/issues)
 - **示例曲谱**: 点击「加载示例」按钮查看完整示例
 - **文档**: 查看项目 README 和技术文档
 
@@ -1316,4 +1316,4 @@ composer: Beethoven
 
 **文档版本**: v1.0  
 **更新日期**: 2026年2月7日  
-**作者**: as-nmn 产品团队
+**作者**: hh-jianpu 产品团队

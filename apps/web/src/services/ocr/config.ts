@@ -6,7 +6,7 @@
 import type { LLMProviderConfig, OCRError } from './types';
 import { createLLMClient } from './llm-client';
 
-const STORAGE_KEY = 'as-nmn-llm-config';
+const STORAGE_KEY = 'hh-jianpu-llm-config';
 
 /**
  * 保存 LLM 配置

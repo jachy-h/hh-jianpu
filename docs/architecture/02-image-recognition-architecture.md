@@ -79,7 +79,7 @@ apps/web/src/
     └── useStore.ts               ← 微调：新增 OCR 状态字段
 ```
 
-### 2.2 为什么不放在 `@as-nmn/core`
+### 2.2 为什么不放在 `@hh-jianpu/core`
 
 图片识别依赖浏览器 API（File、Canvas、fetch 到外部 LLM 服务），不符合 core 库"纯计算、无副作用、无平台依赖"的设计原则。它是 Web 应用层的功能，归属于 `apps/web`。
 
@@ -330,7 +330,7 @@ interface AppState {
 ```typescript
 // apps/web/src/services/ocr/config.ts
 
-const STORAGE_KEY = 'as-nmn-llm-config';
+const STORAGE_KEY = 'hh-jianpu-llm-config';
 
 export function saveLLMConfig(config: LLMProviderConfig): void {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(config));

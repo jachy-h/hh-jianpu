@@ -1,10 +1,10 @@
-# GitHub Copilot Instructions for as-nmn
+# GitHub Copilot Instructions for hh-jianpu
 
 ## 项目概述
 
-**as-nmn** (Add Seven - Numbered Musical Notation) 是一个网页端动态简谱工具，包含：
-- **核心库** (`@as-nmn/core`): 简谱解析、渲染、播放
-- **Web 应用** (`@as-nmn/web`): React + Vite + Tailwind CSS
+**hh-jianpu** (Add Seven - Numbered Musical Notation) 是一个网页端动态简谱工具，包含：
+- **核心库** (`@hh-jianpu/core`): 简谱解析、渲染、播放
+- **Web 应用** (`@hh-jianpu/web`): React + Vite + Tailwind CSS
 
 **技术栈**: TypeScript 5.4, React 18, Vite 5.4, Zustand 4.5, Tone.js 15.0.4
 
@@ -82,7 +82,7 @@ export * from './types.js';
 
 ## 架构指南
 
-### 核心库架构 (`@as-nmn/core`)
+### 核心库架构 (`@hh-jianpu/core`)
 
 **三层解耦设计**:
 
@@ -116,7 +116,7 @@ export function createLayout(score: Score): void {
 }
 ```
 
-### Web 应用架构 (`@as-nmn/web`)
+### Web 应用架构 (`@hh-jianpu/web`)
 
 **组件层级**:
 ```
