@@ -3,12 +3,10 @@
   "compilerOptions": {
     "outDir": "./dist",
     "noEmit": true,
+    "baseUrl": ".",
     "paths": {
       "@hh-jianpu/core": ["../../packages/core/src/index.ts"]
     }
   },
-  "include": ["src/**/*"],
-  "references": [
-    { "path": "../../packages/core" }
-  ]
+  "include": ["src/**/*"]
 }

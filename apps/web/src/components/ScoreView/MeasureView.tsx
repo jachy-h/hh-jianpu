@@ -13,7 +13,7 @@ const MeasureView: React.FC<MeasureViewProps> = ({ layout, currentNoteIndex, onN
 
   // 收集连音组（beamGroup）并渲染连音线
   const beamGroups = new Map<number, typeof notes>();
-  notes.forEach(note => {
+  notes.forEach((note) => {
     if (note.beamGroup !== undefined) {
       if (!beamGroups.has(note.beamGroup)) {
         beamGroups.set(note.beamGroup, []);
@@ -45,8 +45,8 @@ const MeasureView: React.FC<MeasureViewProps> = ({ layout, currentNoteIndex, onN
         const beamY = firstNote.y + 12; // 使用音符的 Y 坐标 + 偏移量
         
         // 判断是否有高亮/已播放状态
-        const hasActive = group.some(n => n.index === currentNoteIndex);
-        const hasPlayed = group.some(n => currentNoteIndex >= 0 && n.index < currentNoteIndex);
+        const hasActive = group.some((n) => n.index === currentNoteIndex);
+        const hasPlayed = group.some((n) => currentNoteIndex >= 0 && n.index < currentNoteIndex);
         
         let strokeColor = '#1C1917'; // ink
         if (hasActive) strokeColor = '#2563EB'; // highlight
