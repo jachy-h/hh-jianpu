@@ -2,7 +2,10 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "outDir": "./dist",
-    "noEmit": true
+    "noEmit": true,
+    "paths": {
+      "@hh-jianpu/core": ["../../packages/core/src/index.ts"]
+    }
   },
   "include": ["src/**/*"],
   "references": [

@@ -11,6 +11,7 @@ export default defineConfig({
       '@': '/src',
       // 开发时直接引用 core 源码，避免每次需要手动 build
       '@as-nmn/core': path.resolve(__dirname, '../../packages/core/src/index.ts'),
+      '@hh-jianpu/core': path.resolve(__dirname, '../../packages/core/src/index.ts'),
     },
   },
 });
