@@ -15,11 +15,11 @@ export const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-          <h2 className="text-2xl font-bold text-gray-800">📖 简谱源码编写说明</h2>
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-purple-50">
+          <h2 className="text-2xl font-bold text-gray-800">🎵 简谱入门 - 像发微信一样简单</h2>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+            className="p-2 hover:bg-white rounded-full transition-colors"
             title="关闭"
           >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -29,363 +29,82 @@ export const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto px-6 py-4">
-          <div className="prose prose-slate max-w-none">
+        <div className="flex-1 overflow-y-auto px-6 py-6">
+          <div className="max-w-4xl mx-auto space-y-8">
             
-            {/* 快速入门 */}
-            <section className="mb-8">
-              <h3 className="text-xl font-bold mb-4">🚀 快速入门</h3>
-              <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mb-4">
-                <p className="text-sm text-gray-700">
-                  简谱源码采用纯文本格式，只需三步即可创建你的第一首曲谱！
+            {/* 零基础入门 */}
+            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-l-4 border-blue-500 p-6 rounded-r-lg">
+              <p className="text-lg font-semibold text-gray-800 mb-2">
+                💡 不会看五线谱？没关系！
+              </p>
+              <p className="text-gray-700">
+                简谱只用 <strong>1-7</strong> 这几个数字，就像小时候学的"哆来咪"，<strong>三分钟上手！</strong>
+              </p>
+            </div>
+
+            {/* 30秒体验 */}
+            <section>
+              <h3 className="text-2xl font-bold mb-4 text-gray-800">🎯 30秒快速体验</h3>
+              <p className="text-gray-600 mb-3">试试在编辑器里输入这几个数字（记得用空格隔开）：</p>
+              <pre className="bg-gray-900 text-green-400 p-4 rounded-lg text-lg font-mono">
+1 1 5 5 6 6 5
+              </pre>
+              <p className="text-gray-600 mt-3">
+                点击播放 ▶️，听到了吗？<strong className="text-blue-600">这就是《小星星》的第一句！</strong>
+              </p>
+            </section>
+
+            {/* 数字就是音高 */}
+            <section>
+              <h3 className="text-2xl font-bold mb-4 text-gray-800">🎹 理解简谱的核心：数字就是音高</h3>
+              <p className="text-gray-600 mb-4">还记得小时候唱的"哆 来 咪 发 嗦 啦 西"吗？</p>
+              <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg p-6">
+                <pre className="text-center text-lg font-mono leading-relaxed text-gray-800">
+1   2   3   4   5   6   7
+↓   ↓   ↓   ↓   ↓   ↓   ↓
+哆  来  咪  发  嗦  啦  西
+do  re  mi  fa sol la  si
+                </pre>
+                <p className="text-center text-gray-700 mt-4 font-semibold">
+                  想唱"哆"，就写 <code className="bg-white px-2 py-1 rounded border">1</code> · 
+                  想唱"嗦"，就写 <code className="bg-white px-2 py-1 rounded border">5</code>
                 </p>
               </div>
-
-              <div className="space-y-4">
-                <div>
-                  <h4 className="font-semibold text-gray-800 mb-2">第一步：编写元信息（可选）</h4>
-                  <pre className="bg-gray-100 p-3 rounded text-sm overflow-x-auto">
-{`标题: 小星星
-作曲: 莫扎特
-拍号: 4/4
-速度: 120`}
-                  </pre>
-                </div>
-
-                <div>
-                  <h4 className="font-semibold text-gray-800 mb-2">第二步：输入音符（1-7 对应 do re mi fa sol la si）</h4>
-                  <pre className="bg-gray-100 p-3 rounded text-sm overflow-x-auto">
-{`1 1 5 5 | 6 6 5 - |`}
-                  </pre>
-                </div>
-
-                <div>
-                  <h4 className="font-semibold text-gray-800 mb-2">第三步：添加节奏（使用下划线表示减时）</h4>
-                  <pre className="bg-gray-100 p-3 rounded text-sm overflow-x-auto">
-{`1 1 5_5 6_6 | 5 - - - |`}
-                  </pre>
-                </div>
-              </div>
             </section>
 
-            {/* 完整语法 */}
-            <section className="mb-8">
-              <h3 className="text-xl font-bold mb-4">📝 完整语法规则</h3>
-              
-              <div className="space-y-6">
-                {/* 音符 */}
+            {/* 第一课：小星星 */}
+            <section>
+              <h3 className="text-2xl font-bold mb-4 text-gray-800">🎼 第一课：完整的《小星星》</h3>
+              <div className="space-y-5">
                 <div>
-                  <h4 className="font-semibold text-gray-800 mb-2">1. 音符（Note）</h4>
-                  <table className="min-w-full border border-gray-300 text-sm">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="border border-gray-300 px-3 py-2">数字</th>
-                        <th className="border border-gray-300 px-3 py-2">唱名</th>
-                        <th className="border border-gray-300 px-3 py-2">音名</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {[
-                        ['1', 'do', 'C'],
-                        ['2', 're', 'D'],
-                        ['3', 'mi', 'E'],
-                        ['4', 'fa', 'F'],
-                        ['5', 'sol', 'G'],
-                        ['6', 'la', 'A'],
-                        ['7', 'si', 'B'],
-                      ].map(([num, sing, note]) => (
-                        <tr key={num}>
-                          <td className="border border-gray-300 px-3 py-2 font-mono">{num}</td>
-                          <td className="border border-gray-300 px-3 py-2">{sing}</td>
-                          <td className="border border-gray-300 px-3 py-2">{note}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-
-                {/* 高低八度 */}
-                <div>
-                  <h4 className="font-semibold text-gray-800 mb-2">2. 高低八度（Octave）</h4>
-                  <table className="min-w-full border border-gray-300 text-sm">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="border border-gray-300 px-3 py-2">符号</th>
-                        <th className="border border-gray-300 px-3 py-2">说明</th>
-                        <th className="border border-gray-300 px-3 py-2">示例</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {[
-                        ["'", '高八度（前缀）', "'1"],
-                        ["''", '高两个八度（前缀）', "''1"],
-                        ['.', '低八度（前缀）', '.1'],
-                        ['..', '低两个八度（前缀）', '..1'],
-                      ].map(([symbol, desc, example]) => (
-                        <tr key={symbol}>
-                          <td className="border border-gray-300 px-3 py-2 font-mono">{symbol}</td>
-                          <td className="border border-gray-300 px-3 py-2">{desc}</td>
-                          <td className="border border-gray-300 px-3 py-2 font-mono">{example}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                  <p className="text-sm text-gray-600 mt-2">示例：<code className="bg-gray-100 px-2 py-1 rounded">..1 .1 1 '1 ''1</code>（低两个八度 → 标准 → 高两个八度）</p>
-                </div>
-
-                {/* 变音记号 */}
-                <div>
-                  <h4 className="font-semibold text-gray-800 mb-2">3. 变音记号（Accidental）</h4>
-                  <table className="min-w-full border border-gray-300 text-sm">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="border border-gray-300 px-3 py-2">符号</th>
-                        <th className="border border-gray-300 px-3 py-2">说明</th>
-                        <th className="border border-gray-300 px-3 py-2">示例</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {[
-                        ['#', '升号（写在音符前）', '#4'],
-                        ['b', '降号（写在音符前）', 'b7'],
-                      ].map(([symbol, desc, example]) => (
-                        <tr key={symbol}>
-                          <td className="border border-gray-300 px-3 py-2 font-mono">{symbol}</td>
-                          <td className="border border-gray-300 px-3 py-2">{desc}</td>
-                          <td className="border border-gray-300 px-3 py-2 font-mono">{example}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                  <p className="text-sm text-gray-600 mt-2">示例：<code className="bg-gray-100 px-2 py-1 rounded">1 2 3 #4 5 6 b7</code></p>
-                </div>
-
-                {/* 时值 */}
-                <div>
-                  <h4 className="font-semibold text-gray-800 mb-2">4. 时值（Duration）</h4>
-                  <div className="space-y-3">
-                    <div>
-                      <p className="font-medium text-gray-700 mb-2">减时线（Underline）</p>
-                      <table className="min-w-full border border-gray-300 text-sm">
-                        <thead className="bg-gray-50">
-                          <tr>
-                            <th className="border border-gray-300 px-3 py-2">符号</th>
-                            <th className="border border-gray-300 px-3 py-2">时值</th>
-                            <th className="border border-gray-300 px-3 py-2">说明</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {[
-                            ['无', '1 拍', '四分音符：1'],
-                            ['_', '0.5 拍', '八分音符：1_'],
-                            ['__', '0.25 拍', '十六分音符：1__'],
-                          ].map(([symbol, duration, desc]) => (
-                            <tr key={desc}>
-                              <td className="border border-gray-300 px-3 py-2 font-mono">{symbol}</td>
-                              <td className="border border-gray-300 px-3 py-2">{duration}</td>
-                              <td className="border border-gray-300 px-3 py-2 font-mono">{desc}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-
-                    <div>
-                      <p className="font-medium text-gray-700 mb-2">延长线（Tie）</p>
-                      <table className="min-w-full border border-gray-300 text-sm">
-                        <thead className="bg-gray-50">
-                          <tr>
-                            <th className="border border-gray-300 px-3 py-2">符号</th>
-                            <th className="border border-gray-300 px-3 py-2">效果</th>
-                            <th className="border border-gray-300 px-3 py-2">说明</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {[
-                            ['-', '+1 拍', '1 - = 2 拍'],
-                            ['- -', '+2 拍', '1 - - = 3 拍'],
-                            ['- - -', '+3 拍', '1 - - - = 4 拍'],
-                          ].map(([symbol, effect, desc]) => (
-                            <tr key={desc}>
-                              <td className="border border-gray-300 px-3 py-2 font-mono">{symbol}</td>
-                              <td className="border border-gray-300 px-3 py-2">{effect}</td>
-                              <td className="border border-gray-300 px-3 py-2 font-mono">{desc}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="bg-blue-500 text-white px-3 py-1 rounded-full text-sm font-bold">步骤 1</span>
+                    <span className="font-semibold text-gray-800">告诉别人你要写什么歌</span>
                   </div>
+                  <pre className="bg-gray-100 p-4 rounded-lg border border-gray-300">
+标题: 小星星
+速度: 80
+                  </pre>
                 </div>
 
-                {/* 休止符 */}
                 <div>
-                  <h4 className="font-semibold text-gray-800 mb-2">5. 休止符（Rest）</h4>
-                  <p className="text-sm text-gray-600 mb-2">使用 <code className="bg-gray-100 px-2 py-1 rounded">0</code> 表示休止符（静音）</p>
-                  <p className="text-sm text-gray-600">示例：<code className="bg-gray-100 px-2 py-1 rounded">1 0 2 0 | 5 0 0 0</code></p>
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="bg-blue-500 text-white px-3 py-1 rounded-full text-sm font-bold">步骤 2</span>
+                    <span className="font-semibold text-gray-800">输入旋律</span>
+                  </div>
+                  <pre className="bg-gray-100 p-4 rounded-lg border border-gray-300">
+1 1 5 5 | 6 6 5 -
+                  </pre>
+                  <p className="text-sm text-blue-600 mt-2 font-semibold">🎵 试试播放！是不是听到"一闪一闪亮晶晶"了？</p>
                 </div>
 
-                {/* 小节线 */}
                 <div>
-                  <h4 className="font-semibold text-gray-800 mb-2">6. 小节线（Barline）</h4>
-                  <p className="text-sm text-gray-600 mb-2">使用 <code className="bg-gray-100 px-2 py-1 rounded">|</code> 分隔小节</p>
-                  <p className="text-sm text-gray-600">示例：<code className="bg-gray-100 px-2 py-1 rounded">1 2 3 4 | 5 6 7 1'</code></p>
-                </div>
-
-                {/* 连音线 */}
-                <div>
-                  <h4 className="font-semibold text-gray-800 mb-2">7. 连音线（Beam）</h4>
-                  <p className="text-sm text-gray-600 mb-2">八分音符通过<strong>空格控制</strong>分组，无空格的相邻八分音符会用横线连接</p>
-                  <table className="min-w-full border border-gray-300 text-sm">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="border border-gray-300 px-3 py-2">源码</th>
-                        <th className="border border-gray-300 px-3 py-2">视觉效果</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {[
-                        ['1_ 2_', '各自独立减时线'],
-                        ['1_2_', '一条横线连接'],
-                        ['1_2_ 3_4_', '两条独立横线（2+2）'],
-                        ['1_2_3_4_', '一条横线连接全部'],
-                      ].map(([code, effect]) => (
-                        <tr key={code}>
-                          <td className="border border-gray-300 px-3 py-2 font-mono">{code}</td>
-                          <td className="border border-gray-300 px-3 py-2">{effect}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-
-                {/* 圆滑线说明 */}
-                <div>
-                  <h4 className="font-semibold text-gray-800 mb-2">8. 圆滑线（Slur）✨</h4>
-                  <p className="text-sm text-gray-700 mb-2">
-                    使用小括号 <code className="bg-gray-100 px-2 py-1 rounded">()</code> 标记圆滑演奏的音符组
-                  </p>
-                  <table className="min-w-full border border-gray-300 text-sm">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="border border-gray-300 px-3 py-2">类型</th>
-                        <th className="border border-gray-300 px-3 py-2">语法</th>
-                        <th className="border border-gray-300 px-3 py-2">示例</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {[
-                        ['延音线（相同音高）', '-', '1 - -'],
-                        ['连音线（八分音符）', '无空格', '1_2_3_'],
-                        ['圆滑线（不同音高）', '()', '(1 2 3)'],
-                      ].map(([type, syntax, example]) => (
-                        <tr key={type}>
-                          <td className="border border-gray-300 px-3 py-2">{type}</td>
-                          <td className="border border-gray-300 px-3 py-2 font-mono">{syntax}</td>
-                          <td className="border border-gray-300 px-3 py-2 font-mono">{example}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                  <p className="text-sm text-gray-600 mt-2">
-                    圆滑线支持跨小节：<code className="bg-gray-100 px-2 py-1 rounded">(1 2 | 3 4)</code>
-                  </p>
-                </div>
-
-                {/* 换气记号 */}
-                <div>
-                  <h4 className="font-semibold text-gray-800 mb-2">9. 换气记号（Breath）</h4>
-                  <p className="text-sm text-gray-700 mb-2">
-                    使用 <code className="bg-gray-100 px-2 py-1 rounded">v</code> 或 <code className="bg-gray-100 px-2 py-1 rounded">V</code> 标记换气位置
-                  </p>
-                  <p className="text-sm text-gray-600">
-                    示例：<code className="bg-gray-100 px-2 py-1 rounded">1 2 3 4 | 5 v 6 7</code>
-                  </p>
-                </div>
-
-                {/* 歌词 */}
-                <div>
-                  <h4 className="font-semibold text-gray-800 mb-2">10. 歌词（Lyrics）✨</h4>
-                  <p className="text-sm text-gray-700 mb-2">
-                    在音符行后添加歌词行（以 <code className="bg-gray-100 px-2 py-1 rounded">C</code> 开头），支持一字对一音、分组、占位符
-                  </p>
-                  <table className="min-w-full border border-gray-300 text-sm mb-2">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="border border-gray-300 px-3 py-2">类型</th>
-                        <th className="border border-gray-300 px-3 py-2">语法</th>
-                        <th className="border border-gray-300 px-3 py-2">示例</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {[
-                        ['旋律行（可选）', 'P', 'P 1 1 5 5'],
-                        ['一字对一音', 'C 单字符', 'C 一 闪 一 闪'],
-                        ['多字对一音', '(多字)', 'C (我的) 祖 国'],
-                        ['占位符', '_', 'C 星 _ _ 光'],
-                      ].map(([type, syntax, example]) => (
-                        <tr key={type}>
-                          <td className="border border-gray-300 px-3 py-2">{type}</td>
-                          <td className="border border-gray-300 px-3 py-2 font-mono">{syntax}</td>
-                          <td className="border border-gray-300 px-3 py-2 font-mono">{example}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                  <p className="text-sm text-gray-600">
-                    完整示例：<code className="bg-gray-100 px-2 py-1 rounded">P 1 1 5 5 | 6 6 5 -<br />C 一 闪 一 闪 亮 晶 晶 _</code>
-                  </p>
-                </div>
-
-                {/* 倚音 */}
-                <div>
-                  <h4 className="font-semibold text-gray-800 mb-2">11. 倚音（Grace Note）✨</h4>
-                  <p className="text-sm text-gray-700 mb-2">
-                    使用 <code className="bg-gray-100 px-2 py-1 rounded">^</code> 前缀标记倚音（装饰音）
-                  </p>
-                  <p className="text-sm text-gray-700 mb-2">
-                    <strong>长倚音</strong>：<code className="bg-gray-100 px-2 py-1 rounded">^4_ 5</code>（单下划线，较慢）
-                  </p>
-                  <p className="text-sm text-gray-700 mb-2">
-                    <strong>短倚音</strong>：<code className="bg-gray-100 px-2 py-1 rounded">^4__ 5</code>（双下划线，极快）
-                  </p>
-                  <p className="text-sm text-gray-600">
-                    ✨ 倚音<strong>不占用节拍时间</strong>，从主音符中“借用”时间
-                  </p>
-                  <p className="text-sm text-gray-600">
-                    支持八度和升降号：<code className="bg-gray-100 px-2 py-1 rounded">^'1__ 2</code> <code className="bg-gray-100 px-2 py-1 rounded">^#4_ 5</code>
-                  </p>
-                </div>
-
-                {/* 波音 */}
-                <div>
-                  <h4 className="font-semibold text-gray-800 mb-2">11. 波音（Trill / Mordent）🎶</h4>
-                  <p className="text-sm text-gray-700 mb-2">
-                    使用 <code className="bg-gray-100 px-2 py-1 rounded">~</code> 标记波音装饰
-                  </p>
-                  <p className="text-sm text-gray-700 mb-2">
-                    <strong>单波音/上波音</strong>：<code className="bg-gray-100 px-2 py-1 rounded">~5</code> → 5 = 565
-                  </p>
-                  <p className="text-sm text-gray-700 mb-2">
-                    <strong>复波音</strong>：<code className="bg-gray-100 px-2 py-1 rounded">~~5</code> → 5 = 56565
-                  </p>
-                  <p className="text-sm text-gray-700 mb-2">
-                    <strong>下波音</strong>：<code className="bg-gray-100 px-2 py-1 rounded">~.5</code> → 5 = 545
-                  </p>
-                  <p className="text-sm text-gray-600">
-                    🎶 波音快速演奏主音和相邻音，增加装饰效果
-                  </p>
-                </div>
-              </div>
-            </section>
-
-            {/* 完整示例 */}
-            <section className="mb-8">
-              <h3 className="text-xl font-bold mb-4">💡 完整示例</h3>
-              <pre className="bg-gray-100 p-4 rounded text-sm overflow-x-auto">
-{`标题: 小星星
-作曲: 莫扎特
-拍号: 4/4
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="bg-blue-500 text-white px-3 py-1 rounded-full text-sm font-bold">步骤 3</span>
+                    <span className="font-semibold text-gray-800">继续写完整首歌</span>
+                  </div>
+                  <pre className="bg-gray-100 p-4 rounded-lg border border-gray-300 text-sm">
+标题: 小星星
 速度: 80
 
 1 1 5 5 | 6 6 5 - |
@@ -393,53 +112,170 @@ export const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
 5 5 4 4 | 3 3 2 - |
 5 5 4 4 | 3 3 2 - |
 1 1 5 5 | 6 6 5 - |
-4 4 3 3 | 2 2 1 - |`}
-              </pre>
-            </section>
-
-            {/* 常见问题 */}
-            <section className="mb-8">
-              <h3 className="text-xl font-bold mb-4">❓ 常见问题</h3>
-              <div className="space-y-4">
-                <div className="border-l-4 border-blue-500 pl-4">
-                  <p className="font-semibold text-gray-800">Q: 如何区分低八度的 . 和附点？</p>
-                  <p className="text-sm text-gray-600 mt-1">A: 低八度的 . 写在音符后（如 1.），建议使用下划线表示时值以避免混淆。</p>
-                </div>
-
-                <div className="border-l-4 border-blue-500 pl-4">
-                  <p className="font-semibold text-gray-800">Q: 如何控制八分音符连音线？</p>
-                  <p className="text-sm text-gray-600 mt-1">A: 通过空格控制。<code className="bg-gray-100 px-1 rounded">1_2_</code> 无空格会连接，<code className="bg-gray-100 px-1 rounded">1_ 2_</code> 有空格则分开。</p>
-                </div>
-
-                <div className="border-l-4 border-blue-500 pl-4">
-                  <p className="font-semibold text-gray-800">Q: 如何表示延音线（相同音高连线）？</p>
-                  <p className="text-sm text-gray-600 mt-1">A: 使用 - 延长线。<code className="bg-gray-100 px-1 rounded">1 - -</code> 表示 do 持续 3 拍。</p>
-                </div>
-
-                <div className="border-l-4 border-blue-500 pl-4">
-                  <p className="font-semibold text-gray-800">Q: 下划线可以连续使用吗？</p>
-                  <p className="text-sm text-gray-600 mt-1">A: 可以。每个下划线减半时值（1_ = 0.5拍，1__ = 0.25拍）。</p>
-                </div>
-
-                <div className="border-l-4 border-blue-500 pl-4">
-                  <p className="font-semibold text-gray-800">Q: 升降号可以和八度符号一起用吗？</p>
-                  <p className="text-sm text-gray-600 mt-1">A: 可以。升降号在前，八度在后（如 #4' b7.）。</p>
+4 4 3 3 | 2 2 1 - |
+                  </pre>
+                  <p className="text-lg text-green-600 font-bold mt-3">🎉 恭喜你！你已经完成第一首简谱了！</p>
                 </div>
               </div>
+            </section>
+
+            {/* 第二课：节奏 */}
+            <section>
+              <h3 className="text-2xl font-bold mb-4 text-gray-800">🎶 第二课：让音符动起来</h3>
+              <div className="grid md:grid-cols-2 gap-6">
+                <div className="bg-orange-50 border border-orange-200 rounded-lg p-5">
+                  <h4 className="font-bold text-gray-800 mb-3">🐌 慢拍子：用 <code className="bg-white px-2 py-1 rounded">-</code> 拉长</h4>
+                  <pre className="bg-white p-3 rounded text-sm border border-orange-300">
+5 -         (唱2拍)
+1 - - -     (唱4拍)
+                  </pre>
+                  <p className="text-sm text-gray-600 mt-2">每个 <code>-</code> 加1拍</p>
+                </div>
+
+                <div className="bg-purple-50 border border-purple-200 rounded-lg p-5">
+                  <h4 className="font-bold text-gray-800 mb-3">🐰 快节奏：用 <code className="bg-white px-2 py-1 rounded">_</code> 加速</h4>
+                  <pre className="bg-white p-3 rounded text-sm border border-purple-300">
+1_2_3_      (快速)
+5_5_5_5_    (更快)
+                  </pre>
+                  <p className="text-sm text-gray-600 mt-2">每个 <code>_</code> 减半拍</p>
+                </div>
+              </div>
+
+              <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-r-lg mt-4">
+                <p className="font-semibold text-gray-800 mb-2">💡 实用技巧：连续快音符</p>
+                <div className="space-y-2 text-sm">
+                  <div><code className="bg-white px-2 py-1 rounded">1_ 2_ 3_</code> → 有空格 = 分开</div>
+                  <div><code className="bg-white px-2 py-1 rounded">1_2_3_</code> → 没空格 = 用线连起来</div>
+                </div>
+              </div>
+            </section>
+
+            {/* 第三课：高低音 */}
+            <section>
+              <h3 className="text-2xl font-bold mb-4 text-gray-800">🎵 第三课：音符的"高低"</h3>
+              <div className="bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200 rounded-lg p-6">
+                <p className="font-semibold text-gray-800 mb-4">想象楼梯：</p>
+                <div className="space-y-3 text-lg">
+                  <div className="flex items-center gap-4">
+                    <code className="bg-white px-3 py-2 rounded border font-bold w-24">.1</code>
+                    <span className="text-gray-700">低音哆（像男低音）</span>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <code className="bg-white px-3 py-2 rounded border font-bold w-24">1</code>
+                    <span className="text-gray-700">中音哆（正常音高）</span>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <code className="bg-white px-3 py-2 rounded border font-bold w-24">'1</code>
+                    <span className="text-gray-700">高音哆（像女高音）</span>
+                  </div>
+                </div>
+                <p className="text-sm text-gray-600 mt-4 font-medium">💡 记忆口诀：撇号向上飘，点点往下掉</p>
+              </div>
+            </section>
+
+            {/* 完整功能速查 */}
+            <section>
+              <h3 className="text-2xl font-bold mb-4 text-gray-800">📋 完整功能速查</h3>
+              <div className="grid md:grid-cols-2 gap-4">
+                <div className="bg-gray-50 p-4 rounded-lg border">
+                  <h4 className="font-semibold mb-2">🤫 休止符</h4>
+                  <p className="text-sm text-gray-600 mb-2">用 <code className="bg-white px-1 rounded">0</code> 表示停顿</p>
+                  <code className="text-xs">1 0 2 0 (停1拍)</code>
+                </div>
+
+                <div className="bg-gray-50 p-4 rounded-lg border">
+                  <h4 className="font-semibold mb-2">🎹 升降号</h4>
+                  <p className="text-sm text-gray-600 mb-2">写在数字前面</p>
+                  <code className="text-xs">#4 (升fa) · b7 (降si)</code>
+                </div>
+
+                <div className="bg-gray-50 p-4 rounded-lg border">
+                  <h4 className="font-semibold mb-2">📏 小节线</h4>
+                  <p className="text-sm text-gray-600 mb-2">用 <code className="bg-white px-1 rounded">|</code> 分隔</p>
+                  <code className="text-xs">1 2 3 4 | 5 6 7 '1 |</code>
+                </div>
+
+                <div className="bg-gray-50 p-4 rounded-lg border">
+                  <h4 className="font-semibold mb-2">✍️ 歌词</h4>
+                  <p className="text-sm text-gray-600 mb-2">C 开头，一字对一音</p>
+                  <code className="text-xs">P 1 2 3 | C 哆 来 咪</code>
+                </div>
+              </div>
+            </section>
+
+            {/* 快速参考卡 */}
+            <section>
+              <h3 className="text-2xl font-bold mb-4 text-gray-800">🎯 快速参考卡片</h3>
+              <div className="bg-gradient-to-br from-blue-500 to-purple-600 text-white p-6 rounded-xl shadow-lg">
+                <pre className="font-mono text-sm leading-relaxed">
+┌─────────────────────────────────────┐
+│        简谱速查表                    │
+├─────────────────────────────────────┤
+│ 数字：  1 2 3 4 5 6 7               │
+│ 唱名：  哆来咪发嗦啦西               │
+│                                     │
+│ 高音：  '1 '2 '3                    │
+│ 低音：  .1 .2 .3                    │
+│                                     │
+│ 拉长：  1 - (加1拍)                 │
+│ 加快：  1_ (减半拍)                 │
+│                                     │
+│ 休止：  0 (停顿)                    │
+│ 升降：  #4 b7                       │
+│                                     │
+│ 小节：  |                           │
+│ 歌词：  C 一 闪 一 闪                │
+└─────────────────────────────────────┘
+                </pre>
+              </div>
+            </section>
+
+            {/* 练习曲目 */}
+            <section>
+              <h3 className="text-2xl font-bold mb-4 text-gray-800">🎵 练习曲目推荐</h3>
+              <div className="space-y-4">
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                  <h4 className="font-semibold mb-2">⭐ 入门：小蜜蜂</h4>
+                  <pre className="bg-white p-3 rounded text-sm border">5 3 3 - | 4 2 2 - | 1 2 3 4 | 5 5 5 - |</pre>
+                </div>
+
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <h4 className="font-semibold mb-2">⭐⭐ 初级：两只老虎</h4>
+                  <pre className="bg-white p-3 rounded text-sm border">1 2 3 1 | 1 2 3 1 | 3 4 5 - | 3 4 5 - |</pre>
+                </div>
+
+                <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                  <h4 className="font-semibold mb-2">⭐⭐⭐ 中级：欢乐颂</h4>
+                  <pre className="bg-white p-3 rounded text-sm border">3 3 4 5 | 5 4 3 2 | 1 1 2 3 | 3 2 2 - |</pre>
+                </div>
+              </div>
+            </section>
+
+            {/* 结语 */}
+            <section className="bg-gradient-to-r from-pink-100 via-purple-100 to-blue-100 border-2 border-pink-300 rounded-xl p-8 text-center">
+              <h3 className="text-3xl font-bold mb-4 text-gray-800">🎊 现在就开始吧！</h3>
+              <p className="text-lg text-gray-700 mb-4">
+                音乐不需要门槛。你只需要会数 <strong>1-7</strong>、有耳朵、喜欢音乐！
+              </p>
+              <div className="bg-white p-6 rounded-lg shadow-md inline-block">
+                <p className="font-semibold text-gray-800 mb-3">✨ 试试在编辑器里输入：</p>
+                <pre className="bg-gray-900 text-green-400 p-4 rounded text-xl font-mono">1 1 5 5 6 6 5 -</pre>
+                <p className="text-gray-600 mt-3">按下播放键，享受你创造的旋律 🎵</p>
+              </div>
+              <p className="text-sm text-gray-600 mt-6 italic">
+                记住：<strong className="text-purple-600">音乐的乐趣不在于完美，而在于表达！</strong>
+              </p>
             </section>
 
           </div>
         </div>
 
         {/* Footer */}
-        <div className="border-t border-gray-200 px-6 py-4 flex justify-between items-center">
-          <p className="text-sm text-gray-500">详细文档请查看 docs/user-guide/notation-syntax.md</p>
-          <button
-            onClick={onClose}
-            className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
-          >
-            知道了
-          </button>
+        <div className="px-6 py-3 border-t border-gray-200 bg-gray-50 text-center">
+          <p className="text-xs text-gray-500">
+            文档版本 v2.0 · 更新于 2026年2月9日 · 面向音乐初学者精心编写
+          </p>
         </div>
       </div>
     </div>
