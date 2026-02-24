@@ -189,8 +189,8 @@ pnpm test
 - ✅ 响应式布局
 
 ### 🚧 v0.3.0 — 编辑体验
-- [ ] 集成 CodeMirror 语法高亮
-- [ ] 本地存储（localStorage）
+- [x] 集成 CodeMirror 语法高亮
+- [x] 本地存储（localStorage）
 - [ ] 改进错误提示
 - [ ] 循环播放选段
 

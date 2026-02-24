@@ -11,6 +11,9 @@ interface AppLayoutProps {
   onHelpClick: () => void;
   onSettingsClick: () => void;
   onImageImportClick: () => void;
+  onMyScoresClick: () => void;
+  myScoresCount: number;
+  isAutoSaving: boolean;
   children: React.ReactNode;
 }
 
@@ -22,22 +25,44 @@ const AppLayout: React.FC<AppLayoutProps> = ({
   onHelpClick,
   onSettingsClick,
   onImageImportClick,
+  onMyScoresClick,
+  myScoresCount,
+  isAutoSaving,
   children,
 }) => {
   return (
     <div className="h-screen flex flex-col">
       {/* 顶部栏 */}
       <header className="flex items-center justify-between px-4 py-2 border-b border-barline bg-white/80 backdrop-blur">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <h1 className="text-lg font-semibold text-ink tracking-tight">
             🎵 hh-jianpu
           </h1>
           {mode === 'play' && title && (
             <span className="text-sm text-played">— {title}</span>
           )}
+          {/* 自动保存指示 */}
+          {isAutoSaving && (
+            <span className="text-xs text-gray-400 animate-pulse">保存中…</span>
+          )}
         </div>
 
         <div className="flex items-center gap-3">
+          {/* 我的谱谱按钮 */}
+          <button
+            onClick={onMyScoresClick}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg border border-barline hover:bg-gray-50 transition-colors relative"
+            title="我的谱谱"
+          >
+            <span>🎼</span>
+            <span className="hidden sm:inline">我的谱谱</span>
+            {myScoresCount > 0 && (
+              <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] flex items-center justify-center bg-blue-500 text-white text-[10px] rounded-full px-1">
+                {myScoresCount > 99 ? '99+' : myScoresCount}
+              </span>
+            )}
+          </button>
+
           {/* 示例曲谱选择（仅编辑模式） */}
           {mode === 'edit' && (
             <div className="flex items-center gap-1">
