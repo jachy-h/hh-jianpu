@@ -204,6 +204,8 @@ function parseBody(tokens: Token[]): { measures: Measure[]; errors: ParseError[]
     t => !['METADATA_KEY', 'METADATA_VALUE', 'NEWLINE', 'EOF', 'MELODY_MARKER', 'LYRICS_MARKER', 'LYRICS_TEXT'].includes(t.type)
   );
 
+  // 追踪当前小节起始 offset（不含 | 线自身）
+  let measureStartOffset = bodyTokens[0]?.offset ?? 0;
   let i = 0;
   while (i < bodyTokens.length) {
     const token = bodyTokens[i];
@@ -212,10 +214,16 @@ function parseBody(tokens: Token[]): { measures: Measure[]; errors: ParseError[]
       case 'BARLINE': {
         // 遇到小节线，保存当前小节
         if (currentNotes.length > 0) {
-          measures.push({ number: measureNumber, notes: currentNotes });
+          measures.push({
+            number: measureNumber,
+            notes: currentNotes,
+            sourceRange: { from: measureStartOffset, to: token.offset },
+          });
           measureNumber++;
           currentNotes = [];
         }
+        // 下一小节从 | 之后开始
+        measureStartOffset = token.offset + token.value.length;
         i++;
         break;
       }
@@ -393,7 +401,15 @@ function parseBody(tokens: Token[]): { measures: Measure[]; errors: ParseError[]
 
   // 最后一个小节
   if (currentNotes.length > 0) {
-    measures.push({ number: measureNumber, notes: currentNotes });
+    const lastBodyToken = bodyTokens[bodyTokens.length - 1];
+    const measureEnd = lastBodyToken
+      ? lastBodyToken.offset + lastBodyToken.value.length
+      : measureStartOffset;
+    measures.push({
+      number: measureNumber,
+      notes: currentNotes,
+      sourceRange: { from: measureStartOffset, to: measureEnd },
+    });
   }
 
   // 为所有小节识别连音组（基于空格分隔）
@@ -673,8 +689,8 @@ function validateMeasureBeats(
     if (diff > 0.001) {
       errors.push({
         message: `小节 ${measure.number} 时值不符：期望 ${expectedBeats} 拍，实际 ${totalBeats.toFixed(2)} 拍`,
-        position: { line: 1, column: 1, offset: 0 }, // TODO: 记录小节的实际位置
-        length: 0,
+        position: { line: 1, column: 0, offset: measure.sourceRange?.from ?? 0 },
+        length: (measure.sourceRange?.to ?? 0) - (measure.sourceRange?.from ?? 0),
       });
     }
   }

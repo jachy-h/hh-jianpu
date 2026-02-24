@@ -10,11 +10,17 @@
     "lint": "eslint src/"
   },
   "dependencies": {
+    "@codemirror/commands": "^6.10.2",
+    "@codemirror/language": "^6.12.1",
+    "@codemirror/search": "^6.6.0",
+    "@codemirror/state": "^6.5.4",
+    "@codemirror/view": "^6.39.15",
     "@hh-jianpu/core": "workspace:*",
+    "@lezer/highlight": "^1.2.3",
     "react": "^18.3.0",
     "react-dom": "^18.3.0",
-    "zustand": "^4.5.0",
-    "tone": "^15.0.4"
+    "tone": "^15.0.4",
+    "zustand": "^4.5.0"
   },
   "devDependencies": {
     "@types/react": "^18.3.0",

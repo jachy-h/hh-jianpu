@@ -7,13 +7,19 @@ body {
   min-height: 100vh;
 }
 
-/* 编辑器区域 */
-.editor-area {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 14px;
-  line-height: 1.6;
-  resize: none;
-  tab-size: 2;
+/* ── CodeMirror 全高适配 ──────────────────────────────────── */
+/* 让 .cm-editor 撑满父容器 */
+.cm-editor {
+  height: 100%;
+}
+.cm-editor .cm-scroller {
+  height: 100%;
+  overflow: auto;
+}
+
+/* 聚焦时去掉默认 outline */
+.cm-editor.cm-focused {
+  outline: none;
 }
 
 /* 简谱 SVG */

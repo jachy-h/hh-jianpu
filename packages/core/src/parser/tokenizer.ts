@@ -95,11 +95,18 @@ export function tokenize(source: string): Token[] {
   const bodyLines = lines.slice(bodyStartLine);
   line = bodyStartLine + 1;
 
+  // 计算 bodyLines 在原始源文本中的起始 offset（元信息行每行 length + \n）
+  pos = 0;
+  for (let i = 0; i < bodyStartLine; i++) {
+    pos += lines[i].length + 1;
+  }
+
   for (const bodyLine of bodyLines) {
     column = 1;
     let hasSpaceBeforeNext = false; // 跟踪是否遇到过空格
     
     // 检测旋律行（Q 开头）- 跳过 Q 标记但继续解析音符
+    let contentOffset = 0; // lineContent[0] 在 bodyLine 中的偏移量
     let lineContent = bodyLine;
     if (bodyLine.trim().startsWith('Q ') || bodyLine.trim() === 'Q') {
       tokens.push({
@@ -109,9 +116,11 @@ export function tokenize(source: string): Token[] {
         column: 1,
         offset: pos
       });
-      // 移除 Q 标记，继续解析剩余内容
+      // 移除 Q 标记，继续解析剩余内容，同时记录裁剪的字节数
       const pIndex = bodyLine.indexOf('Q');
-      lineContent = bodyLine.substring(pIndex + 1).trimStart();
+      const afterQ = bodyLine.substring(pIndex + 1);
+      contentOffset = pIndex + 1 + (afterQ.length - afterQ.trimStart().length);
+      lineContent = afterQ.trimStart();
       // 如果 P 后面没有内容，跳到下一行
       if (!lineContent) {
         tokens.push({
@@ -162,6 +171,8 @@ export function tokenize(source: string): Token[] {
     }
     
     // 解析音符内容（使用处理后的 lineContent）
+    // baseOffset：lineContent[i] 在原始源文本中的实际字节偏移
+    const baseOffset = pos + contentOffset;
     for (let i = 0; i < lineContent.length; i++) {
       const ch = lineContent[i];
 
@@ -179,7 +190,7 @@ export function tokenize(source: string): Token[] {
           value: ch, 
           line, 
           column, 
-          offset: pos + i,
+          offset: baseOffset + i,
           hasSpaceBefore: hasSpaceBeforeNext 
         });
         hasSpaceBeforeNext = false;
@@ -191,7 +202,7 @@ export function tokenize(source: string): Token[] {
           value: ch, 
           line, 
           column, 
-          offset: pos + i,
+          offset: baseOffset + i,
           hasSpaceBefore: hasSpaceBeforeNext 
         });
         hasSpaceBeforeNext = false;
@@ -203,7 +214,7 @@ export function tokenize(source: string): Token[] {
           value: ch, 
           line, 
           column, 
-          offset: pos + i,
+          offset: baseOffset + i,
           hasSpaceBefore: hasSpaceBeforeNext 
         });
         hasSpaceBeforeNext = false;
@@ -215,7 +226,7 @@ export function tokenize(source: string): Token[] {
           value: ch, 
           line, 
           column, 
-          offset: pos + i,
+          offset: baseOffset + i,
           hasSpaceBefore: hasSpaceBeforeNext 
         });
         hasSpaceBeforeNext = false;
@@ -227,7 +238,7 @@ export function tokenize(source: string): Token[] {
           value: ch, 
           line, 
           column, 
-          offset: pos + i,
+          offset: baseOffset + i,
           hasSpaceBefore: hasSpaceBeforeNext 
         });
         hasSpaceBeforeNext = false;
@@ -239,7 +250,7 @@ export function tokenize(source: string): Token[] {
           value: ch, 
           line, 
           column, 
-          offset: pos + i,
+          offset: baseOffset + i,
           hasSpaceBefore: hasSpaceBeforeNext 
         });
         hasSpaceBeforeNext = false;
@@ -266,7 +277,7 @@ export function tokenize(source: string): Token[] {
             value: ch, 
             line, 
             column, 
-            offset: pos + i,
+            offset: baseOffset + i,
             hasSpaceBefore: hasSpaceBeforeNext 
           });
           hasSpaceBeforeNext = false;
@@ -280,7 +291,7 @@ export function tokenize(source: string): Token[] {
           value: ch, 
           line, 
           column, 
-          offset: pos + i,
+          offset: baseOffset + i,
           hasSpaceBefore: hasSpaceBeforeNext 
         });
         hasSpaceBeforeNext = false;
@@ -292,7 +303,7 @@ export function tokenize(source: string): Token[] {
           value: ch, 
           line, 
           column, 
-          offset: pos + i,
+          offset: baseOffset + i,
           hasSpaceBefore: hasSpaceBeforeNext 
         });
         hasSpaceBeforeNext = false;
@@ -313,7 +324,7 @@ export function tokenize(source: string): Token[] {
             value: ch, 
             line, 
             column, 
-            offset: pos + i,
+            offset: baseOffset + i,
             hasSpaceBefore: hasSpaceBeforeNext 
           });
           hasSpaceBeforeNext = false;
@@ -327,7 +338,7 @@ export function tokenize(source: string): Token[] {
           value: ch, 
           line, 
           column, 
-          offset: pos + i,
+          offset: baseOffset + i,
           hasSpaceBefore: hasSpaceBeforeNext 
         });
         hasSpaceBeforeNext = false;
@@ -341,7 +352,7 @@ export function tokenize(source: string): Token[] {
             value: ch, 
             line, 
             column, 
-            offset: pos + i,
+            offset: baseOffset + i,
             hasSpaceBefore: hasSpaceBeforeNext 
           });
           hasSpaceBeforeNext = false;
@@ -354,7 +365,7 @@ export function tokenize(source: string): Token[] {
           value: ch, 
           line, 
           column, 
-          offset: pos + i,
+          offset: baseOffset + i,
           hasSpaceBefore: hasSpaceBeforeNext 
         });
         hasSpaceBeforeNext = false;
@@ -366,7 +377,7 @@ export function tokenize(source: string): Token[] {
           value: ch, 
           line, 
           column, 
-          offset: pos + i,
+          offset: baseOffset + i,
           hasSpaceBefore: hasSpaceBeforeNext 
         });
         hasSpaceBeforeNext = false;
@@ -378,7 +389,7 @@ export function tokenize(source: string): Token[] {
           value: ch, 
           line, 
           column, 
-          offset: pos + i,
+          offset: baseOffset + i,
           hasSpaceBefore: hasSpaceBeforeNext 
         });
         hasSpaceBeforeNext = false;
@@ -390,7 +401,7 @@ export function tokenize(source: string): Token[] {
           value: ch, 
           line, 
           column, 
-          offset: pos + i,
+          offset: baseOffset + i,
           hasSpaceBefore: hasSpaceBeforeNext 
         });
         hasSpaceBeforeNext = false;
