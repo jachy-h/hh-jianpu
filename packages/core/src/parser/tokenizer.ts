@@ -11,7 +11,7 @@ export type TokenType =
   | 'BARLINE'        // |
   | 'OCTAVE_UP'      // ' (高八度标记)
   | 'OCTAVE_DOWN'    // , (低八度标记)
-  | 'UNDERLINE'      // _ (减时线)
+  | 'UNDERLINE'      // / (减时线)
   | 'DOT'            // . 后缀（附点）
   | 'SHARP'          // #
   | 'FLAT'           // b (在音符前)
@@ -259,8 +259,8 @@ export function tokenize(source: string): Token[] {
         }
         const prevCh = lookBehind >= 0 ? lineContent[lookBehind] : '';
         
-        // 在数字或下划线后面，才是高八度标记
-        if ((prevCh >= '1' && prevCh <= '7') || prevCh === '_') {
+        // 在数字或减时线后面，才是高八度标记
+        if ((prevCh >= '1' && prevCh <= '7') || prevCh === '/') {
           tokens.push({ 
             type: 'OCTAVE_UP', 
             value: ch, 
@@ -274,7 +274,7 @@ export function tokenize(source: string): Token[] {
         // 如果不在数字或下划线后面，就忽略这个字符（不生成token）
       }
       // 减时线
-      else if (ch === '_') {
+      else if (ch === '/') {
         tokens.push({ 
           type: 'UNDERLINE', 
           value: ch, 
@@ -306,8 +306,8 @@ export function tokenize(source: string): Token[] {
         }
         const prevCh = lookBehind >= 0 ? lineContent[lookBehind] : '';
         
-        // 在数字或下划线后面，才是低八度标记
-        if ((prevCh >= '1' && prevCh <= '7') || prevCh === '_') {
+        // 在数字或减时线后面，才是低八度标记
+        if ((prevCh >= '1' && prevCh <= '7') || prevCh === '/') {
           tokens.push({ 
             type: 'OCTAVE_DOWN', 
             value: ch, 

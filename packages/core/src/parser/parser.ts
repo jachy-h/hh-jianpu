@@ -258,15 +258,15 @@ function parseBody(tokens: Token[]): { measures: Measure[]; errors: ParseError[]
           
           // 根据下划线数量判断类型
           if (underlineCount === 1) {
-            // 单下划线：长倚音
+            // 单减时线：长帚音
             note.graceType = 'long';
           } else if (underlineCount >= 2) {
-            // 双下划线：短倚音
+            // 双减时线：短帚音
             note.graceType = 'short';
           } else {
-            // 无下划线：错误，倚音必须有下划线
+            // 无减时线：错误，倚音必须有减时线
             errors.push({
-              message: `倚音必须有下划线标记：长倚音用 ^音符_ ，短倚音用 ^音符__`,
+              message: `倚音必须有减时线标记：长倚音用 ^音符/ ，短倚音用 ^音符//`,
               position: { line: token.line, column: token.column, offset: token.offset },
               length: 1,
             });
@@ -562,7 +562,7 @@ function parseNote(tokens: Token[], startIndex: number): { note: Note; nextIndex
   i = underlineResult.nextIndex;
 
   // 后置修饰符：八度标记（减时线后）
-  // 支持 5,_ 和 5_, 两种写法
+  // 支持 5,/ 和 5/, 两种写法
   while (i < tokens.length) {
     if (tokens[i].type === 'OCTAVE_UP') {
       octave++;

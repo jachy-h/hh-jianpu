@@ -138,13 +138,13 @@ export const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
                       <td className="border border-gray-300 px-4 py-2"><code className="font-mono">1 -</code> (2拍) <code className="font-mono">1 - -</code> (3拍)</td>
                     </tr>
                     <tr>
-                      <td className="border border-gray-300 px-4 py-2"><code className="font-mono bg-gray-100 px-2 py-1 rounded">_</code></td>
+                      <td className="border border-gray-300 px-4 py-2"><code className="font-mono bg-gray-100 px-2 py-1 rounded">/</code></td>
                       <td className="border border-gray-300 px-4 py-2">减时线（每个减半）</td>
-                      <td className="border border-gray-300 px-4 py-2"><code className="font-mono">1_</code> (半拍) <code className="font-mono">1__</code> (1/4拍)</td>
+                      <td className="border border-gray-300 px-4 py-2"><code className="font-mono">1/</code> (半拍) <code className="font-mono">1//</code> (1/4拍)</td>
                     </tr>
                   </tbody>
                 </table>
-                <p className="text-xs text-gray-500 mt-2">💡 空格控制连音线：<code className="bg-gray-100 px-1 rounded">1_2_3_</code> 连在一起，<code className="bg-gray-100 px-1 rounded">1_ 2_ 3_</code> 各自独立</p>
+                <p className="text-xs text-gray-500 mt-2">💡 空格控制连音线：<code className="bg-gray-100 px-1 rounded">1/2/3/</code> 连在一起，<code className="bg-gray-100 px-1 rounded">1/ 2/ 3/</code> 各自独立</p>
               </div>
 
               {/* 装饰音 */}
@@ -293,7 +293,7 @@ C 满 天 都 是 小 星 星 _`}
                 </details>
                 <details className="bg-gray-50 p-3 rounded border border-gray-200">
                   <summary className="font-semibold cursor-pointer">如何计算音符时值？</summary>
-                  <p className="mt-2 text-gray-600">基础 1 拍 → 加 <code>-</code> 延长 1 拍 → 加 <code>_</code> 减半。例：<code>1</code>=1拍，<code>1 -</code>=2拍，<code>1_</code>=0.5拍</p>
+                  <p className="mt-2 text-gray-600">基础 1 拍 → 加 <code>-</code> 延长 1 拍 → 加 <code>/</code> 减半。例：<code>1</code>=1拍，<code>1 -</code>=2拍，<code>1/</code>=0.5拍</p>
                 </details>
                 <details className="bg-gray-50 p-3 rounded border border-gray-200">
                   <summary className="font-semibold cursor-pointer">升降号和八度如何组合？</summary>

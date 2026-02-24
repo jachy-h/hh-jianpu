@@ -159,7 +159,7 @@ const store = useStore();
 | `1-7` | 音符 do-si | `1 3 5` | `tokenizer.ts` TOKEN.NOTE |
 | `0` | 休止符 | `1 0 5` | `tokenizer.ts` TOKEN.REST |
 | `-` | 延长线 | `1 - -` | `tokenizer.ts` TOKEN.TIE |
-| `_` | 减时线 | `1_ 2_` | `tokenizer.ts` TOKEN.UNDERLINE |
+| `/` | 减时线 | `1/ 2/` | `tokenizer.ts` TOKEN.UNDERLINE |
 | `'` | 高八度 | `1'` | `tokenizer.ts` TOKEN.OCTAVE_UP |
 | `.` | 低八度 | `1.` | `tokenizer.ts` TOKEN.OCTAVE_DOWN |
 | `#` | 升半音 | `#4` | `tokenizer.ts` TOKEN.SHARP |
@@ -176,7 +176,7 @@ const store = useStore();
 
 **注意事项**:
 - `.` 在音符后是低八度，在其他位置忽略（避免与附点混淆）
-- `_` 可连续使用 (1_ = 0.5拍, 1__ = 0.25拍)
+- `/` 可连续使用 (1/ = 0.5拍, 1// = 0.25拍)
 - `-` 每个延长 1 拍
 
 ```typescript
