@@ -222,7 +222,7 @@ const HelpPage: React.FC = () => {
                     <td className="border border-gray-300 px-4 py-2"><code className="font-mono">C (我的) 祖 国</code></td>
                   </tr>
                   <tr>
-                    <td className="border border-gray-300 px-4 py-2"><code className="font-mono bg-gray-100 px-2 py-1 rounded">_</code></td>
+                    <td className="border border-gray-300 px-4 py-2"><code className="font-mono bg-gray-100 px-2 py-1 rounded">-</code></td>
                     <td className="border border-gray-300 px-4 py-2">占位符（跳过该音符）</td>
                     <td className="border border-gray-300 px-4 py-2"><code className="font-mono">C 星 _ _ 光</code></td>
                   </tr>
@@ -313,7 +313,7 @@ C 满 天 都 是 小 星 星 -`}
               <details className="bg-gray-50 p-3 rounded border border-gray-200">
                 <summary className="font-semibold cursor-pointer">升降号和八度如何组合？</summary>
                 <p className="mt-2 text-gray-600">
-                  升降号在前，八度在后。例：<code>#'4</code> 表示高八度的升 fa
+                  升降号在前，八度在后。例：<code>#4'</code> 表示高八度的升 fa
                 </p>
               </details>
             </div>

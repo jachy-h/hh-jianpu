@@ -106,14 +106,14 @@ export class Player {
       }, scheduled.startTime);
     }
 
-    // 在最后一个音符结束后停止
+    // 在最后一个音符结束后自动停止
     const lastNote = this.scheduledNotes[this.scheduledNotes.length - 1];
     if (lastNote) {
       const endTime = lastNote.startTime + lastNote.duration;
-      Tone.getTransport().schedule(() => {
+      Tone.getTransport().schedule((time: number) => {
         Tone.getDraw().schedule(() => {
           this.stop();
-        }, endTime);
+        }, time);
       }, endTime);
     }
 
