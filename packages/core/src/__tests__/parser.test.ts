@@ -331,49 +331,6 @@ describe('Parser', () => {
       }
     }
   });
-
-  it('should parse dot after underline (6/.) and beam mixed durations (6/.5//)', () => {
-    // 6/. → 附点八分音符（base=8, dot=true）
-    // 5// → 十六分音符（base=16, dot=false）
-    // 两者无空格，应连入同一 beamGroup
-    const source = `调号: C
-拍号: 2/4
-速度: 120
-
-6/.5// 1 |`;
-
-    const result = parse(source);
-    expect(result.errors).toHaveLength(0);
-
-    const notes = result.score!.measures[0].notes;
-
-    // 第一个音符：6，附点八分音符
-    expect(notes[0].type).toBe('note');
-    if (notes[0].type === 'note') {
-      expect(notes[0].pitch).toBe(6);
-      expect(notes[0].duration.base).toBe(8);
-      expect(notes[0].dot).toBe(true);
-    }
-
-    // 第二个音符：5，十六分音符
-    expect(notes[1].type).toBe('note');
-    if (notes[1].type === 'note') {
-      expect(notes[1].pitch).toBe(5);
-      expect(notes[1].duration.base).toBe(16);
-      expect(notes[1].dot).toBe(false);
-    }
-
-    // 两者应属于同一 beamGroup（无空格相邻且均有减时线）
-    if (notes[0].type === 'note' && notes[1].type === 'note') {
-      expect(notes[0].beamGroup).toBeDefined();
-      expect(notes[1].beamGroup).toBe(notes[0].beamGroup);
-    }
-
-    // 第三个音符（1）不在 beamGroup 中
-    if (notes[2].type === 'note') {
-      expect(notes[2].beamGroup).toBeUndefined();
-    }
-  });
 });
 
 describe('Beat Validation', () => {

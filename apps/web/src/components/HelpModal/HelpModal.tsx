@@ -95,13 +95,13 @@ export const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
                   <tbody>
                     <tr>
                       <td className="border border-gray-300 px-4 py-2"><code className="font-mono bg-gray-100 px-2 py-1 rounded">'</code></td>
-                      <td className="border border-gray-300 px-4 py-2">高八度（后置）</td>
-                      <td className="border border-gray-300 px-4 py-2"><code className="font-mono">1' 2' 3'</code></td>
+                      <td className="border border-gray-300 px-4 py-2">高八度（前置）</td>
+                      <td className="border border-gray-300 px-4 py-2"><code className="font-mono">'1 '2 '3</code></td>
                     </tr>
                     <tr>
                       <td className="border border-gray-300 px-4 py-2"><code className="font-mono bg-gray-100 px-2 py-1 rounded">.</code></td>
-                      <td className="border border-gray-300 px-4 py-2">低八度（后置）</td>
-                      <td className="border border-gray-300 px-4 py-2"><code className="font-mono">5. 6. 7.</code></td>
+                      <td className="border border-gray-300 px-4 py-2">低八度（前置）</td>
+                      <td className="border border-gray-300 px-4 py-2"><code className="font-mono">.5 .6 .7</code></td>
                     </tr>
                     <tr>
                       <td className="border border-gray-300 px-4 py-2"><code className="font-mono bg-gray-100 px-2 py-1 rounded">#</code></td>
@@ -275,10 +275,10 @@ export const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
 拍号: 4/4
 
 P 1 1 5 5 | 6 6 5 - |
-C 一 闪 一 闪 亮 晶 晶 -
+C 一 闪 一 闪 亮 晶 晶 _
 
 P 4 4 3 3 | 2 2 1 - |
-C 满 天 都 是 小 星 星 -`}
+C 满 天 都 是 小 星 星 _`}
                 </pre>
               </div>
             </section>
