@@ -333,8 +333,6 @@ describe('Parser', () => {
   });
 });
 
-<<<<<<< Updated upstream
-=======
   it('should parse dot after underline (6/.) and beam mixed durations (6/.5//)', () => {
     // 6/. → 附点八分音符（base=8, dot=true）
     // 5// → 十六分音符（base=16, dot=false）
@@ -379,7 +377,6 @@ describe('Parser', () => {
   });
 
 
->>>>>>> Stashed changes
 describe('Beat Validation', () => {
   it('should validate correct 4/4 measure', () => {
     const source = `调号：C
