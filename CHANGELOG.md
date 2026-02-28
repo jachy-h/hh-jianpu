@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-03-01
+
+### Added
+- 🚀 **Release Skill** - Automated version release process
+  - New TypeScript release script: `scripts/release.ts`
+  - Skill documentation: `.qwen/skills/release/SKILL.md`
+  - Supports patch, minor, and major version bumps
+  - Interactive confirmation before publishing
+  - Automatic CHANGELOG updates
+  - Runs tests and build before committing
+  - Creates git commit and tag automatically
+
+### Changed
+- Updated version to 0.3.0 across all packages:
+  - Root `package.json`: 0.2.0 → 0.3.0
+  - `packages/core/package.json`: 0.2.0 → 0.3.0
+  - `apps/web/package.json`: 0.2.0 → 0.3.0
+
 ## [0.2.0] - 2026-02-27
 
 ## [0.2.0] - 2026-02-27

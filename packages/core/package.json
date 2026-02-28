@@ -1,6 +1,6 @@
 {
   "name": "@hh-jianpu/core",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Core library for parsing, rendering, and playing numbered musical notation",
   "type": "module",
   "main": "./dist/index.js",
