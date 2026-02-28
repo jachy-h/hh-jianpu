@@ -2,7 +2,7 @@
 // Editor.tsx — 基于 CodeMirror 6 的简谱编辑器
 // ============================================================
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import type { ParseError } from '@hh-jianpu/core';
 import { AUTO_SAVE_DELAY_MS } from '../../config';
 import TextTip from '../ui/TextTip';
@@ -16,6 +16,7 @@ import type { DecorationSet } from '@codemirror/view';
 
 import { jianpu } from './jianpu-language';
 import { jianpuTheme } from './jianpu-theme';
+import { ButtonTip } from '../ui';
 
 // ============================================================
 // 解析错误 Decoration Extension
@@ -189,6 +190,7 @@ function formatDelay(ms: number): string {
 const Editor: React.FC<EditorProps> = ({ value, onChange, parseErrors = [], isAutoSaving = false, lastSavedAt = null }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
+  const [copied, setCopied] = useState(false);
   // 记录上一次由内部变更产生的值，避免 value prop 变化时重复写回 EditorView
   const internalValueRef = useRef<string>(value);
 
@@ -240,7 +242,32 @@ const Editor: React.FC<EditorProps> = ({ value, onChange, parseErrors = [], isAu
     <div className="h-full flex flex-col">
       {/* 标题栏 */}
       <div className="text-xs text-played px-3 py-2 border-b border-barline select-none flex items-center justify-between flex-shrink-0">
-        <span>简谱源码</span>
+        <div className="flex items-center gap-2">
+          <span>简谱源码</span>
+          {/* 复制按钮 */}
+          <TextTip
+            onClick={async () => {
+              await navigator.clipboard.writeText(value);
+              setCopied(true);
+              setTimeout(() => setCopied(false), 2000);
+            }}
+            className={
+              "text-gray-400 transition-colors" + (copied ? " text-green-500" : "")
+            }
+            aria-label="复制简谱源码"
+            tipContent={copied ? "已复制" : "复制简谱源码"}
+          >
+            {copied ? (
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+            ) : (
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+              </svg>
+            )}
+          </TextTip>
+        </div>
         <span className="flex items-center gap-2">
           {/* 自动保存状态 */}
           {isAutoSaving ? (

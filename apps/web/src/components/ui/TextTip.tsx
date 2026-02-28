@@ -10,6 +10,8 @@ export interface TextTipProps {
   position?: 'top' | 'bottom' | 'left' | 'right';
   /** 文字颜色 */
   color?: string;
+  /** 点击事件 */
+  onClick?: () => void;
   /** Tip 背景颜色 */
   tipBackgroundColor?: string;
   /** Tip 文字颜色 */
@@ -34,6 +36,7 @@ const TextTip: React.FC<TextTipProps> = ({
   tipBackgroundColor = '#4A4A4A',
   tipTextColor = '#F5F5F5',
   className = '',
+  onClick,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const referenceRef = useRef<HTMLElement>(null);
@@ -76,6 +79,7 @@ const TextTip: React.FC<TextTipProps> = ({
         style={color ? { color } : {}}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
+        onClick={onClick}
       >
         {children}
       </span>
