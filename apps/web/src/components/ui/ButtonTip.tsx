@@ -157,7 +157,7 @@ function getVariantClass(variant: 'primary' | 'secondary' | 'ghost' | 'danger' |
     case 'danger':
       return 'bg-red-600 hover:bg-red-700 text-white font-medium rounded transition-colors';
     case 'nude':
-      return 'bg-transparent hover:bg-gray-100 text-gray-700 rounded transition-colors border-none';
+      return '';
     default:
       return 'bg-transparent hover:bg-gray-100 text-gray-700 rounded transition-colors border-none';
   }

@@ -8,6 +8,7 @@ import { ResizablePanels } from '../components/ResizablePanels';
 import { SettingsModal } from '../components/Settings';
 import { ImageImportModal, ImageImportButton } from '../components/ImageImport';
 import TopBar from '../components/Layout/TopBar';
+import FeedbackWidget from '../components/Feedback/FeedbackWidget';
 
 const EditorPage: React.FC = () => {
   const { id } = useParams<{ id?: string }>();
@@ -83,16 +84,6 @@ const EditorPage: React.FC = () => {
             >
               <span>⚙️</span>
               <span className="hidden sm:inline">设置</span>
-            </button>
-
-            {/* 帮助 */}
-            <button
-              onClick={() => navigate('/help')}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg border border-barline hover:bg-blue-50 transition-colors text-blue-600"
-              title="帮助"
-            >
-              <span>❓</span>
-              <span className="hidden sm:inline">帮助</span>
             </button>
 
             {/* 模式切换 */}
@@ -195,6 +186,9 @@ const EditorPage: React.FC = () => {
 
       {/* 图片导入模态框 */}
       <ImageImportModal isOpen={isImageImportOpen} onClose={() => setIsImageImportOpen(false)} />
+
+      {/* 右下角悬浮反馈组件 */}
+      <FeedbackWidget />
     </div>
   );
 };

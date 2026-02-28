@@ -2,6 +2,7 @@ import React from 'react';
 import type { ViewMode } from '../../store/useStore';
 import { EXAMPLES, EXAMPLE_KEYS } from '../../examples';
 import { ImageImportButton } from '../ImageImport';
+import FeedbackWidget from '../Feedback/FeedbackWidget';
 
 interface AppLayoutProps {
   mode: ViewMode;
@@ -128,6 +129,9 @@ const AppLayout: React.FC<AppLayoutProps> = ({
       <main className="flex-1 overflow-hidden">
         {children}
       </main>
+
+      {/* 右下角悬浮反馈组件 */}
+      <FeedbackWidget />
     </div>
   );
 };

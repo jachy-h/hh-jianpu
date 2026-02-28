@@ -2,6 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import TopBar from '../components/Layout/TopBar';
 import ButtonTip from '../components/ui/ButtonTip';
+import FeedbackWidget from '../components/Feedback/FeedbackWidget';
 
 const HelpPage: React.FC = () => {
   const navigate = useNavigate();
@@ -15,19 +16,6 @@ const HelpPage: React.FC = () => {
           <span className="text-base font-semibold text-gray-800 hidden sm:inline">
             📖 简谱语法速查
           </span>
-        }
-        actions={
-          <ButtonTip
-            tipContent="开始编辑曲谱"
-            position="bottom"
-            onClick={() => navigate('/edit')}
-            variant="primary"
-            size="md"
-            className="flex items-center gap-1.5"
-          >
-            <span>✏️</span>
-            <span>去编辑</span>
-          </ButtonTip>
         }
       />
 
@@ -336,8 +324,11 @@ C 满 天 都 是 小 星 星 -`}
 
       {/* Footer */}
       <footer className="px-6 py-3 border-t border-gray-200 bg-gray-50 text-center flex-shrink-0">
-        <p className="text-xs text-gray-500">简谱语法参考 v2.0 · 更新于 2026年2月9日</p>
+        <p className="text-xs text-gray-500">简谱语法参考 v0.2.0 · 更新于 2026年2月9日</p>
       </footer>
+
+      {/* 右下角悬浮反馈组件 */}
+      <FeedbackWidget />
     </div>
   );
 };

@@ -5,6 +5,7 @@ import { EXAMPLES, EXAMPLE_KEYS } from '../examples';
 import { SettingsModal } from '../components/Settings';
 import TopBar from '../components/Layout/TopBar';
 import ButtonTip from '../components/ui/ButtonTip';
+import FeedbackWidget from '../components/Feedback/FeedbackWidget';
 import type { MyScore } from '../services/myScores';
 import { migrateScoresToFileSystem } from '../services/myScores';
 import {
@@ -148,18 +149,6 @@ const MyScoresPage: React.FC = () => {
               <span>⚙️</span>
               <span className="hidden sm:inline">设置</span>
             </button>
-
-            {/* 帮助 */}
-            <ButtonTip
-              tipContent="查看帮助文档"
-              position="bottom"
-              onClick={() => navigate('/help')}
-              variant="ghost"
-              className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg border border-barline bg-white hover:bg-blue-50 transition-colors text-blue-600"
-            >
-              <span>❓</span>
-              <span className="hidden sm:inline">帮助</span>
-            </ButtonTip>
 
             {/* 新建 */}
             <ButtonTip
@@ -385,13 +374,16 @@ const MyScoresPage: React.FC = () => {
       </main>
 
       {/* 底部提示 */}
-      <footer className="px-4 py-2 border-t border-barline bg-white text-center">
+      {/* <footer className="px-4 py-2 border-t border-barline bg-white text-center">
         <p className="text-xs text-gray-400">
-          💡 编辑内容 300ms 后自动保存 · 加载示例后编辑会自动另存为新谱
+          极简动态谱
         </p>
-      </footer>
+      </footer> */}
 
       <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
+
+      {/* 右下角悬浮反馈组件 */}
+      <FeedbackWidget />
     </div>
   );
 };
