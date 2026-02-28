@@ -158,7 +158,7 @@ const EditorPage: React.FC = () => {
             }
             minLeftWidth={300}
             minRightWidth={300}
-            defaultLeftWidth={50}
+            defaultLeftWidth={35}
           />
         ) : (
           /* ===== 演奏模式 ===== */
