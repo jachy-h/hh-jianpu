@@ -33,13 +33,18 @@ const DEFAULT_METADATA: Metadata = {
  */
 function parseMetadata(tokens: Token[]): Metadata {
   const metadata: Metadata = { ...DEFAULT_METADATA };
+  const customFields: Record<string, string> = {};
+
+  // 基础元信息的 key（中英文）
+  const baseKeys = new Set(['title', 'key', 'time', 'tempo', '标题', '调号', '拍号', '速度']);
 
   for (let i = 0; i < tokens.length - 1; i++) {
     if (tokens[i].type === 'METADATA_KEY' && tokens[i + 1].type === 'METADATA_VALUE') {
       const key = tokens[i].value;
+      const lowerKey = key.toLowerCase();
       const value = tokens[i + 1].value;
 
-      switch (key) {
+      switch (lowerKey) {
         case '标题':
         case 'title':
           metadata.title = value;
@@ -63,9 +68,20 @@ function parseMetadata(tokens: Token[]): Metadata {
         case 'tempo':
           metadata.tempo = parseInt(value, 10) || 120;
           break;
+        default:
+          // 所有非基础元信息都存入 custom
+          if (!baseKeys.has(lowerKey)) {
+            customFields[key] = value;
+          }
+          break;
       }
       i++; // 跳过 value token
     }
+  }
+
+  // 如果有自定义字段，添加到 metadata
+  if (Object.keys(customFields).length > 0) {
+    metadata.custom = customFields;
   }
 
   return metadata;

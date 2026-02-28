@@ -20,13 +20,16 @@ export interface TimeSignature {
 
 /** 曲谱元信息 */
 export interface Metadata {
+  /** 标题（基础元信息） */
   title?: string;
+  /** 调号（基础元信息） */
   key: KeyName;
+  /** 拍号（基础元信息） */
   timeSignature: TimeSignature;
-  /** 每分钟拍数 */
+  /** 速度（基础元信息） */
   tempo: number;
-  /** 其他信息（作曲、作词、备注等），用 --- 包裹 */
-  other?: string;
+  /** 扩展元信息（任意 key: value 形式，除了基础元信息外的所有字段） */
+  custom?: Record<string, string>;
 }
 
 // ---- 音符与时值 ----

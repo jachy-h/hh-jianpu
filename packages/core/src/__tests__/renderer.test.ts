@@ -362,7 +362,7 @@ describe('Renderer', () => {
       expect(layout.lines[0].measures[0].lyrics).toBeDefined();
       expect(layout.lines[0].measures[0].lyrics).toHaveLength(2);
       expect(layout.lines[0].measures[0].lyrics![0].text).toBe('一');
-      expect(layout.lines[0].measures[0].lyrics![0].y).toBe(80 + 60 + 10); // lineY + lineHeight + lyricsOffset
+      expect(layout.lines[0].measures[0].lyrics![0].y).toBe(100 + 60 + 10); // lineY + lineHeight + lyricsOffset (marginTop=100)
     });
 
     it('should calculate lyrics positions for placeholder lyrics', () => {

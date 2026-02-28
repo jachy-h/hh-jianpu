@@ -67,7 +67,7 @@ const ScoreView: React.FC<ScoreViewProps> = ({
         {score.metadata.title && (
           <text
             x={layout.width / 2}
-            y={30}
+            y={40}
             textAnchor="middle"
             fontSize={22}
             fontWeight={600}
@@ -77,10 +77,10 @@ const ScoreView: React.FC<ScoreViewProps> = ({
           </text>
         )}
 
-        {/* 元信息行 */}
+        {/* 元信息行（基础信息） */}
         <text
           x={layout.width / 2}
-          y={55}
+          y={65}
           textAnchor="middle"
           fontSize={13}
           fill="#94A3B8"
@@ -88,6 +88,9 @@ const ScoreView: React.FC<ScoreViewProps> = ({
         >
           1={score.metadata.key}  {score.metadata.timeSignature.beats}/{score.metadata.timeSignature.beatValue}  ♩={score.metadata.tempo}
         </text>
+
+        {/* 扩展元信息行（作曲、作词等） */}
+        {renderExtendedMetadata(score, layout.width)}
 
         {/* 小节 */}
         {layout.lines.map((line, lineIdx) => (
@@ -174,3 +177,31 @@ function renderSlurs(allNotes: NotePosition[], currentNoteIndex: number) {
 }
 
 export default React.memo(ScoreView);
+
+// 辅助函数：渲染扩展元信息（所有 custom 字段）
+function renderExtendedMetadata(score: Score, width: number) {
+  const { metadata } = score;
+  const parts: string[] = [];
+
+  // 渲染所有 custom 字段
+  if (metadata.custom) {
+    for (const [key, value] of Object.entries(metadata.custom)) {
+      parts.push(`${key}：${value}`);
+    }
+  }
+
+  if (parts.length === 0) return null;
+
+  return (
+    <text
+      x={width / 2}
+      y={85}
+      textAnchor="middle"
+      fontSize={12}
+      fill="#78716C"
+      fontFamily="'JetBrains Mono', monospace"
+    >
+      {parts.join('  ')}
+    </text>
+  );
+}

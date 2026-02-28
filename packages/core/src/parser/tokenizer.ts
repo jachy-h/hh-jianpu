@@ -38,8 +38,8 @@ export interface Token {
   hasSpaceBefore?: boolean;
 }
 
-/** 元信息关键字映射 */
-const METADATA_KEYS = new Set(['标题', '调号', '拍号', '速度', '作曲', '作词', '备注', 'title', 'key', 'time', 'tempo', 'composer', 'lyricist']);
+/** 元信息关键字映射 - 用于识别元信息行 */
+const METADATA_KEYS = new Set(['标题', '调号', '拍号', '速度', 'title', 'key', 'time', 'tempo']);
 
 /**
  * 将简谱源文本分词为 Token 数组
@@ -83,8 +83,9 @@ export function tokenize(source: string): Token[] {
       for (let i = 1; i < frontmatterEndLine; i++) {
         const lineText = lines[i];
         const trimmedLine = lineText.trim();
-        
-        if (trimmedLine === '' || trimmedLine.startsWith('#')) {
+
+        // 跳过空行、# 注释、// 注释
+        if (trimmedLine === '' || trimmedLine.startsWith('#') || trimmedLine.startsWith('//')) {
           // 空行或注释，跳过
           pos += lines[i].length + 1;
           line++;
@@ -95,11 +96,14 @@ export function tokenize(source: string): Token[] {
         if (metaMatch) {
           const key = metaMatch[1];
           const lowerKey = key.toLowerCase();
-          if (METADATA_KEYS.has(lowerKey)) {
+          // 所有 key: value 形式的行都识别为元信息
+          const isMetadataKey = METADATA_KEYS.has(lowerKey) || !['title', 'key', 'time', 'tempo', '标题', '调号', '拍号', '速度'].includes(lowerKey);
+          
+          if (isMetadataKey) {
             // 计算 key 在原始行中的位置
             const keyStartCol = lineText.indexOf(key) + 1;
             const keyOffset = pos + lineText.indexOf(key);
-            
+
             tokens.push({
               type: 'METADATA_KEY',
               value: key,
@@ -122,7 +126,7 @@ export function tokenize(source: string): Token[] {
             });
           }
         }
-        
+
         pos += lines[i].length + 1;
         line++;
       }

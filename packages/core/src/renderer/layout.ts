@@ -43,7 +43,7 @@ export const DEFAULT_LAYOUT_CONFIG: LayoutConfig = {
   lineHeight: 60,
   lineGap: 30,
   marginLeft: 40,
-  marginTop: 80,
+  marginTop: 100,  // 增加顶部边距以容纳扩展元信息
   lyricsOffset: 10,
   lyricsFontSizeRatio: 0.85,
 };
