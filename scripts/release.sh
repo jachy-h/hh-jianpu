@@ -86,7 +86,7 @@ sed -i.bak "s/\"version\": \"$CURRENT_VERSION\"/\"version\": \"$NEW_VERSION\"/" 
 echo -e "${GREEN}📝 更新帮助文档版本号和日期...${NC}"
 TODAY=$(date +%Y年%m月%d日)
 sed -i.bak "s/version: '.*'/version: '$NEW_VERSION'/" apps/web/src/pages/helpPage.tsx && rm apps/web/src/pages/helpPage.tsx.bak
-sed -i.bak "s|更新于.*|更新于 $TODAY|" apps/web/src/pages/helpPage.tsx && rm apps/web/src/pages/helpPage.tsx.bak
+sed -i.bak "s|更新于 [0-9]\{4\}年[0-9]\{1,2\}月[0-9]\{1,2\}日|更新于 $TODAY|" apps/web/src/pages/helpPage.tsx && rm apps/web/src/pages/helpPage.tsx.bak
 
 echo -e "${GREEN}✅ 版本号已更新${NC}"
 echo ""

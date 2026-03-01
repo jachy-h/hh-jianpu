@@ -207,3 +207,36 @@ export async function resetStorageLocation(): Promise<void> {
   localStorage.removeItem(LS_PREF_KEY);
   localStorage.removeItem(LS_DIR_NAME_KEY);
 }
+
+/**
+ * 放弃文件系统存储：
+ * 1. 删除目录下所有 .jsonc 曲谱文件
+ * 2. 清理 IDB 句柄
+ * 3. 清除 localStorage 存储偏好
+ * 注意：此操作不可逆，调用方应先弹出二次确认
+ */
+export async function abandonStorage(): Promise<void> {
+  // 1. 尝试删除目录中所有 .jsonc 文件
+  try {
+    const handle = await loadHandleFromIDB();
+    if (handle) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      for await (const [name, entry] of handle as any) {
+        if ((entry as FileSystemHandle).kind === 'file' && (name as string).endsWith('.jsonc')) {
+          try {
+            await handle.removeEntry(name as string);
+          } catch {
+            // 忽略单个文件删除失败
+          }
+        }
+      }
+    }
+  } catch {
+    // 忽略（可能因权限变更或目录已被删除）
+  }
+
+  // 2. 清理 IDB 句柄 + localStorage 偏好
+  await clearHandleFromIDB();
+  localStorage.removeItem(LS_PREF_KEY);
+  localStorage.removeItem(LS_DIR_NAME_KEY);
+}

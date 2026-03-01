@@ -7,12 +7,13 @@ import TopBar from '../components/Layout/TopBar';
 import ButtonTip from '../components/ui/ButtonTip';
 import FeedbackWidget from '../components/Feedback/FeedbackWidget';
 import type { MyScore } from '../services/myScores';
-import { migrateScoresToFileSystem } from '../services/myScores';
+import { migrateScoresToFileSystem, scanScoresFromFileSystem, clearAllScores } from '../services/myScores';
 import {
   getStorageLocation,
   pickStorageDirectory,
   getSavedDirectoryHandle,
   isFileSystemAccessSupported,
+  abandonStorage,
   type StorageLocation,
 } from '../services/storageLocation';
 
@@ -25,7 +26,7 @@ function formatTime(ts: number): string {
 
 const MyScoresPage: React.FC = () => {
   const navigate = useNavigate();
-  const { myScores, currentScoreId, loadMyScore, deleteScore, renameScore, newScore, loadExample } =
+  const { myScores, currentScoreId, loadMyScore, deleteScore, renameScore, newScore, loadExample, refreshMyScores } =
     useStore();
 
   const [renamingId, setRenamingId] = useState<string | null>(null);
@@ -38,8 +39,25 @@ const MyScoresPage: React.FC = () => {
   const [isChangingStorage, setIsChangingStorage] = useState(false);
   const [storageError, setStorageError] = useState<string | null>(null);
 
+  // ---- 放弃存储确认弹框 ----
+  const [isAbandonDialogOpen, setIsAbandonDialogOpen] = useState(false);
+  const [abandonInput, setAbandonInput] = useState('');
+  const [isAbandoning, setIsAbandoning] = useState(false);
+
+  // ---- 挂载时刷新曲谱列表 ----
   useEffect(() => {
-    getStorageLocation().then(setStorageLocation);
+    const init = async () => {
+      const loc = await getStorageLocation();
+      setStorageLocation(loc);
+      if (loc.type === 'fileSystem') {
+        // 有本地目录：扫描目录文件，合并到 localStorage 后刷新列表
+        await scanScoresFromFileSystem();
+      }
+      // 无论何种模式，均从 localStorage 刷新 store
+      refreshMyScores();
+    };
+    void init();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // ---- 重命名 ----
@@ -125,6 +143,24 @@ const MyScoresPage: React.FC = () => {
       setIsChangingStorage(false);
     }
   }, []);
+
+  // ---- 放弃存储 ----
+  const handleAbandonStorage = useCallback(async () => {
+    if (abandonInput !== 'DELETE') return;
+    setIsAbandoning(true);
+    try {
+      await abandonStorage();
+      clearAllScores();
+      setStorageLocation({ type: 'localStorage' });
+      setIsAbandonDialogOpen(false);
+      setAbandonInput('');
+      refreshMyScores();
+    } catch {
+      setStorageError('放弃存储失败，请重试');
+    } finally {
+      setIsAbandoning(false);
+    }
+  }, [abandonInput, refreshMyScores]);
 
   // ---- 加载示例 ----
   const handleLoadExample = useCallback(
@@ -224,6 +260,16 @@ const MyScoresPage: React.FC = () => {
                   className="text-xs text-gray-400 hover:text-blue-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
                 >
                   {isChangingStorage ? '选择中…' : '更改存储位置'}
+                </ButtonTip>
+                <ButtonTip
+                  tipContent="删除所有本地存储内容并清空存储设置（不可恢复）"
+                  position="top"
+                  onClick={() => { setIsAbandonDialogOpen(true); setAbandonInput(''); }}
+                  variant="nude"
+                  size="sm"
+                  className="text-xs text-red-400 hover:text-red-600 transition-colors whitespace-nowrap"
+                >
+                  放弃存储
                 </ButtonTip>
               </div>
             </div>
@@ -381,6 +427,53 @@ const MyScoresPage: React.FC = () => {
       </footer> */}
 
       <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
+
+      {/* 放弃存储确认弹框 */}
+      {isAbandonDialogOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm mx-4 space-y-4">
+            <div className="flex items-start gap-3">
+              <span className="text-2xl">⚠️</span>
+              <div>
+                <h3 className="font-semibold text-gray-900">放弃存储</h3>
+                <p className="text-sm text-gray-500 mt-1">
+                  此操作将<strong>删除本地目录中所有曲谱文件</strong>，并清除浏览器中的所有曲谱数据与存储设置。
+                  <br />此操作<strong>不可恢复</strong>。
+                </p>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm text-gray-600">
+                请输入 <span className="font-mono font-bold text-red-500">DELETE</span> 以确认：
+              </label>
+              <input
+                autoFocus
+                type="text"
+                value={abandonInput}
+                onChange={(e) => setAbandonInput(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') void handleAbandonStorage(); }}
+                placeholder="DELETE"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-red-300 focus:border-red-400"
+              />
+            </div>
+            <div className="flex justify-end gap-2 pt-1">
+              <button
+                onClick={() => { setIsAbandonDialogOpen(false); setAbandonInput(''); }}
+                className="px-4 py-2 text-sm rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors"
+              >
+                取消
+              </button>
+              <button
+                onClick={() => void handleAbandonStorage()}
+                disabled={abandonInput !== 'DELETE' || isAbandoning}
+                className="px-4 py-2 text-sm rounded-lg bg-red-500 text-white hover:bg-red-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {isAbandoning ? '删除中…' : '确认放弃'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 右下角悬浮反馈组件 */}
       <FeedbackWidget />

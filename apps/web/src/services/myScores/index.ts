@@ -139,3 +139,67 @@ export function deleteMyScore(id: string): void {
 export function findMyScore(id: string): MyScore | null {
   return loadMyScores().find((s) => s.id === id) ?? null;
 }
+
+/**
+ * 从已选的文件系统目录扫描所有 .jsonc 文件，合并到 localStorage 并返回合并后的列表
+ * 文件内容格式与 syncToFileSystem 写入的格式一致
+ * 若目录不可用（无权限/未选择），退化为返回 localStorage 中的数据
+ */
+export async function scanScoresFromFileSystem(): Promise<MyScore[]> {
+  try {
+    const handle = await getActiveDirectoryHandle();
+    if (!handle) return loadMyScores();
+
+    const scanned: MyScore[] = [];
+
+    // FileSystemDirectoryHandle 是 AsyncIterable<[string, FileSystemHandle]>
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    for await (const [, entry] of handle as any) {
+      const fileEntry = entry as FileSystemHandle;
+      if (fileEntry.kind !== 'file' || !fileEntry.name.endsWith('.jsonc')) continue;
+      try {
+        const file = await (fileEntry as FileSystemFileHandle).getFile();
+        const text = await file.text();
+        // 去掉文件头注释行（第一行 // 注释 + 紧随的空行）
+        const jsonStr = text.replace(/^\/\/[^\n]*\n\n?/, '');
+        const score = JSON.parse(jsonStr) as Partial<MyScore>;
+        if (score?.id && score?.source && score?.title) {
+          scanned.push(score as MyScore);
+        }
+      } catch {
+        // 跳过格式错误的文件
+      }
+    }
+
+    if (scanned.length === 0) return loadMyScores();
+
+    // 合并规则：ID 相同时保留 updatedAt 较新的版本
+    const existing = loadMyScores();
+    const mergeMap = new Map<string, MyScore>(existing.map((s) => [s.id, s]));
+    for (const s of scanned) {
+      const ex = mergeMap.get(s.id);
+      if (!ex || s.updatedAt > ex.updatedAt) {
+        mergeMap.set(s.id, s);
+      }
+    }
+    const merged = Array.from(mergeMap.values()).sort((a, b) => b.updatedAt - a.updatedAt);
+
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+    } catch {
+      // 忽略存储失败
+    }
+    return merged;
+  } catch {
+    return loadMyScores();
+  }
+}
+
+/** 清除所有已保存曲谱（不可恢复，供"放弃存储"功能使用） */
+export function clearAllScores(): void {
+  try {
+    localStorage.removeItem(STORAGE_KEY);
+  } catch {
+    // 忽略
+  }
+}
