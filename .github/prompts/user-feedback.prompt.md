@@ -90,7 +90,7 @@ feedback: [简短描述]
    - API 或接口设计
    - UI/UX 变更（如有）
    - 配置或文档更新
-3. 编写代码，遵循项目规范（参见 `copilot-instructions.md`）
+3. 编写代码，遵循项目规范（参见 `.agent/instructions.md`）
 4. 添加必要的单元测试
 5. 更新相关文档（README、CHANGELOG 等）
 
