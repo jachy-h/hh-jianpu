@@ -86,6 +86,13 @@ export class Player {
     // 确保 AudioContext 已激活（需要用户交互后才能播放）
     await Tone.start();
 
+    // 如果是从暂停状态恢复，直接继续播放
+    if (this._status === 'paused') {
+      Tone.getTransport().start();
+      this.setStatus('playing');
+      return;
+    }
+
     // 用当前 tempo 重新计算时序（确保播放前调整 tempo 滑块立即生效）
     if (this._score) {
       this.scheduledNotes = scheduleNotes(this._score, this._tempo);

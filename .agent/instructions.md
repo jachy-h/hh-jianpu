@@ -346,7 +346,7 @@ interface ParseResult<T> {
 ```typescript
 /**
  * 计算曲谱布局
- * 
+ *
  * @param score - 解析后的曲谱 AST
  * @param config - 布局配置（可选）
  * @returns 包含坐标信息的布局对象
@@ -355,6 +355,21 @@ export function createLayout(score: Score, config?: Partial<LayoutConfig>): Scor
   // 实现...
 }
 ```
+
+---
+
+## 帮助文档更新
+
+**每次大功能变更后**，需要检查简谱语法规则是否有变更：
+
+- ✅ **检查范围**: Parser、Renderer、Player 的语法支持
+- ✅ **如有变更**: 更新帮助文档（`/help` 页面）和 `docs/user-guide/notation-syntax.md`
+- ✅ **示例**: 新增装饰音、新符号、播放控制等语法扩展
+
+**触发场景**:
+- 新增简谱符号（如连音线、装饰音记号）
+- 修改解析规则（如延长线时长、减时线计算）
+- 新增播放控制（如反复记号、速度变化）
 
 ---
 

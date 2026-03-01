@@ -281,7 +281,10 @@ export const useStore = create<AppState>((set, get) => {
       const startAudio = async () => {
         try {
           set({ isLoading: true });
-          player.loadScore(get().score!);
+          // 暂停状态下直接恢复，不能调用 loadScore（其内部会 stop，导致状态重置为 idle 从头播放）
+          if (player.status !== 'paused') {
+            player.loadScore(get().score!);
+          }
           player.setTempo(get().tempo);
           await player.play();
         } catch (error) {

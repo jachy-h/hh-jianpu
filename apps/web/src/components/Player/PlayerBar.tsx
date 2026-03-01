@@ -4,6 +4,7 @@ import type { PlaybackStatus } from '@hh-jianpu/core';
 const DELAY_PRESETS = [0, 3, 5, 10] as const;
 
 interface PlayerBarProps {
+  playButtonRef?: React.RefObject<HTMLButtonElement>;
   status: PlaybackStatus;
   tempo: number;
   isLoading?: boolean;
@@ -17,6 +18,7 @@ interface PlayerBarProps {
 }
 
 const PlayerBar: React.FC<PlayerBarProps> = ({
+  playButtonRef,
   status,
   tempo,
   isLoading = false,
@@ -59,6 +61,7 @@ const PlayerBar: React.FC<PlayerBarProps> = ({
 
         {/* 播放/暂停/倒计时 */}
         <button
+          ref={playButtonRef}
           onClick={handlePlayClick}
           disabled={isLoading}
           className={`relative p-3 rounded-full text-white transition-colors shadow-md disabled:opacity-50 disabled:cursor-not-allowed ${

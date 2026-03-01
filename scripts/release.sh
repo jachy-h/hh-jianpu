@@ -82,6 +82,12 @@ sed -i.bak "s/\"version\": \"$CURRENT_VERSION\"/\"version\": \"$NEW_VERSION\"/" 
 sed -i.bak "s/\"version\": \"$CURRENT_VERSION\"/\"version\": \"$NEW_VERSION\"/" packages/core/package.json && rm packages/core/package.json.bak
 sed -i.bak "s/\"version\": \"$CURRENT_VERSION\"/\"version\": \"$NEW_VERSION\"/" apps/web/package.json && rm apps/web/package.json.bak
 
+# 7. 更新 helpPage.tsx 里的版本号和日期
+echo -e "${GREEN}📝 更新帮助文档版本号和日期...${NC}"
+TODAY=$(date +%Y年%m月%d日)
+sed -i.bak "s/version: '.*'/version: '$NEW_VERSION'/" apps/web/src/pages/helpPage.tsx && rm apps/web/src/pages/helpPage.tsx.bak
+sed -i.bak "s|更新于.*|更新于 $TODAY|" apps/web/src/pages/helpPage.tsx && rm apps/web/src/pages/helpPage.tsx.bak
+
 echo -e "${GREEN}✅ 版本号已更新${NC}"
 echo ""
 
