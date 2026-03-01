@@ -324,7 +324,7 @@ C 满 天 都 是 小 星 星 -`}
 
       {/* Footer */}
       <footer className="px-6 py-3 border-t border-gray-200 bg-gray-50 text-center flex-shrink-0">
-        <p className="text-xs text-gray-500">简谱语法参考 v0.2.0 · 更新于 2026年2月9日</p>
+        <p className="text-xs text-gray-500">简谱语法参考 v0.3.1 · 更新于 2026年03月01日</p>
       </footer>
 
       {/* 右下角悬浮反馈组件 */}

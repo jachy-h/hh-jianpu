@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-03-01
+
 ### Added
 - ⌨️ **键盘快捷键** - 演奏模式下按空格键控制播放/暂停
   - 播放/暂停后焦点自动设置到播放按钮

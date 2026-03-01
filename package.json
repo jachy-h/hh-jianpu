@@ -1,6 +1,6 @@
 {
   "name": "hh-jianpu",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "private": true,
   "description": "A web-based dynamic numbered musical notation (jianpu) editor with AI-powered image recognition",
   "scripts": {
