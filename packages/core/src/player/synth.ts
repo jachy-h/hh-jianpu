@@ -30,6 +30,8 @@ export class Player {
   private _tempo: number = 120;
   private _status: PlaybackStatus = 'idle';
   private _metronomeEnabled: boolean = true; // 默认启用节拍器
+  private warmupIntervalId: ReturnType<typeof setInterval> | null = null;
+  private warmupTimeoutId: ReturnType<typeof setTimeout> | null = null;
 
   private onNoteHighlight: NoteHighlightCallback | null = null;
   private onStatusChange: StatusChangeCallback | null = null;
@@ -129,19 +131,24 @@ export class Player {
 
     // 如果只有 1 拍，等待一个节拍后完成
     if (beats <= 1) {
-      setTimeout(() => {
+      this.warmupTimeoutId = setTimeout(() => {
+        this.warmupTimeoutId = null;
         onComplete();
       }, secondsPerBeat * 1000);
       return;
     }
 
     // 剩余拍数用 setInterval，最后一拍完成后等待一个节拍再回调
-    const intervalId = setInterval(() => {
+    this.warmupIntervalId = setInterval(() => {
       tick();
       if (currentBeat <= 0) {
-        clearInterval(intervalId);
+        if (this.warmupIntervalId !== null) {
+          clearInterval(this.warmupIntervalId);
+          this.warmupIntervalId = null;
+        }
         // 最后一拍播放后，等待一个节拍再开始音符
-        setTimeout(() => {
+        this.warmupTimeoutId = setTimeout(() => {
+          this.warmupTimeoutId = null;
           onComplete();
         }, secondsPerBeat * 1000);
       }
@@ -152,6 +159,15 @@ export class Player {
    * 停止预热节拍器
    */
   stopMetronomeWarmup(): void {
+    // 清除节拍器预热的 setInterval / setTimeout，防止多次点击时并发执行
+    if (this.warmupIntervalId !== null) {
+      clearInterval(this.warmupIntervalId);
+      this.warmupIntervalId = null;
+    }
+    if (this.warmupTimeoutId !== null) {
+      clearTimeout(this.warmupTimeoutId);
+      this.warmupTimeoutId = null;
+    }
     if (this.tone) {
       this.tone.getTransport().cancel();
     }

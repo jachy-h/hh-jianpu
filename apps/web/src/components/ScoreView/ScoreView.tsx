@@ -8,6 +8,7 @@ interface ScoreViewProps {
   currentNoteIndex: number;
   width?: number;
   measuresPerLine?: number;
+  noteFontSize?: number;
   onNoteClick?: (index: number) => void;
 }
 
@@ -16,6 +17,7 @@ const ScoreView: React.FC<ScoreViewProps> = ({
   currentNoteIndex,
   width,
   measuresPerLine,
+  noteFontSize = 18,
   onNoteClick,
 }) => {
   // 响应式：根据窗口宽度自动调整
@@ -109,6 +111,7 @@ const ScoreView: React.FC<ScoreViewProps> = ({
                 key={measureLayout.measure.number}
                 layout={measureLayout}
                 currentNoteIndex={currentNoteIndex}
+                noteFontSize={noteFontSize}
                 onNoteClick={onNoteClick}
               />
             ))}

@@ -125,7 +125,7 @@ const FeedbackWidget: React.FC = () => {
                 <div className="flex-1 flex flex-col justify-center">
                   <div className="bg-blue-50 rounded-lg p-4 mb-4">
                     <p className="text-sm text-gray-700 leading-relaxed">
-                      <span className="font-medium text-blue-600">👋 哈喽！请扫码反馈。</span>
+                      <span className="font-medium text-blue-600">👋 哈喽！请用小红书扫码反馈。</span>
                       <br />
                         <span className="text-gray-500 text-xs mt-1 block">
                         <br /><br />
@@ -144,8 +144,11 @@ const FeedbackWidget: React.FC = () => {
                   <img
                     src="/xhs.jpg"
                     alt="小红书二维码"
-                    className="w-40 h-40 rounded-lg shadow-md border border-gray-200"
+                    className="w-40 rounded-lg shadow-md border border-gray-200"
                   />
+                  <p className="text-gray-500 text-xs mt-1">
+                    Jachy出发了&nbsp;2729682925
+                  </p>
                 </div>
 
                 

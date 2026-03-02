@@ -5,10 +5,11 @@ import NoteView from './NoteView';
 interface MeasureViewProps {
   layout: MeasureLayout;
   currentNoteIndex: number;
+  noteFontSize?: number;
   onNoteClick?: (index: number) => void;
 }
 
-const MeasureView: React.FC<MeasureViewProps> = ({ layout, currentNoteIndex, onNoteClick }) => {
+const MeasureView: React.FC<MeasureViewProps> = ({ layout, currentNoteIndex, noteFontSize = 18, onNoteClick }) => {
   const { measure, x, y, width, notes } = layout;
 
   // 收集连音组（beamGroup）并渲染连音线
@@ -142,6 +143,7 @@ const MeasureView: React.FC<MeasureViewProps> = ({ layout, currentNoteIndex, onN
           isActive={notePos.index === currentNoteIndex}
           isPlayed={currentNoteIndex >= 0 && notePos.index < currentNoteIndex}
           beamGroup={notePos.beamGroup}
+          noteFontSize={noteFontSize}
           onClick={onNoteClick}
         />
       ))}

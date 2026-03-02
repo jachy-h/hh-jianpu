@@ -97,6 +97,10 @@ interface AppState {
   setPlayDelay: (beats: number) => void;
   cancelCountdown: () => void;
 
+  // 音符字体大小（演奏模式）
+  noteFontSize: number;
+  setNoteFontSize: (size: number) => void;
+
   // 播放器实例
   player: Player;
 
@@ -254,6 +258,10 @@ export const useStore = create<AppState>((set, get) => {
     playDelay: initialPlayDelay,
     countdownValue: 0,
     isMetronomeActive: false,
+    noteFontSize: 18,
+    setNoteFontSize: (size: number) => {
+      set({ noteFontSize: size });
+    },
     setPlayDelay: (beats: number) => {
       set({ playDelay: beats });
       savePersistedState(buildPersistedState(get().source, get().tempo, beats, get().currentScoreId));
@@ -274,12 +282,17 @@ export const useStore = create<AppState>((set, get) => {
     ocrError: null,
 
     play: async () => {
-      const { score, player, playDelay } = get();
+      const { score, player, playDelay, isMetronomeActive } = get();
       if (!score) return;
 
-      // 如果正在倒计时，取消倒计时（切换为取消行为）
-      if (get().countdownValue > 0) {
-        get().cancelCountdown();
+      // 倒计时期间再次触发 → 停止倒计时，不重新开始
+      if (isMetronomeActive) {
+        player.stopMetronomeWarmup();
+        if (countdownTimer) {
+          clearInterval(countdownTimer);
+          countdownTimer = null;
+        }
+        set({ countdownValue: 0, isMetronomeActive: false });
         return;
       }
 
@@ -304,8 +317,28 @@ export const useStore = create<AppState>((set, get) => {
       // 延迟拍数 > 0 时，启动预热节拍器
       if (playDelay > 0) {
         set({ countdownValue: playDelay, isMetronomeActive: true });
-        
+
+        // 每拍递减 countdownValue，供 UI 实时显示当前倒计数
+        const msPerBeat = (60 / get().tempo) * 1000;
+        let remaining = playDelay - 1; // 第一拍由节拍器立即播放，timer 从第二拍开始
+        countdownTimer = setInterval(() => {
+          if (remaining > 0) {
+            set({ countdownValue: remaining });
+          }
+          remaining--;
+          if (remaining < 0) {
+            if (countdownTimer) {
+              clearInterval(countdownTimer);
+              countdownTimer = null;
+            }
+          }
+        }, msPerBeat);
+
         await player.startMetronomeWarmup(playDelay, () => {
+          if (countdownTimer) {
+            clearInterval(countdownTimer);
+            countdownTimer = null;
+          }
           set({ countdownValue: 0, isMetronomeActive: false });
           void doPlay();
         });
@@ -317,6 +350,13 @@ export const useStore = create<AppState>((set, get) => {
 
     pause: () => {
       get().player.pause();
+      // 暂停时也需要停止节拍器预热和清理倒计时状态
+      if (countdownTimer) {
+        clearInterval(countdownTimer);
+        countdownTimer = null;
+      }
+      set({ countdownValue: 0, isMetronomeActive: false });
+      get().player.stopMetronomeWarmup();
     },
 
     stop: () => {

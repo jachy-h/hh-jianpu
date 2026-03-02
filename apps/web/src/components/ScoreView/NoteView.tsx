@@ -9,6 +9,7 @@ interface NoteViewProps {
   isActive: boolean;
   isPlayed: boolean;
   beamGroup?: number;
+  noteFontSize?: number;
   onClick?: (index: number) => void;
 }
 
@@ -30,7 +31,7 @@ function getNoteDisplay(note: NoteElement): string {
   }
 }
 
-const NoteView: React.FC<NoteViewProps> = ({ note, x, y, index, isActive, isPlayed, beamGroup, onClick }) => {
+const NoteView: React.FC<NoteViewProps> = ({ note, x, y, index, isActive, isPlayed, beamGroup, noteFontSize = 18, onClick }) => {
   const display = getNoteDisplay(note);
 
   // 确定样式类
@@ -52,7 +53,7 @@ const NoteView: React.FC<NoteViewProps> = ({ note, x, y, index, isActive, isPlay
           textAnchor="middle"
           dominantBaseline="central"
           fontFamily="'JetBrains Mono', monospace"
-          fontSize={20}
+          fontSize={noteFontSize + 2}
           fontWeight={600}
           fill={fillColor}
         >
@@ -64,7 +65,7 @@ const NoteView: React.FC<NoteViewProps> = ({ note, x, y, index, isActive, isPlay
 
   // 倚音（装饰音）特殊渲染：小号字体，位置左上（已在 layout 中使用主音符的X坐标）
   const isGrace = note.type === 'note' && note.isGrace;
-  const fontSize = isGrace ? 12 : 18;
+  const fontSize = isGrace ? Math.max(10, noteFontSize - 6) : noteFontSize;
   const graceOffsetX = isGrace ? -12 : 0; // 左偏更多
   const graceOffsetY = isGrace ? -10 : 0;  // 上偏更多
 

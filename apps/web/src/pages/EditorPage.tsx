@@ -11,13 +11,14 @@ import { ImageImportModal, ImageImportButton } from '../components/ImageImport';
 import TopBar from '../components/Layout/TopBar';
 import FeedbackWidget from '../components/Feedback/FeedbackWidget';
 
-/** 处理空格键播放/暂停 */
+/** 处理空格键播放/暂停/取消倒计时 */
 function useKeyboardShortcut(
   mode: 'edit' | 'play',
   playButtonRef: React.RefObject<HTMLButtonElement>,
   onPlay: () => void,
   onPause: () => void,
-  status: 'idle' | 'playing' | 'paused'
+  status: 'idle' | 'playing' | 'paused',
+  isMetronomeActive: boolean
 ) {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -28,6 +29,9 @@ function useKeyboardShortcut(
       e.preventDefault();
       if (status === 'playing') {
         onPause();
+      } else if (isMetronomeActive) {
+        // 倒计时期间：停止倒计时（play() 内部检测 isMetronomeActive 会停止）
+        onPlay();
       } else {
         onPlay();
       }
@@ -37,7 +41,7 @@ function useKeyboardShortcut(
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [mode, onPlay, onPause, status, playButtonRef]);
+  }, [mode, onPlay, onPause, status, isMetronomeActive, playButtonRef]);
 }
 
 const EditorPage: React.FC = () => {
@@ -62,10 +66,13 @@ const EditorPage: React.FC = () => {
     stop,
     playDelay,
     countdownValue,
+    isMetronomeActive,
     setPlayDelay,
     currentScoreId,
     loadMyScore,
     lastSavedAt,
+    noteFontSize,
+    setNoteFontSize,
   } = useStore();
 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -84,8 +91,8 @@ const EditorPage: React.FC = () => {
     setMode(mode === 'edit' ? 'play' : 'edit');
   }, [mode, setMode]);
 
-  // 键盘快捷键：空格键播放/暂停
-  useKeyboardShortcut(mode, playButtonRef, play, pause, playbackStatus);
+  // 键盘快捷键：空格键播放/暂停/取消倒计时
+  useKeyboardShortcut(mode, playButtonRef, play, pause, playbackStatus, isMetronomeActive);
 
   return (
     <div className="h-screen flex flex-col">
@@ -162,7 +169,7 @@ const EditorPage: React.FC = () => {
                   )}
                   {/* 曲谱预览 */}
                   <div className="flex-1 overflow-auto">
-                    <ScoreView score={score} currentNoteIndex={-1} />
+                    <ScoreView score={score} currentNoteIndex={-1} noteFontSize={noteFontSize} />
                   </div>
                 </div>
               ) : (
@@ -190,7 +197,7 @@ const EditorPage: React.FC = () => {
           <div className="h-full flex flex-col">
             <div className="flex-1 overflow-auto p-6">
               {score ? (
-                <ScoreView score={score} currentNoteIndex={currentNoteIndex} />
+                <ScoreView score={score} currentNoteIndex={currentNoteIndex} noteFontSize={noteFontSize} />
               ) : (
                 <div className="flex items-center justify-center h-full text-played">
                   <p>没有可播放的曲谱，请先编辑</p>
@@ -205,7 +212,11 @@ const EditorPage: React.FC = () => {
               tempo={tempo}
               isLoading={isLoading}
               playDelay={playDelay}
+              isMetronomeActive={isMetronomeActive}
+              countdownValue={countdownValue}
               showTempoControl={false}
+              noteFontSize={noteFontSize}
+              onNoteFontSizeChange={setNoteFontSize}
               onPlay={play}
               onPause={pause}
               onStop={stop}
