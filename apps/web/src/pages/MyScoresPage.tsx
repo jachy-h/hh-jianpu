@@ -236,6 +236,7 @@ const MyScoresPage: React.FC = () => {
                     共 {myScores.length} 首
                   </span>
                 )}
+                
               </h2>
               <div className="flex items-center gap-2">
                 <span
@@ -248,7 +249,17 @@ const MyScoresPage: React.FC = () => {
                 >
                   {storageLocation.type === 'localStorage'
                     ? '浏览器缓存(默认)'
-                    : `📁 ${storageLocation.directoryName}`}
+                    : <>
+                      `📁 ${storageLocation.directoryName}`
+                      <ButtonTip
+                        tipContent="删除所有本地存储内容并清空存储设置（不可恢复）"
+                        position="top"
+                        onClick={() => { setIsAbandonDialogOpen(true); setAbandonInput(''); }}
+                        variant="ghost"
+                        size="sm"
+                        className="ml-2 text-gray-300 hover:text-gray-500"
+                      >×</ButtonTip></>
+                    }
                 </span>
                 <ButtonTip
                   tipContent="更改数据存储位置（需要 Chrome / Edge 86+ 支持）"
@@ -260,16 +271,6 @@ const MyScoresPage: React.FC = () => {
                   className="text-xs text-gray-400 hover:text-blue-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
                 >
                   {isChangingStorage ? '选择中…' : '更改存储位置'}
-                </ButtonTip>
-                <ButtonTip
-                  tipContent="删除所有本地存储内容并清空存储设置（不可恢复）"
-                  position="top"
-                  onClick={() => { setIsAbandonDialogOpen(true); setAbandonInput(''); }}
-                  variant="nude"
-                  size="sm"
-                  className="text-xs text-red-400 hover:text-red-600 transition-colors whitespace-nowrap"
-                >
-                  放弃存储
                 </ButtonTip>
               </div>
             </div>
