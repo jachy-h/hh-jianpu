@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- 🎵 **演奏模式音符字体大小** - 新增中杯/大杯/超大杯三档切换
+
+### Fixed
+- 🔧 **节拍器重复播放** - 修复频繁点击开始/暂停导致延迟节拍重复播放的问题
+
 ## [0.4.2] - 2026-03-01
 
 ## [0.4.1] - 2026-03-01
