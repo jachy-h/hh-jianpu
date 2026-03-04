@@ -71,6 +71,7 @@ const EditorPage: React.FC = () => {
     currentScoreId,
     loadMyScore,
     lastSavedAt,
+    saveAsNewScore,
     noteFontSize,
     setNoteFontSize,
   } = useStore();
@@ -153,7 +154,7 @@ const EditorPage: React.FC = () => {
         {mode === 'edit' ? (
           /* ===== 编辑模式 ===== */
           <ResizablePanels
-            left={<Editor value={source} onChange={setSource} parseErrors={parseErrors} isAutoSaving={isAutoSaving} lastSavedAt={lastSavedAt} />}
+            left={<Editor value={source} onChange={setSource} parseErrors={parseErrors} isAutoSaving={isAutoSaving} lastSavedAt={lastSavedAt} onTransposeApply={(s) => saveAsNewScore(s, '移调版')} />}
             right={
               score ? (
                 <div className="h-full flex flex-col">

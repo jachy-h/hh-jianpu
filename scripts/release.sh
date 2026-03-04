@@ -1,7 +1,9 @@
 #!/bin/bash
 
 # 版本发布脚本
-# 用法: ./scripts/release.sh [patch|minor|major]
+# 用法: ./scripts/release.sh [patch|minor|major] [--yes]
+#
+# 工作区可以有未提交的内容，脚本会在发布时统一 git add -A 提交。
 
 set -e
 
@@ -11,26 +13,27 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
-# 获取版本类型参数，默认为 patch
-VERSION_TYPE=${1:-patch}
+# 解析参数
+VERSION_TYPE=""
+AUTO_YES=false
+
+for arg in "$@"; do
+  case $arg in
+    patch|minor|major)
+      VERSION_TYPE="$arg"
+      ;;
+    --yes|-y)
+      AUTO_YES=true
+      ;;
+  esac
+done
+
+VERSION_TYPE=${VERSION_TYPE:-patch}
 
 echo -e "${GREEN}📦 开始版本发布流程...${NC}"
 echo ""
 
-# 1. 检查工作区是否干净
-if [[ -n $(git status -s) ]]; then
-  echo -e "${YELLOW}⚠️  工作区有未提交的更改${NC}"
-  git status -s
-  echo ""
-  read -p "是否继续？(y/N) " -n 1 -r
-  echo
-  if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-    echo -e "${RED}❌ 发布已取消${NC}"
-    exit 1
-  fi
-fi
-
-# 2. 获取当前版本
+# 1. 获取当前版本
 CURRENT_VERSION=$(node -p "require('./package.json').version")
 echo -e "${GREEN}📌 当前版本: ${CURRENT_VERSION}${NC}"
 
@@ -64,12 +67,14 @@ NEW_VERSION="$MAJOR.$MINOR.$PATCH"
 echo -e "${GREEN}🎯 新版本: ${NEW_VERSION}${NC}"
 echo ""
 
-# 4. 确认发布
-read -p "确认发布版本 ${NEW_VERSION}？(y/N) " -n 1 -r
-echo
-if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-  echo -e "${RED}❌ 发布已取消${NC}"
-  exit 1
+# 4. 确认发布（--yes 时跳过）
+if [[ "$AUTO_YES" == false ]]; then
+  read -p "确认发布版本 ${NEW_VERSION}？(y/N) " -n 1 -r
+  echo
+  if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+    echo -e "${RED}❌ 发布已取消${NC}"
+    exit 1
+  fi
 fi
 
 echo ""
@@ -83,26 +88,21 @@ sed -i.bak "s/\"version\": \"$CURRENT_VERSION\"/\"version\": \"$NEW_VERSION\"/" 
 sed -i.bak "s/\"version\": \"$CURRENT_VERSION\"/\"version\": \"$NEW_VERSION\"/" apps/web/package.json && rm apps/web/package.json.bak
 
 # 7. 更新 config.ts 里的版本号和日期
-echo -e "${GREEN}📝 更新帮助文档版本号和日期...${NC}"
-TODAY=$(date +%Y年%m月%d日)
+echo -e "${GREEN}📝 更新 config.ts 版本号和日期...${NC}"
+TODAY_CN=$(date +%Y年%m月%d日)
 sed -i.bak "s/HELP_PAGE_VERSION = '.*'/HELP_PAGE_VERSION = 'v$NEW_VERSION'/" apps/web/src/config.ts && rm apps/web/src/config.ts.bak
-sed -i.bak "s/HELP_PAGE_UPDATED_DATE = '.*'/HELP_PAGE_UPDATED_DATE = '$TODAY'/" apps/web/src/config.ts && rm apps/web/src/config.ts.bak
+sed -i.bak "s/HELP_PAGE_UPDATED_DATE = '.*'/HELP_PAGE_UPDATED_DATE = '$TODAY_CN'/" apps/web/src/config.ts && rm apps/web/src/config.ts.bak
 
 echo -e "${GREEN}✅ 版本号已更新${NC}"
 echo ""
 
-# 7. 更新 CHANGELOG
+# 8. 更新 CHANGELOG
 echo -e "${GREEN}📝 更新 CHANGELOG...${NC}"
 
-# 获取今天日期
 TODAY=$(date +%Y-%m-%d)
-
-# 创建临时文件
 TEMP_FILE=$(mktemp)
 
-# 读取 CHANGELOG 并更新
 {
-  # 写入头部
   echo "# 更新日志 (CHANGELOG)"
   echo ""
   echo "All notable changes to this project will be documented in this file."
@@ -114,44 +114,44 @@ TEMP_FILE=$(mktemp)
   echo ""
   echo "## [$NEW_VERSION] - $TODAY"
   echo ""
-  
+
   # 从原 CHANGELOG 中提取 Unreleased 的内容（跳过标题部分）
   sed -n '/## \[Unreleased\]/,/## \[/p' CHANGELOG.md | sed '$d' | tail -n +3
-  
+
   # 添加旧版本记录
-  sed -n '/## \[0\./,$p' CHANGELOG.md
+  sed -n '/## \[/,$p' CHANGELOG.md | grep -v '^## \[Unreleased\]'
 } > "$TEMP_FILE"
 
-# 替换原文件
 mv "$TEMP_FILE" CHANGELOG.md
 
 echo -e "${GREEN}✅ CHANGELOG 已更新${NC}"
 echo ""
 
-# 8. 运行测试
+# 9. 运行测试
 echo -e "${GREEN}🧪 运行测试...${NC}"
-cd packages/core && pnpm test -- --run
+(cd packages/core && pnpm test -- --run)
 
 echo -e "${GREEN}✅ 测试通过${NC}"
 echo ""
 
-# 9. 构建
+# 10. 构建
 echo -e "${GREEN}🏗️  构建项目...${NC}"
 pnpm build
 
 echo -e "${GREEN}✅ 构建完成${NC}"
 echo ""
 
-# 10. Git 提交
-echo -e "${GREEN}📤 提交更改...${NC}"
-git add .
+# 11. 提交所有内容（包括工作区业务代码 + 版本文件）
+echo -e "${GREEN}📤 提交所有内容...${NC}"
+git add -A
+
 git commit -m "chore: release v${NEW_VERSION}"
 git tag "v${NEW_VERSION}"
 
-echo -e "${GREEN}✅ Git 提交完成${NC}"
+echo -e "${GREEN}✅ Git commit + tag 完成${NC}"
 echo ""
 
-# 11. 完成
+# 12. 完成
 echo -e "${GREEN}🎉 版本 ${NEW_VERSION} 发布完成！${NC}"
 echo ""
 echo "📋 下一步操作："

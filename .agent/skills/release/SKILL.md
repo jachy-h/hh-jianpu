@@ -9,7 +9,7 @@ metadata:
 
 # Release Skill - 版本发布
 
-自动化版本发布流程。
+自动化版本发布流程。工作区可以有未提交内容，脚本统一处理。
 
 ## 什么时候使用
 
@@ -17,58 +17,54 @@ metadata:
 - `skill: release minor` — 小版本（如 1.0.0 → 1.1.0）
 - `skill: release major` — 大版本（如 1.0.0 → 2.0.0）
 
-## 发布前检查
-
-- [ ] 所有功能已完成
-- [ ] CHANGELOG Unreleased 部分已填写
-- [ ] 单元测试通过：`pnpm test`
-- [ ] 构建成功：`pnpm build`
-- [ ] 无 lint 错误：`pnpm lint`
+---
 
 ## 工作流程
 
-### 1. 检查工作区
-```bash
-git status
-```
+### 步骤 1：确认 CHANGELOG [Unreleased] 已填写
 
-### 2. 确定版本类型
-- **patch**：Bug 修复、小优化
-- **minor**：新功能、向后兼容的改进
-- **major**：破坏性变更、重大重构
+打开 `CHANGELOG.md`，确保 `## [Unreleased]` 下方有本次发布的内容描述。
 
-### 3. 运行发布脚本
+### 步骤 2：运行发布脚本
+
 ```bash
+# 人工交互模式（会询问是否确认发布版本号）
 ./scripts/release.sh [patch|minor|major]
+
+# AI Agent / 非交互模式（传入 --yes 跳过所有确认）
+./scripts/release.sh [patch|minor|major] --yes
 ```
 
-脚本自动执行：更新版本号 → 更新 CHANGELOG → 运行测试 → 构建 → Git commit + tag
+脚本自动执行：
+1. 计算新版本号
+2. 更新版本文件：`package.json`、`packages/core/package.json`、`apps/web/package.json`
+3. 更新 `apps/web/src/config.ts`（版本号 + 发布日期）
+4. 将 `CHANGELOG [Unreleased]` 内容归档到新版本下，恢复空 `[Unreleased]`
+5. 运行测试（`pnpm test`）
+6. 构建项目（`pnpm build`）
+7. `git add -A` — 提交工作区全部内容，生成 `chore: release vX.Y.Z`
+8. 打标签 `vX.Y.Z`
 
-### 4. 推送发布
+### 步骤 3：推送
+
 ```bash
 git push origin main
 git push origin v{x.y.z}
 ```
 
-## 修改的文件
+---
 
-- `package.json` (root)
-- `packages/core/package.json`
-- `apps/web/package.json`
-- `CHANGELOG.md`
+## 发布前检查清单
 
-## 项目配置
+- [ ] `CHANGELOG.md` 的 `[Unreleased]` 部分已填写
+- [ ] 本地测试可通过：`pnpm test`
 
-- 包管理：pnpm（monorepo）
-- 版本脚本：`./scripts/release.sh`
-- 测试：`pnpm test`
-- 构建：`pnpm build`
-- Lint：`pnpm lint`
+---
 
 ## 注意事项
 
-1. 测试失败必须修复后再发布
-2. 确认 CHANGELOG 内容准确
+1. 测试失败脚本会中止，修复后从步骤 2 重新运行
+2. `--yes` 标志供 AI Agent 或 CI 使用，人工发布建议不加，方便确认版本号
 3. 大版本发布前与团队确认
 
 ## 撤销发布

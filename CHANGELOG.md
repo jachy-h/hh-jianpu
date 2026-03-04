@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-03-04
+
+
+## [0.5.0] - 2026-03-04
+
+### Changed
+- 🎨 **新建曲谱按钮位置** - 从右上角移至"我的谱谱 共n首"右侧，改为文字按钮样式
+
 ## [0.4.3] - 2026-03-02
 
 ### Added

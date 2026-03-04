@@ -109,7 +109,7 @@ export function createLayout(score: Score, config: Partial<LayoutConfig> = {}): 
           note,
           measureNumber: measure.number,
           // 直接从 AST 中读取 beamGroup 和 slurGroup
-          beamGroup: note.type === 'note' ? note.beamGroup : undefined,
+          beamGroup: (note.type === 'note' || note.type === 'rest') ? note.beamGroup : undefined,
           slurGroup: note.type === 'note' ? note.slurGroup : undefined,
         };
 

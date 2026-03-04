@@ -185,18 +185,6 @@ const MyScoresPage: React.FC = () => {
               <span>⚙️</span>
               <span className="hidden sm:inline">设置</span>
             </button>
-
-            {/* 新建 */}
-            <ButtonTip
-              tipContent="创建新曲谱"
-              position="bottom"
-              onClick={handleNew}
-              variant="primary"
-              size="md"
-            >
-              <span>＋</span>
-              <span>新建曲谱</span>
-            </ButtonTip>
           </>
         }
       />
@@ -229,14 +217,19 @@ const MyScoresPage: React.FC = () => {
           {/* 我的谱谱区 */}
           <section>
             <div className="flex items-center justify-between mb-3">
-              <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider">
+              <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-2">
                 我的谱谱
                 {myScores.length > 0 && (
-                  <span className="ml-2 text-xs normal-case font-normal text-gray-400">
+                  <span className="text-xs normal-case font-normal text-gray-400">
                     共 {myScores.length} 首
                   </span>
                 )}
-                
+                <button
+                  onClick={handleNew}
+                  className="text-xs text-blue-500 hover:text-blue-600 font-normal normal-case ml-2"
+                >
+                  新建曲谱
+                </button>
               </h2>
               <div className="flex items-center gap-2">
                 <span

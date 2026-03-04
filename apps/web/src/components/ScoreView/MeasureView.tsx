@@ -164,7 +164,7 @@ const MeasureView: React.FC<MeasureViewProps> = ({ layout, currentNoteIndex, not
             y={lyricsPos.y}
             textAnchor="middle"
             fontSize={lyricsPos.isGroup ? 13 : 16}
-            fill={isHighlight ? '#DC2626' : isPlayed ? '#78716C' : '#57534E'}
+            fill={isHighlight ? '#2563EB' : isPlayed ? '#78716C' : '#57534E'}
             className="transition-colors duration-150"
           >
             {lyricsPos.text}
