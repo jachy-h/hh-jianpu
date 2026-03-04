@@ -132,6 +132,7 @@ interface AppState {
   renameScore: (id: string, title: string) => void;
   newScore: () => void;
   refreshMyScores: () => void;
+  saveAsNewScore: (source: string, titleSuffix?: string) => void;
 }
 
 /** 解析源文本并更新 store */
@@ -482,6 +483,37 @@ Q | 5, 6,/ 1 3. | 2 3/ 2 1. |`;
 
     refreshMyScores: () => {
       set({ myScores: loadMyScores() });
+    },
+
+    saveAsNewScore: (source: string, titleSuffix?: string) => {
+      const { score: parsedScore } = parseSource(source);
+      const baseTitle = extractTitle(parsedScore, source);
+      let finalSource = source;
+      let title = baseTitle;
+      if (titleSuffix) {
+        title = `${baseTitle}-${titleSuffix}`;
+        // 同步更新源码中的标题字段
+        finalSource = source.replace(
+          /^(标题[：:])(.+)$/m,
+          `$1${title}`
+        );
+      }
+      const { score, parseErrors } = parseSource(finalSource);
+      const created = createMyScore(finalSource, title);
+      const scoreTempo = score?.metadata?.tempo;
+      if (scoreTempo) {
+        get().player.setTempo(scoreTempo);
+      }
+      set({
+        source: finalSource,
+        score,
+        parseErrors,
+        currentScoreId: created.id,
+        myScores: loadMyScores(),
+        lastSavedAt: new Date(),
+        ...(scoreTempo ? { tempo: scoreTempo } : {}),
+      });
+      savePersistedState(buildPersistedState(finalSource, scoreTempo ?? get().tempo, get().playDelay, created.id));
     },
   };
 });

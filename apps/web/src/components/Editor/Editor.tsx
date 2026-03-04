@@ -6,6 +6,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import type { ParseError } from '@hh-jianpu/core';
 import { AUTO_SAVE_DELAY_MS } from '../../config';
 import TextTip from '../ui/TextTip';
+import { TransposeModal } from '../Transpose';
 
 import { EditorView, lineNumbers, highlightActiveLine, keymap, hoverTooltip } from '@codemirror/view';
 import { EditorState, StateEffect, StateField, RangeSetBuilder } from '@codemirror/state';
@@ -177,6 +178,8 @@ interface EditorProps {
   parseErrors?: ParseError[];
   isAutoSaving?: boolean;
   lastSavedAt?: Date | null;
+  /** 移调确认后的回调，用于将移调结果保存为新曲谱 */
+  onTransposeApply?: (newSource: string, titleSuffix?: string) => void;
 }
 
 /** 将自动保存间隔为可读字符串，如 "1秒" 或 "1000ms" */
@@ -187,10 +190,11 @@ function formatDelay(ms: number): string {
 /**
  * 简谱文本编辑器（CodeMirror 6）
  */
-const Editor: React.FC<EditorProps> = ({ value, onChange, parseErrors = [], isAutoSaving = false, lastSavedAt = null }) => {
+const Editor: React.FC<EditorProps> = ({ value, onChange, parseErrors = [], isAutoSaving = false, lastSavedAt = null, onTransposeApply }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
   const [copied, setCopied] = useState(false);
+  const [isTransposeOpen, setIsTransposeOpen] = useState(false);
   // 记录上一次由内部变更产生的值，避免 value prop 变化时重复写回 EditorView
   const internalValueRef = useRef<string>(value);
 
@@ -269,6 +273,17 @@ const Editor: React.FC<EditorProps> = ({ value, onChange, parseErrors = [], isAu
           </TextTip>
         </div>
         <span className="flex items-center gap-2">
+          {/* 移调按钮 */}
+          <button
+            onClick={() => setIsTransposeOpen(true)}
+            className="flex items-center gap-1 px-2 py-1 text-xs text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded transition-colors"
+            aria-label="移调"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+            </svg>
+            移调
+          </button>
           {/* 自动保存状态 */}
           {isAutoSaving ? (
             <TextTip
@@ -306,6 +321,14 @@ const Editor: React.FC<EditorProps> = ({ value, onChange, parseErrors = [], isAu
         ref={containerRef}
         className="flex-1 overflow-hidden"
         style={{ minHeight: 0 }}
+      />
+
+      {/* 移调弹框 */}
+      <TransposeModal
+        isOpen={isTransposeOpen}
+        onClose={() => setIsTransposeOpen(false)}
+        source={value}
+        onApply={onTransposeApply ?? onChange}
       />
     </div>
   );

@@ -78,6 +78,10 @@ export interface Note {
 export interface Rest {
   type: 'rest';
   duration: Duration;
+  /** 连音组ID（用于渲染连音线beam） */
+  beamGroup?: number;
+  /** 此音符前是否有空格（用于连音组判断，内部使用） */
+  hasSpaceBefore?: boolean;
 }
 
 /** 延音线（连接前一个音，表示延长） */
@@ -239,3 +243,29 @@ export interface ScoreLayout {
   lines: LineLayout[];
   allNotes: NotePosition[];
 }
+
+// ============================================================
+// 笛子指法类型
+// ============================================================
+
+/** 笛子指法（筒音作X） */
+export type FluteFingering = '5' | '2' | '1' | '6';
+
+/** 笛子指法最低音对应表（低音区，即简谱一个点） */
+export const FLUTE_FINGERING_LOWEST_NOTE: Record<FluteFingering, { pitch: number; octave: number }> = {
+  '5': { pitch: 5, octave: -1 }, // 筒音作5：最低 5,（低音5）
+  '2': { pitch: 2, octave: -1 }, // 筒音作2：最低 2,（低音2）
+  '1': { pitch: 1, octave: -1 }, // 筒音作1：最低 1,（低音1）
+  '6': { pitch: 6, octave: -1 }, // 筒音作6：最低 6,（低音6）
+};
+
+/** 调号半音偏移表 */
+export const KEY_SEMITONE_OFFSET: Record<KeyName, number> = {
+  'C': 0, 'C#': 1, 'Db': 1,
+  'D': 2, 'D#': 3, 'Eb': 3,
+  'E': 4,
+  'F': 5, 'F#': 6, 'Gb': 6,
+  'G': 7, 'G#': 8, 'Ab': 8,
+  'A': 9, 'A#': 10, 'Bb': 10,
+  'B': 11,
+};

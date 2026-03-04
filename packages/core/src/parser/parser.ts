@@ -443,7 +443,7 @@ function parseBody(tokens: Token[]): { measures: Measure[]; errors: ParseError[]
 
 /**
  * 识别并标记连音组
- * 规则：相邻的八分音符（duration.base >= 8），且中间没有空格，属于同一个连音组
+ * 规则：相邻的八分音符或八分休止符（duration.base >= 8），且中间没有空格，属于同一个连音组
  */
 function assignBeamGroups(measures: Measure[], tokens: Token[]): void {
   let globalBeamGroupId = 0;
@@ -455,8 +455,9 @@ function assignBeamGroups(measures: Measure[], tokens: Token[]): void {
     while (i < notes.length) {
       const note = notes[i];
       
-      // 只处理普通音符且是八分音符及更短
-      if (note.type === 'note' && note.duration.base >= 8) {
+      // 只处理普通音符或休拍符且是八分音符及更短
+      const isNoteOrRest = note.type === 'note' || note.type === 'rest';
+      if (isNoteOrRest && note.duration.base >= 8) {
         // 找到当前连音组的范围
         const groupStart = i;
         let groupEnd = i;
@@ -466,10 +467,11 @@ function assignBeamGroups(measures: Measure[], tokens: Token[]): void {
           const nextNote = notes[groupEnd + 1];
           
           // 检查下一个音符是否满足连音条件：
-          // - 是普通音符
+          // - 是普通音符或休拍符
           // - base >= 8（八分音符及更短，即有减时线）
           // - 前面没有空格
-          if (nextNote.type === 'note' && 
+          const nextIsNoteOrRest = nextNote.type === 'note' || nextNote.type === 'rest';
+          if (nextIsNoteOrRest && 
               nextNote.duration.base >= 8 &&
               !nextNote.hasSpaceBefore) { // 前面没有空格才连接
             groupEnd++;
@@ -483,7 +485,7 @@ function assignBeamGroups(measures: Measure[], tokens: Token[]): void {
           globalBeamGroupId++;
           for (let j = groupStart; j <= groupEnd; j++) {
             const noteInGroup = notes[j];
-            if (noteInGroup.type === 'note') {
+            if (noteInGroup.type === 'note' || noteInGroup.type === 'rest') {
               noteInGroup.beamGroup = globalBeamGroupId;
             }
           }
