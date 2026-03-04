@@ -115,7 +115,7 @@ const EditorPage: React.FC = () => {
           <>
             {/* 图片识别（仅编辑模式） */}
             {mode === 'edit' && (
-              // <ImageImportButton onClick={() => setIsImageImportOpen(true)} />
+              <ImageImportButton onClick={() => setIsImageImportOpen(true)} />
             )}
 
             {/* 设置（暂时禁用） */}
