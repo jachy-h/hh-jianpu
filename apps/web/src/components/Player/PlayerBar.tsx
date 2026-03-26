@@ -1,6 +1,5 @@
 import React from 'react';
 import type { PlaybackStatus } from '@hh-jianpu/core';
-import RunningCat from './RunningCat';
 
 const DELAY_BEATS = [0, 4, 8, 16] as const;
 const FONT_SIZES = [
@@ -41,11 +40,10 @@ const PlayerBar: React.FC<PlayerBarProps> = ({
   onStop,
   onPlayDelayChange,
 }) => {
-  // 倒计时期间：再次点击/按空格 → 停止倒计时
   const handlePlayClick = () => {
     if (disabled) return;
     if (isMetronomeActive) {
-      onPlay(); // play() 内部检测到 isMetronomeActive 会停止倒计时
+      onPlay();
     } else if (status === 'playing') {
       onPause();
     } else {
@@ -55,8 +53,23 @@ const PlayerBar: React.FC<PlayerBarProps> = ({
 
   return (
     <div className={`relative flex items-center justify-center gap-6 px-6 py-3 bg-white/80 backdrop-blur border-t border-barline transition-opacity ${disabled ? 'opacity-50' : ''}`}>
-      {/* 横跑小猫 loading */}
-      {(isLoading || disabled) && <RunningCat size={30} running />}
+      {/* 底部均衡器 loading */}
+      {(isLoading || disabled) && (
+        <div className="absolute bottom-0 left-0 right-0 h-[3px] flex items-end justify-center gap-[3px] px-[40%] pb-[2px] pointer-events-none" aria-hidden="true">
+          {[0.4, 0.7, 1, 0.55, 0.85, 0.45, 0.65, 0.9, 0.5, 0.75].map((scale, i) => (
+            <div
+              key={i}
+              className="flex-1 rounded-full bg-highlight"
+              style={{
+                height: '3px',
+                animation: `eq-bar 0.8s ease-in-out ${i * 0.08}s infinite alternate`,
+                transform: `scaleY(${scale})`,
+                transformOrigin: 'bottom',
+              }}
+            />
+          ))}
+        </div>
+      )}
 
       {/* 停止 */}
       <button
