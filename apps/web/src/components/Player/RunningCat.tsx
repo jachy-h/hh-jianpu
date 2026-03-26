@@ -1,150 +1,123 @@
 import React from 'react';
 
 interface RunningCatProps {
-  /** 动画尺寸，默认 24 */
+  /** SVG 高度，默认 28 */
   size?: number;
-  /** 颜色，默认 currentColor */
+  /** 填充色，默认 #1a1a1a（近黑） */
   color?: string;
+  /** 眼睛高光色，默认 #5ce0d8（绿松石） */
+  eyeColor?: string;
+  /** 是否在父容器内横向往返奔跑（需父元素 position: relative） */
+  running?: boolean;
 }
 
 /**
- * 跑动小猫 loading 动画
+ * 跑动小猫 — 纯 SVG + CSS 动画，零依赖
  *
- * 纯 SVG + CSS 动画，零依赖。
- * 小猫四肢交替奔跑、尾巴摇摆、身体微弹跳。
+ * 一只侧身奔跑的黑色小猫：
+ * - 四肢交替蹬地（对角步态）
+ * - 尾巴左右摇摆
+ * - 身体微弹跳
+ * - 胡须前后摆动
+ *
+ * 两种模式：
+ * - 默认：原地跑动（适合按钮内）
+ * - running：在父容器内横向往返穿越
  */
-const RunningCat: React.FC<RunningCatProps> = ({ size = 24, color = 'currentColor' }) => {
-  return (
+const RunningCat: React.FC<RunningCatProps> = ({
+  size = 28,
+  color = '#1a1a1a',
+  eyeColor = '#5ce0d8',
+  running = false,
+}) => {
+  const cat = (
     <svg
+      viewBox="0 0 56 36"
       width={size}
-      height={size}
-      viewBox="0 0 32 32"
+      height={Math.round(size * 36 / 56)}
       fill="none"
-      className="running-cat"
+      xmlns="http://www.w3.org/2000/svg"
+      className="rc-svg"
       role="img"
       aria-label="加载中"
     >
-      <style>{`
-        .running-cat { overflow: visible; }
+      {/* ═══ 身体 + 头（整组弹跳） ═══ */}
+      <g className="rc-body">
+        {/* 躯干 */}
+        <ellipse cx="20" cy="19" rx="10" ry="7" fill={color} />
+        {/* 头 */}
+        <circle cx="38" cy="14" r="7.5" fill={color} />
+        {/* 鼻吻 */}
+        <ellipse cx="44" cy="15" rx="3.2" ry="2.5" fill={color} />
+        {/* 脖子连接 */}
+        <path d="M 28 17 Q 32 13, 33 15" fill={color} />
 
-        /* 整体弹跳 */
-        .rc-body {
-          animation: rc-bounce 0.3s ease-in-out infinite alternate;
-          transform-origin: 16px 18px;
-        }
-        @keyframes rc-bounce {
-          0%   { transform: translateY(0); }
-          100% { transform: translateY(-1.5px); }
-        }
+        {/* ── 耳朵 ── */}
+        <path className="rc-ear" d="M 33 8 L 35 1 L 37 7" fill={color} />
+        <path className="rc-ear" d="M 39 7 L 42 0.5 L 43 7" fill={color} />
+        {/* 左耳内衬 */}
+        <path d="M 34 7 L 35.5 3 L 36 7" fill="#3a3a3a" />
 
-        /* 前腿 — 交替蹬 */
-        .rc-front-leg {
-          animation: rc-front 0.2s ease-in-out infinite alternate;
-          transform-origin: 22px 20px;
-        }
-        .rc-front-leg-alt {
-          animation: rc-front-alt 0.2s ease-in-out infinite alternate;
-          transform-origin: 22px 20px;
-        }
-        @keyframes rc-front {
-          0%   { transform: rotate(-25deg); }
-          100% { transform: rotate(25deg); }
-        }
-        @keyframes rc-front-alt {
-          0%   { transform: rotate(25deg); }
-          100% { transform: rotate(-25deg); }
-        }
+        {/* ── 眼睛 ── */}
+        <ellipse cx="40" cy="13" rx="1.6" ry="1.9" fill="white" />
+        <ellipse cx="40.8" cy="13" rx="0.8" ry="1.5" fill={color} />
+        <circle cx="41.3" cy="12.2" r="0.5" fill="white" opacity="0.9" />
 
-        /* 后腿 — 交替蹬（与前腿反相） */
-        .rc-hind-leg {
-          animation: rc-hind 0.2s ease-in-out infinite alternate;
-          transform-origin: 10px 20px;
-        }
-        .rc-hind-leg-alt {
-          animation: rc-hind-alt 0.2s ease-in-out infinite alternate;
-          transform-origin: 10px 20px;
-        }
-        @keyframes rc-hind {
-          0%   { transform: rotate(20deg); }
-          100% { transform: rotate(-20deg); }
-        }
-        @keyframes rc-hind-alt {
-          0%   { transform: rotate(-20deg); }
-          100% { transform: rotate(20deg); }
-        }
+        {/* ── 鼻子 ── */}
+        <path d="M 45.5 14.5 L 44.8 13.8 L 46.2 13.8 Z" fill="#e88b8b" />
 
-        /* 尾巴 — 左右摇摆 */
-        .rc-tail {
-          animation: rc-tail 0.4s ease-in-out infinite alternate;
-          transform-origin: 8px 16px;
-        }
-        @keyframes rc-tail {
-          0%   { transform: rotate(-15deg); }
-          100% { transform: rotate(15deg); }
-        }
+        {/* ── 嘴巴 ── */}
+        <path d="M 45.5 15 Q 44.5 16.2, 43 15.5" stroke="#3a3a3a" strokeWidth="0.4" fill="none" />
 
-        /* 耳朵 — 微微颤动 */
-        .rc-ear {
-          animation: rc-ear 0.3s ease-in-out infinite alternate;
-          transform-origin: center bottom;
-        }
-        @keyframes rc-ear {
-          0%   { transform: scaleY(1); }
-          100% { transform: scaleY(0.85); }
-        }
-      `}</style>
+        {/* ── 胡须（前后摆动） ── */}
+        <g className="rc-whisker">
+          <line x1="44.5" y1="14.5" x2="54" y2="11.5" stroke={color} strokeWidth="0.35" opacity="0.45" />
+          <line x1="44.5" y1="15.2" x2="54" y2="15.2" stroke={color} strokeWidth="0.35" opacity="0.45" />
+          <line x1="44.5" y1="15.9" x2="54" y2="18.9" stroke={color} strokeWidth="0.35" opacity="0.45" />
+        </g>
+      </g>
 
-      {/* 尾巴 */}
+      {/* ═══ 尾巴（S 曲线，左右摇摆） ═══ */}
       <path
         className="rc-tail"
-        d="M8 16 Q4 12, 3 8"
+        d="M 10 16 C 5 11, 1 7, 3 3"
         stroke={color}
-        strokeWidth="1.8"
+        strokeWidth="2.5"
         strokeLinecap="round"
         fill="none"
       />
 
-      {/* 身体 */}
-      <g className="rc-body">
-        {/* 躯干 */}
-        <ellipse cx="16" cy="18" rx="7" ry="5" fill={color} opacity="0.9" />
+      {/* ═══ 四条腿（对角步态：前左↔后右，前右↔后左） ═══ */}
+      {/* 前腿-左 */}
+      <line className="rc-leg-fl" x1="26" y1="25" x2="28" y2="33"
+            stroke={color} strokeWidth="2.8" strokeLinecap="round" />
+      {/* 前腿-右 */}
+      <line className="rc-leg-fr" x1="28" y1="25" x2="30" y2="33"
+            stroke={color} strokeWidth="2.8" strokeLinecap="round" />
+      {/* 后腿-左 */}
+      <line className="rc-leg-bl" x1="15" y1="25" x2="13" y2="33"
+            stroke={color} strokeWidth="2.8" strokeLinecap="round" />
+      {/* 后腿-右 */}
+      <line className="rc-leg-br" x1="17" y1="25" x2="15" y2="33"
+            stroke={color} strokeWidth="2.8" strokeLinecap="round" />
 
-        {/* 头 */}
-        <circle cx="24" cy="13" r="4.5" fill={color} />
-
-        {/* 耳朵 */}
-        <path className="rc-ear" d="M21 9.5 L22 6 L24 9" fill={color} />
-        <path className="rc-ear" d="M25 9 L27 5.5 L28 9" fill={color} />
-
-        {/* 眼睛 */}
-        <circle cx="25.5" cy="12.5" r="0.8" fill="white" />
-
-        {/* 鼻子 */}
-        <circle cx="27.5" cy="13.5" r="0.5" fill="white" opacity="0.7" />
-
-        {/* 胡须 */}
-        <line x1="27" y1="13" x2="31" y2="11.5" stroke={color} strokeWidth="0.5" opacity="0.5" />
-        <line x1="27" y1="14" x2="31" y2="14"   stroke={color} strokeWidth="0.5" opacity="0.5" />
-        <line x1="27" y1="15" x2="31" y2="16.5" stroke={color} strokeWidth="0.5" opacity="0.5" />
-      </g>
-
-      {/* 后腿 */}
-      <g className="rc-hind-leg">
-        <line x1="12" y1="22" x2="9"  y2="28" stroke={color} strokeWidth="2" strokeLinecap="round" />
-      </g>
-      <g className="rc-hind-leg-alt">
-        <line x1="10" y1="22" x2="7"  y2="28" stroke={color} strokeWidth="2" strokeLinecap="round" />
-      </g>
-
-      {/* 前腿 */}
-      <g className="rc-front-leg">
-        <line x1="20" y1="22" x2="22" y2="28" stroke={color} strokeWidth="2" strokeLinecap="round" />
-      </g>
-      <g className="rc-front-leg-alt">
-        <line x1="22" y1="22" x2="24" y2="28" stroke={color} strokeWidth="2" strokeLinecap="round" />
-      </g>
+      {/* ═══ 肉垫 ═══ */}
+      <circle cx="28" cy="33.5" r="1.2" fill={color} opacity="0.6" />
+      <circle cx="30" cy="33.5" r="1.2" fill={color} opacity="0.6" />
     </svg>
   );
+
+  if (running) {
+    return (
+      <div className="rc-runner" aria-hidden="true">
+        <div className="rc-runner-inner">
+          {cat}
+        </div>
+      </div>
+    );
+  }
+
+  return cat;
 };
 
 export default RunningCat;

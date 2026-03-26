@@ -54,7 +54,10 @@ const PlayerBar: React.FC<PlayerBarProps> = ({
   };
 
   return (
-    <div className={`flex items-center justify-center gap-6 px-6 py-3 bg-white/80 backdrop-blur border-t border-barline transition-opacity ${disabled ? 'opacity-50' : ''}`}>
+    <div className={`relative flex items-center justify-center gap-6 px-6 py-3 bg-white/80 backdrop-blur border-t border-barline transition-opacity ${disabled ? 'opacity-50' : ''}`}>
+      {/* 横跑小猫 loading */}
+      {(isLoading || disabled) && <RunningCat size={30} running />}
+
       {/* 停止 */}
       <button
         onClick={disabled ? undefined : onStop}
@@ -85,7 +88,9 @@ const PlayerBar: React.FC<PlayerBarProps> = ({
         }
       >
         {disabled || isLoading ? (
-          <RunningCat size={24} />
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" className="animate-pulse">
+            <polygon points="7,4 20,12 7,20" />
+          </svg>
         ) : isMetronomeActive && countdownValue > 0 ? (
           <span className="w-6 h-6 flex items-center justify-center text-lg font-bold leading-none">
             {countdownValue}
