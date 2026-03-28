@@ -79,6 +79,7 @@ const EditorPage: React.FC = () => {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isImageImportOpen, setIsImageImportOpen] = useState(false);
   const [isEditorFocused, setIsEditorFocused] = useState(false);
+  const [isControlPinned, setIsControlPinned] = useState(false);
   const [scrollToMeasure, setScrollToMeasure] = useState<number | undefined>(undefined);
   const playButtonRef = useRef<HTMLButtonElement>(null);
 
@@ -201,7 +202,8 @@ const EditorPage: React.FC = () => {
           isMetronomeActive={isMetronomeActive}
           countdownValue={countdownValue}
           noteFontSize={noteFontSize}
-          collapsed={!isEditorFocused}
+          collapsed={isEditorFocused}
+          pinned={isControlPinned}
           onNoteFontSizeChange={setNoteFontSize}
           onPlay={play}
           onPause={pause}
