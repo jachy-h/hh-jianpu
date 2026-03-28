@@ -55,8 +55,8 @@ const PlayerBar: React.FC<PlayerBarProps> = ({
 
   return (
     <div
-      className={`relative flex items-center justify-center gap-4 px-4 py-2 bg-white/80 backdrop-blur border-t border-barline transition-[height] duration-300 ease-in-out ${
-        isCollapsed ? "h-0 overflow-hidden border-t-0" : "h-auto"
+      className={`fixed bottom-0 left-0 right-0 flex items-center justify-center gap-4 px-4 py-2 bg-white/80 backdrop-blur border-t border-barline transition-transform duration-300 ease-in-out ${
+        isCollapsed ? "translate-y-full" : "translate-y-0"
       }`}
     >
       <button
