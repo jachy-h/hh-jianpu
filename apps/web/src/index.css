@@ -41,9 +41,26 @@ body {
   fill: theme('colors.played');
 }
 
-/* ── 均衡器 loading 动画 ──────────────────────────────────── */
+/* ── 磁带 loading 动画 ──────────────────────────────────── */
 
-@keyframes eq-bar {
-  0%   { transform: scaleY(0.3); }
-  100% { transform: scaleY(1); }
+@keyframes l3 {
+  25% { background-position: 0 0, 100% 100%, 100% calc(100% - 5px); }
+  50% { background-position: 0 100%, 100% 100%, 0 calc(100% - 5px); }
+  75% { background-position: 0 100%, 100% 0, 100% 5px; }
+}
+
+.loader {
+  width: 50px;
+  height: 36px;
+  border: 3px solid theme('colors.barline');
+  padding: 0 5px;
+  box-sizing: border-box;
+  background:
+    linear-gradient(#fff 0 0) 0 0/5px 14px,
+    linear-gradient(#fff 0 0) 100% 0/5px 14px,
+    radial-gradient(farthest-side, #fff 90%, #0000) 0 3px/5px 5px content-box,
+    theme('colors.barline');
+  background-repeat: no-repeat;
+  animation: l3 2s infinite linear;
+  opacity: 0.65;
 }

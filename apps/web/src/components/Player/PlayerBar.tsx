@@ -53,21 +53,10 @@ const PlayerBar: React.FC<PlayerBarProps> = ({
 
   return (
     <div className={`relative flex items-center justify-center gap-6 px-6 py-3 bg-white/80 backdrop-blur border-t border-barline transition-opacity ${disabled ? 'opacity-50' : ''}`}>
-      {/* 底部均衡器 loading */}
+      {/* 磁带 loading 动画 */}
       {(isLoading || disabled) && (
-        <div className="absolute bottom-0 left-0 right-0 h-[3px] flex items-end justify-center gap-[3px] px-[40%] pb-[2px] pointer-events-none" aria-hidden="true">
-          {[0.4, 0.7, 1, 0.55, 0.85, 0.45, 0.65, 0.9, 0.5, 0.75].map((scale, i) => (
-            <div
-              key={i}
-              className="flex-1 rounded-full bg-highlight"
-              style={{
-                height: '3px',
-                animation: `eq-bar 0.8s ease-in-out ${i * 0.08}s infinite alternate`,
-                transform: `scaleY(${scale})`,
-                transformOrigin: 'bottom',
-              }}
-            />
-          ))}
+        <div className="absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2 pointer-events-none" aria-hidden="true">
+          <div className="loader" />
         </div>
       )}
 
