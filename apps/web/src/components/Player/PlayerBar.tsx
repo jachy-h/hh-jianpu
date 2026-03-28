@@ -62,8 +62,8 @@ const PlayerBar: React.FC<PlayerBarProps> = ({
       {/* Pin 按钮 - 左上角 */}
       <button
         onClick={() => setIsPinned(!isPinned)}
-        className={`absolute left-3 p-1 rounded transition-colors ${
-          isPinned ? "text-highlight" : "text-gray-400 hover:text-gray-600"
+        className={`absolute left-3 p-1 rounded transition-all duration-300 ${
+          isPinned ? "text-highlight rotate-[-30deg]" : "text-gray-400 hover:text-gray-600 rotate-[-30deg] hover:rotate-[-20deg]"
         }`}
         title={isPinned ? "取消固定" : "固定控制条"}
       >
