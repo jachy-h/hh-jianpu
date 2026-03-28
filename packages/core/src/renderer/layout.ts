@@ -88,15 +88,15 @@ export function createLayout(score: Score, config: Partial<LayoutConfig> = {}): 
     const measureWidth = (cfg.width - cfg.marginLeft * 2) / cfg.measuresPerLine;
 
     const measureLayouts: MeasureLayout[] = [];
+    let currentX = cfg.marginLeft;
 
     for (let mIdx = 0; mIdx < lineMeasures.length; mIdx++) {
       const measure = lineMeasures[mIdx];
-      const measureX = cfg.marginLeft + mIdx * measureWidth;
       const notePositions: NotePosition[] = [];
 
       // 使用动态间距计算
       const noteSpacing = calculateDynamicSpacing(measure.notes, cfg.noteFontSize, measureWidth * 0.8);
-      const positions = calculateNotePositions(measure.notes, cfg.noteFontSize, measureX + noteSpacing / 2, noteSpacing);
+      const positions = calculateNotePositions(measure.notes, cfg.noteFontSize, currentX + noteSpacing / 2, noteSpacing);
 
       for (let nIdx = 0; nIdx < measure.notes.length; nIdx++) {
         const note = measure.notes[nIdx];
@@ -119,14 +119,25 @@ export function createLayout(score: Score, config: Partial<LayoutConfig> = {}): 
         globalNoteIndex++;
       }
 
+      // 计算小节的实际宽度（基于音符位置）
+      let actualMeasureWidth = measureWidth;
+      if (notePositions.length > 0) {
+        const lastNote = notePositions[notePositions.length - 1];
+        // 实际宽度 = 最后一个音符到起始位置的距离 + 音符间距
+        actualMeasureWidth = lastNote.x - currentX + noteSpacing;
+      }
+
       measureLayouts.push({
         measure,
-        x: measureX,
+        x: currentX,
         y: lineY,
-        width: measureWidth,
+        width: actualMeasureWidth,
         notes: notePositions,
         lyrics: calculateLyricsPositions(measure, notePositions, lineY, cfg),
       });
+
+      // 更新下一个小节的起始位置
+      currentX += actualMeasureWidth;
     }
 
     lines.push({
