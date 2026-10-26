@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '../store/useStore';
 import { EXAMPLES, EXAMPLE_KEYS } from '../examples';
@@ -33,6 +33,7 @@ const MyScoresPage: React.FC = () => {
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [backupMessage, setBackupMessage] = useState<string | null>(null);
+  const importInputRef = useRef<HTMLInputElement>(null);
   const visibleScores = myScores.filter((score) => score.title.toLocaleLowerCase().includes(searchQuery.trim().toLocaleLowerCase()));
 
   // ---- 存储位置 ----
@@ -133,7 +134,7 @@ const MyScoresPage: React.FC = () => {
   const handleExportSingle = (score: MyScore) => {
     const current = useStore.getState();
     downloadBackup([{ ...score, ...(current.currentScoreId === score.id ? { source: current.source, updatedAt: Date.now() } : {}) }], `hh-jianpu-${score.id}.json`);
-    setBackupMessage('单曲备份已导出');
+    setBackupMessage('曲谱已导出，可通过“导入曲谱”重新导入');
   };
 
   const handleExportBackup = () => {
@@ -159,10 +160,10 @@ const MyScoresPage: React.FC = () => {
     }
 
     downloadBackup(scores, `hh-jianpu-backup-${new Date().toISOString().slice(0, 10)}.json`);
-    setBackupMessage('备份文件已导出，已包含当前编辑内容');
+    setBackupMessage('全部曲谱已导出，已包含当前编辑内容');
   };
 
-  const handleImportBackup = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImportScore = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     event.target.value = '';
     if (!file) return;
@@ -171,7 +172,7 @@ const MyScoresPage: React.FC = () => {
       refreshMyScores();
       setBackupMessage(`导入 ${result.imported} 首，跳过 ${result.skipped} 首`);
     } catch (error) {
-      setBackupMessage(error instanceof Error ? error.message : '备份导入失败');
+      setBackupMessage(error instanceof Error ? error.message : '曲谱导入失败');
     }
   };
 
@@ -264,16 +265,6 @@ const MyScoresPage: React.FC = () => {
 
           {/* 我的谱谱区 */}
           <section>
-            <div className="mb-3 flex flex-wrap items-center gap-2">
-              <button onClick={handleExportBackup} className="rounded border border-gray-200 bg-white px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-50">
-                导出备份
-              </button>
-              <label className="cursor-pointer rounded border border-gray-200 bg-white px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-50">
-                导入备份
-                <input type="file" accept="application/json,.json" onChange={handleImportBackup} className="hidden" />
-              </label>
-              {backupMessage && <span className="text-xs text-gray-500" role="status">{backupMessage}</span>}
-            </div>
             {myScores.length > 0 && (
               <label className="block mb-3">
                 <span className="sr-only">搜索曲谱</span>
@@ -286,21 +277,33 @@ const MyScoresPage: React.FC = () => {
                 />
               </label>
             )}
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-2">
-                我的谱谱
-                {myScores.length > 0 && (
-                  <span className="text-xs normal-case font-normal text-gray-400">
-                    共 {myScores.length} 首
-                  </span>
-                )}
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-2">
+                  我的谱谱
+                  {myScores.length > 0 && (
+                    <span className="text-xs normal-case font-normal text-gray-400">
+                      共 {myScores.length} 首
+                    </span>
+                  )}
+                </h2>
                 <button
                   onClick={handleNew}
                   className="text-xs text-blue-500 hover:text-blue-600 font-normal normal-case ml-2"
                 >
                   新建曲谱
                 </button>
-              </h2>
+                <ButtonTip
+                  tipContent="导入本工具导出的 JSON 曲谱文件，兼容已有备份"
+                  onClick={() => importInputRef.current?.click()}
+                  variant="nude"
+                  size="sm"
+                  className="text-blue-500 hover:text-blue-600 whitespace-nowrap"
+                >
+                  导入曲谱
+                </ButtonTip>
+                <input ref={importInputRef} type="file" accept="application/json,.json" onChange={handleImportScore} aria-label="选择曲谱文件" className="hidden" />
+              </div>
               <div className="flex items-center gap-2">
                 <span
                   className="text-xs text-gray-300 select-none hidden sm:inline"
@@ -337,6 +340,7 @@ const MyScoresPage: React.FC = () => {
                 </ButtonTip>
               </div>
             </div>
+            {backupMessage && <p className="mb-3 text-xs text-gray-500" role="status">{backupMessage}</p>}
             {saveError && (
               <div role="alert" className="mb-3 rounded-lg bg-orange-50 px-3 py-2 text-xs text-error">
                 {saveError} <button onClick={retrySave} className="underline">重试保存</button>
@@ -363,7 +367,7 @@ const MyScoresPage: React.FC = () => {
               <div className="flex flex-col items-center justify-center py-16 gap-3 bg-white border border-dashed border-gray-200 rounded-lg text-gray-400">
                 <span className="text-4xl">🎼</span>
                 <p className="text-sm">还没有保存的曲谱</p>
-                <p className="text-xs">点击"新建曲谱"或在示例基础上编辑后自动保存</p>
+                <p className="text-xs text-center px-4">新建曲谱、导入曲谱，或在示例基础上编辑后自动保存</p>
                 <ButtonTip
                   tipContent="创建新曲谱"
                   position="top"
@@ -432,7 +436,7 @@ const MyScoresPage: React.FC = () => {
 
                       {/* 操作按钮 */}
                       <div className="flex flex-wrap items-center justify-end gap-1 flex-shrink-0">
-                        <ButtonTip tipContent="导出这首曲谱的恢复备份" onClick={() => handleExportSingle(score)} variant="ghost" size="sm">导出</ButtonTip>
+                        <ButtonTip tipContent="导出 JSON 曲谱文件，可通过“导入曲谱”重新导入" onClick={() => handleExportSingle(score)} variant="ghost" size="sm">导出</ButtonTip>
                         {isConfirmingDelete ? (
                           <>
                             <span className="text-xs text-red-500 mr-1 hidden sm:inline">
@@ -500,6 +504,11 @@ const MyScoresPage: React.FC = () => {
                 })}
               </ul>
             )}
+            <div className="mt-3 flex justify-end">
+              <ButtonTip tipContent="导出曲谱库与当前编辑内容，用于迁移或恢复" onClick={handleExportBackup} variant="nude" size="sm" className="text-gray-400 hover:text-blue-500">
+                导出全部曲谱
+              </ButtonTip>
+            </div>
           </section>
         </div>
       </main>
@@ -510,7 +519,6 @@ const MyScoresPage: React.FC = () => {
           极简动态谱
         </p>
       </footer> */}
-
 
       {/* 放弃存储确认弹框 */}
       {isAbandonDialogOpen && (
