@@ -25,7 +25,7 @@ export function postprocess(rawText: string): PostprocessResult {
       line.trim() === '---' ||
       line.trim().startsWith('标题:') ||
       line.trim().startsWith('调号:') ||
-      /^[0-7\|\-\s#b'._P]+$/.test(line.trim())
+      /^[0-7|\-\s#b'._P]+$/.test(line.trim())
   );
 
   if (startIndex > 0) {
@@ -51,7 +51,7 @@ export function postprocess(rawText: string): PostprocessResult {
     if (parseResult.errors.length > 0) {
       warnings.push(`解析时发现 ${parseResult.errors.length} 个错误，可能需要手动调整`);
     }
-  } catch (error) {
+  } catch {
     warnings.push('识别结果无法被解析器解析，请检查格式');
   }
 

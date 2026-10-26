@@ -1,5 +1,6 @@
+import { getScoreVoices } from '@hh-jianpu/core';
 import React, { useEffect, useRef, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { useStore } from '../store/useStore';
 import Editor from '../components/Editor/Editor';
 import ScoreView from '../components/ScoreView/ScoreView';
@@ -10,6 +11,7 @@ import { SettingsModal } from '../components/Settings';
 import { ImageImportModal, ImageImportButton } from '../components/ImageImport';
 import TopBar from '../components/Layout/TopBar';
 import FeedbackWidget from '../components/Feedback/FeedbackWidget';
+import { getFilesystemSyncState, retryFilesystemSync, subscribeFilesystemSync, type FilesystemSyncState } from '../services/myScores';
 
 /** 处理空格键播放/暂停/取消倒计时 */
 function useKeyboardShortcut(
@@ -48,7 +50,6 @@ function useKeyboardShortcut(
 
 const EditorPage: React.FC = () => {
   const { id } = useParams<{ id?: string }>();
-  const navigate = useNavigate();
 
   const {
     source,
@@ -56,10 +57,19 @@ const EditorPage: React.FC = () => {
     score,
     parseErrors,
     playbackStatus,
+    playbackError,
     currentNoteIndex,
+    activeNoteIndices,
+    mutedVoices,
+    setVoiceMuted,
     tempo,
+    practiceSpeed,
+    setPracticeSpeed,
     isLoading,
     isAutoSaving,
+    saveStatus,
+    saveError,
+    retrySave,
     setTempo,
     play,
     pause,
@@ -68,28 +78,35 @@ const EditorPage: React.FC = () => {
     countdownValue,
     isMetronomeActive,
     setPlayDelay,
-    currentScoreId,
     loadMyScore,
     lastSavedAt,
     saveAsNewScore,
     noteFontSize,
     setNoteFontSize,
+    loopSelection,
+    selectLoopMeasure,
+    clearLoopSelection,
   } = useStore();
 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isImageImportOpen, setIsImageImportOpen] = useState(false);
   const [isEditorFocused, setIsEditorFocused] = useState(false);
-  const [isControlPinned, setIsControlPinned] = useState(false);
+  const [isControlPinned] = useState(false);
   const [scrollToMeasure, setScrollToMeasure] = useState<number | undefined>(undefined);
+  const [sourceRangeToLocate, setSourceRangeToLocate] = useState<{ from: number; to: number } | null>(null);
+  const [filesystemSync, setFilesystemSync] = useState<FilesystemSyncState>(getFilesystemSyncState());
   const playButtonRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => subscribeFilesystemSync(setFilesystemSync), []);
 
   // 根据路由参数加载曲谱
   useEffect(() => {
-    if (id && id !== currentScoreId) {
+    if (id && id !== useStore.getState().currentScoreId) {
       loadMyScore(id);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [id, loadMyScore]);
+
+  useEffect(() => () => { useStore.getState().stop(); }, []);
 
   // 键盘快捷键：空格键播放/暂停/取消倒计时
   useKeyboardShortcut(playButtonRef, play, pause, playbackStatus, isMetronomeActive, isEditorFocused);
@@ -100,7 +117,7 @@ const EditorPage: React.FC = () => {
     
     // 找到第一个起始行号 <= 当前可见行的小节
     let targetMeasure: number | undefined;
-    for (const measure of score.measures) {
+    for (const measure of getScoreVoices(score).flatMap(voice => voice.measures).sort((a, b) => (a.sourceLine ?? 0) - (b.sourceLine ?? 0))) {
       if (measure.sourceLine !== undefined && measure.sourceLine <= firstVisibleLine) {
         targetMeasure = measure.number;
       } else {
@@ -111,6 +128,13 @@ const EditorPage: React.FC = () => {
     if (targetMeasure !== undefined && targetMeasure !== scrollToMeasure) {
       setScrollToMeasure(targetMeasure);
     }
+  };
+
+  const handlePreviewMeasureClick = (measureNumber: number, voiceId?: 'upper' | 'lower') => {
+    selectLoopMeasure(measureNumber);
+    const measures = voiceId === 'lower' ? score?.secondaryVoice?.measures : score?.measures;
+    const measure = measures?.find((item) => item.number === measureNumber);
+    if (measure?.sourceRange) setSourceRangeToLocate({ ...measure.sourceRange });
   };
 
   return (
@@ -124,8 +148,35 @@ const EditorPage: React.FC = () => {
             {score?.metadata.title && (
               <span className="text-sm text-played">— {score.metadata.title}</span>
             )}
+            {playbackError && (
+              <span className="flex items-center gap-2 text-xs text-error" role="alert">
+                {playbackError}
+                <button onClick={() => void play()} className="underline hover:no-underline">重试</button>
+              </span>
+            )}
             {isAutoSaving && (
               <span className="text-xs text-gray-400 animate-pulse">保存中…</span>
+            )}
+            {saveStatus === 'saved' && !isAutoSaving && (
+              <span className="text-xs text-green-600">浏览器已保存</span>
+            )}
+            {saveStatus === 'error' && saveError && (
+              <span className="flex items-center gap-2 text-xs text-error" role="status">
+                {saveError}
+                <button onClick={retrySave} className="underline hover:no-underline">重试</button>
+              </span>
+            )}
+            {filesystemSync.status === 'saving' && (
+              <span className="text-xs text-gray-400">目录备份中…</span>
+            )}
+            {filesystemSync.status === 'error' && filesystemSync.error && (
+              <span className="flex items-center gap-2 text-xs text-error" role="status">
+                目录备份失败：{filesystemSync.error}
+                <button onClick={() => void retryFilesystemSync()} className="underline hover:no-underline">重试</button>
+              </span>
+            )}
+            {filesystemSync.status === 'saved' && (
+              <span className="text-xs text-green-600">目录备份已同步</span>
             )}
           </span>
         }
@@ -150,10 +201,10 @@ const EditorPage: React.FC = () => {
       />
 
       {/* 主内容区 */}
-      <main className="flex-1 overflow-hidden flex flex-col">
+      <main className="flex-1 overflow-hidden flex flex-col pb-32 sm:pb-24">
         <div className="flex-1 overflow-hidden">
           <ResizablePanels
-            left={<Editor value={source} onChange={setSource} parseErrors={parseErrors} isAutoSaving={isAutoSaving} lastSavedAt={lastSavedAt} onTransposeApply={(s) => saveAsNewScore(s, '移调版')} onFocus={() => setIsEditorFocused(true)} onBlur={() => setIsEditorFocused(false)} onScroll={handleEditorScroll} />}
+          left={<Editor value={source} onChange={setSource} parseErrors={parseErrors} isAutoSaving={isAutoSaving} lastSavedAt={lastSavedAt} onTransposeApply={(s) => saveAsNewScore(s, '移调版')} onFocus={() => setIsEditorFocused(true)} onBlur={() => setIsEditorFocused(false)} onScroll={handleEditorScroll} sourceRangeToLocate={sourceRangeToLocate} />}
             right={
               score ? (
                 <div className="h-full flex flex-col">
@@ -169,7 +220,7 @@ const EditorPage: React.FC = () => {
                   )}
                   {/* 曲谱预览 */}
                   <div className="flex-1 overflow-auto">
-                    <ScoreView score={score} currentNoteIndex={currentNoteIndex} noteFontSize={noteFontSize} scrollToMeasure={scrollToMeasure} />
+                    <ScoreView score={score} currentNoteIndex={currentNoteIndex} activeNoteIndices={activeNoteIndices} noteFontSize={noteFontSize} scrollToMeasure={scrollToMeasure} loopSelection={loopSelection} onMeasureClick={handlePreviewMeasureClick} />
                   </div>
                 </div>
               ) : (
@@ -198,6 +249,12 @@ const EditorPage: React.FC = () => {
         <PlayerBar
           playButtonRef={playButtonRef}
           status={playbackStatus}
+          voices={score?.secondaryVoice ? getScoreVoices(score) : undefined}
+          mutedVoices={mutedVoices}
+          onVoiceMutedChange={setVoiceMuted}
+          isLoading={isLoading}
+          practiceSpeed={practiceSpeed}
+          onPracticeSpeedChange={setPracticeSpeed}
           playDelay={playDelay}
           isMetronomeActive={isMetronomeActive}
           countdownValue={countdownValue}
@@ -209,10 +266,12 @@ const EditorPage: React.FC = () => {
           onPause={pause}
           onStop={stop}
           onPlayDelayChange={setPlayDelay}
+          loopSelection={loopSelection}
+          onClearLoopSelection={clearLoopSelection}
         />
 
         {/* 悬浮节拍器 */}
-        <Metronome tempo={tempo} status={playbackStatus} onTempoChange={setTempo} />
+        <Metronome tempo={Math.round(tempo * practiceSpeed)} status={playbackStatus} onTempoChange={(bpm) => setTempo(bpm / practiceSpeed)} />
       </main>
 
       {/* 设置模态框 */}

@@ -1,3 +1,4 @@
+export { getScoreVoices, durationInBeats } from './music.js';
 export { parse } from './parser/index.js';
 export { createLayout } from './renderer/index.js';
 export { Player } from './player/index.js';

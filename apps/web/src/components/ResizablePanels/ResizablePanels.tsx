@@ -17,6 +17,7 @@ export const ResizablePanels: React.FC<ResizablePanelsProps> = ({
 }) => {
   const [leftWidth, setLeftWidth] = useState(defaultLeftWidth);
   const [isDragging, setIsDragging] = useState(false);
+  const [mobilePanel, setMobilePanel] = useState<'editor' | 'preview'>('editor');
   const containerRef = useRef<HTMLDivElement>(null);
 
   const handleMouseDown = useCallback(() => {
@@ -72,11 +73,29 @@ export const ResizablePanels: React.FC<ResizablePanelsProps> = ({
   }, [isDragging, handleMouseMove, handleMouseUp]);
 
   return (
-    <div ref={containerRef} className="h-full flex flex-col md:flex-row">
+    <div ref={containerRef} className="h-full min-h-0 flex flex-col md:flex-row">
+      <div className="flex shrink-0 gap-1 border-b border-barline bg-paper p-2 md:hidden" role="tablist" aria-label="编辑与预览">
+        {(['editor', 'preview'] as const).map((panel) => (
+          <button
+            key={panel}
+            type="button"
+            role="tab"
+            id={`panel-tab-${panel}`}
+            aria-selected={mobilePanel === panel}
+            aria-controls={`panel-${panel}`}
+            onClick={() => setMobilePanel(panel)}
+            className={`flex-1 rounded-md px-4 py-2 text-sm transition-colors ${mobilePanel === panel ? 'bg-ink text-paper shadow-sm' : 'text-played hover:bg-stone-100'}`}
+          >
+            {panel === 'editor' ? '编辑简谱' : '曲谱预览'}
+          </button>
+        ))}
+      </div>
       {/* 左侧面板 */}
       <div
-        className="border-r border-barline min-h-0"
-        style={{ width: `${leftWidth}%` }}
+        id="panel-editor"
+        aria-labelledby="panel-tab-editor"
+        className={`${mobilePanel === 'editor' ? 'block' : 'hidden'} w-full flex-1 md:flex-none md:block md:w-[var(--panel-width)] border-r border-barline min-h-0`}
+        style={{ '--panel-width': `${leftWidth}%` } as React.CSSProperties}
       >
         {left}
       </div>
@@ -98,8 +117,10 @@ export const ResizablePanels: React.FC<ResizablePanelsProps> = ({
 
       {/* 右侧面板 */}
       <div
-        className="overflow-auto p-4 min-h-0"
-        style={{ width: `${100 - leftWidth}%` }}
+        id="panel-preview"
+        aria-labelledby="panel-tab-preview"
+        className={`${mobilePanel === 'preview' ? 'block' : 'hidden'} w-full flex-1 md:flex-none md:block md:w-[var(--panel-width)] overflow-auto p-2 sm:p-4 min-h-0`}
+        style={{ '--panel-width': `${100 - leftWidth}%` } as React.CSSProperties}
       >
         {right}
       </div>

@@ -1,6 +1,6 @@
 {
   "name": "@hh-jianpu/core",
-  "version": "0.6.2",
+  "version": "0.7.1",
   "description": "Core library for parsing, rendering, and playing numbered musical notation",
   "type": "module",
   "main": "./dist/index.js",
@@ -14,8 +14,9 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
-    "test": "vitest",
-    "lint": "eslint src/"
+    "test": "vitest run",
+    "lint": "eslint src/",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "tone": "^15.0.4"

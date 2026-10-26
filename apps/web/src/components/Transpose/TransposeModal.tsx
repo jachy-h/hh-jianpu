@@ -1,10 +1,9 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import {
   parse,
+  getScoreVoices,
   transposeScore,
   scoreToSource,
-  calculateSemitoneDistance,
-  calculateFingeringSemitones,
   type Score,
   type KeyName,
   type FluteFingering,
@@ -28,19 +27,20 @@ const FINGERING_OPTIONS: { value: FluteFingering; label: string }[] = [
   { value: '6', label: '筒音作6' },
 ];
 
-function noteToMidi(pitch: number, octave: number): number {
+function noteToMidi(pitch: number, octave: number, key: KeyName = 'C', accidental?: 'sharp' | 'flat' | 'natural'): number {
   const pitchOffset: Record<number, number> = { 1: 0, 2: 2, 3: 4, 4: 5, 5: 7, 6: 9, 7: 11 };
   const octaveOffset = octave * 12;
-  return 60 + (pitchOffset[pitch] ?? 0) + octaveOffset;
+  const accidentalOffset = accidental === 'sharp' ? 1 : accidental === 'flat' ? -1 : 0;
+  return 60 + KEY_SEMITONE_OFFSET[key] + (pitchOffset[pitch] ?? 0) + octaveOffset + accidentalOffset;
 }
 
-function findLowestNote(score: Score): { pitch: number; octave: number } | null {
+function findLowestNote(score: Score): { pitch: number; octave: number; midi: number } | null {
   let lowest: { pitch: number; octave: number; midi: number } | null = null;
 
-  for (const measure of score.measures) {
+  for (const measure of getScoreVoices(score).flatMap(voice => voice.measures)) {
     for (const note of measure.notes) {
       if (note.type === 'note') {
-        const midi = noteToMidi(note.pitch, note.octave);
+        const midi = noteToMidi(note.pitch, note.octave, score.metadata.key, note.accidental);
         if (!lowest || midi < lowest.midi) {
           lowest = { pitch: note.pitch, octave: note.octave, midi };
         }
@@ -48,7 +48,7 @@ function findLowestNote(score: Score): { pitch: number; octave: number } | null 
     }
   }
 
-  return lowest ? { pitch: lowest.pitch, octave: lowest.octave } : null;
+  return lowest;
 }
 
 function formatPitch(pitch: number, octave: number): string {
@@ -71,13 +71,15 @@ const TransposeModal: React.FC<TransposeModalProps> = ({ isOpen, onClose, source
     return () => window.removeEventListener('keydown', handleEsc);
   }, [isOpen, onClose]);
 
-  const currentScore = useMemo(() => parse(source).score, [source]);
+  const parsed = useMemo(() => parse(source), [source]);
+  const currentScore = parsed.score;
+  const hasInvalidDuet = Boolean(currentScore?.secondaryVoice && parsed.errors.length);
   const currentKey = currentScore?.metadata.key ?? 'C';
   const lowestNote = useMemo(() => (currentScore ? findLowestNote(currentScore) : null), [currentScore]);
 
   const fingeringSemitones = useMemo(() => {
     if (!lowestNote) return 0;
-    const currentMidi = noteToMidi(lowestNote.pitch, lowestNote.octave);
+    const currentMidi = lowestNote.midi;
     const target = FLUTE_FINGERING_LOWEST_NOTE[selectedFingering];
     const targetMidi = noteToMidi(target.pitch, target.octave);
     return currentMidi >= targetMidi ? 0 : targetMidi - currentMidi;
@@ -92,7 +94,7 @@ const TransposeModal: React.FC<TransposeModalProps> = ({ isOpen, onClose, source
   const currentSemitones = mode === 'key' ? keySemitones : fingeringSemitones;
 
   const handleApply = () => {
-    if (!currentScore) return;
+    if (!currentScore || hasInvalidDuet) return;
     const transposedScore = transposeScore(currentScore, currentSemitones);
     const newSource = scoreToSource(transposedScore);
     onApply(newSource, '移调版');
@@ -116,6 +118,7 @@ const TransposeModal: React.FC<TransposeModalProps> = ({ isOpen, onClose, source
         <div className="p-6 space-y-6 overflow-y-auto flex-1">
           <div className="bg-gray-50 rounded-lg p-4">
             <div className="text-sm font-medium text-gray-700 mb-2">📝 当前谱面信息</div>
+              {hasInvalidDuet && <p role="alert" className="text-sm text-error">请先修正双声部语法或小节时值错误，再移调。</p>}
             <div className="text-sm text-gray-600">
               <div>调号：{currentKey}</div>
               <div>最低音：{lowestNote ? formatPitch(lowestNote.pitch, lowestNote.octave) : '未知'}</div>

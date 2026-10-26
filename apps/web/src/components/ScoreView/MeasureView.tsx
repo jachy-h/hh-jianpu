@@ -7,9 +7,11 @@ interface MeasureViewProps {
   currentNoteIndex: number;
   noteFontSize?: number;
   onNoteClick?: (index: number) => void;
+  onMeasureClick?: (measureNumber: number, voiceId?: 'upper' | 'lower') => void;
+  isLoopSelected?: boolean;
 }
 
-const MeasureView: React.FC<MeasureViewProps> = ({ layout, currentNoteIndex, noteFontSize = 18, onNoteClick }) => {
+const MeasureView: React.FC<MeasureViewProps> = ({ layout, currentNoteIndex, noteFontSize = 18, onNoteClick, onMeasureClick, isLoopSelected = false }) => {
   const { measure, x, y, width, notes } = layout;
 
   // 收集连音组（beamGroup）并渲染连音线
@@ -24,13 +26,28 @@ const MeasureView: React.FC<MeasureViewProps> = ({ layout, currentNoteIndex, not
   });
 
   return (
-    <g>
+    <g
+      onClick={() => onMeasureClick?.(measure.number, layout.voiceId)}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          onMeasureClick?.(measure.number, layout.voiceId);
+        }
+      }}
+      role={onMeasureClick ? 'button' : undefined}
+      tabIndex={onMeasureClick ? 0 : undefined}
+      aria-label={onMeasureClick ? `选择第 ${measure.number} 小节循环` : undefined}
+      className={onMeasureClick ? 'cursor-pointer' : undefined}
+    >
+      {onMeasureClick && (
+        <rect x={x} y={y} width={width} height={(layout.height ?? Math.max(60, noteFontSize * 3.3))} fill={isLoopSelected ? '#DBEAFE' : 'transparent'} opacity={isLoopSelected ? 0.65 : 1} />
+      )}
       {/* 小节线（右侧） */}
       <line
         x1={x + width}
         y1={y + 8}
         x2={x + width}
-        y2={y + 52}
+        y2={y + (layout.height ?? Math.max(60, noteFontSize * 3.3)) - 8}
         stroke="#D6D3D1"
         strokeWidth={1}
       />
@@ -163,7 +180,7 @@ const MeasureView: React.FC<MeasureViewProps> = ({ layout, currentNoteIndex, not
             x={lyricsPos.x}
             y={lyricsPos.y}
             textAnchor="middle"
-            fontSize={lyricsPos.isGroup ? 13 : 16}
+            fontSize={noteFontSize * 0.85}
             fill={isHighlight ? '#2563EB' : isPlayed ? '#78716C' : '#57534E'}
             className="transition-colors duration-150"
           >

@@ -39,7 +39,7 @@ export interface Token {
 }
 
 /** 元信息关键字映射 - 用于识别元信息行 */
-const METADATA_KEYS = new Set(['标题', '调号', '拍号', '速度', 'title', 'key', 'time', 'tempo']);
+const METADATA_KEYS = new Set(['标题', '调号', '拍号', '速度', 'title', 'key', 'time', 'tempo', '声部']);
 
 /**
  * 将简谱源文本分词为 Token 数组
@@ -198,76 +198,43 @@ export function tokenize(source: string): Token[] {
 
   for (const bodyLine of bodyLines) {
     column = 1;
-    let hasSpaceBeforeNext = false; // 跟踪是否遇到过空格
+    let hasSpaceBeforeNext = true; // 跟踪是否遇到过空格
     
     // 检测旋律行（Q 开头）- 跳过 Q 标记但继续解析音符
     let contentOffset = 0; // lineContent[0] 在 bodyLine 中的偏移量
     let lineContent = bodyLine;
-    if (bodyLine.trim().startsWith('Q ') || bodyLine.trim() === 'Q') {
-      tokens.push({
-        type: 'MELODY_MARKER',
-        value: 'Q',
-        line,
-        column: 1,
-        offset: pos
-      });
-      // 移除 Q 标记，继续解析剩余内容，同时记录裁剪的字节数
-      const pIndex = bodyLine.indexOf('Q');
-      const afterQ = bodyLine.substring(pIndex + 1);
-      contentOffset = pIndex + 1 + (afterQ.length - afterQ.trimStart().length);
-      lineContent = afterQ.trimStart();
-      // 如果 P 后面没有内容，跳到下一行
-      if (!lineContent) {
-        tokens.push({
-          type: 'NEWLINE',
-          value: '\n',
-          line,
-          column: bodyLine.length + 1,
-          offset: pos + bodyLine.length
-        });
-        line++;
-        pos += bodyLine.length + 1;
-        continue;
-      }
+    const melodyMarker = bodyLine.match(/^[ \t]*([QP])(?:\[([^\]]*)\])?(?=\s|$)/);
+    if (melodyMarker) {
+      const markerOffset = bodyLine.indexOf(melodyMarker[1]);
+      const markerText = melodyMarker[0].trimStart();
+      tokens.push({ type: 'MELODY_MARKER', value: melodyMarker[2] ?? melodyMarker[1], line,
+        column: markerOffset + 1, offset: pos + markerOffset });
+      contentOffset = markerOffset + markerText.length;
+      lineContent = bodyLine.slice(contentOffset);
     }
-    
-    // 检测歌词行（C 开头）
-    if (lineContent.trim().startsWith('C ') || lineContent.trim() === 'C') {
-      tokens.push({
-        type: 'LYRICS_MARKER',
-        value: 'C',
-        line,
-        column: 1,
-        offset: pos
-      });
-      
-      const lyricsText = lineContent.trim().substring(1).trim();
+
+    const lyricsMarker = bodyLine.match(/^[ \t]*C(?:\[([^\]]*)\])?(?=\s|$)/);
+    if (lyricsMarker) {
+      const markerOffset = bodyLine.indexOf('C');
+      const lyricsStart = lyricsMarker[0].length;
+      const lyricsText = bodyLine.slice(lyricsStart).trim();
+      tokens.push({ type: 'LYRICS_MARKER', value: lyricsMarker[1] ?? 'C', line,
+        column: markerOffset + 1, offset: pos + markerOffset });
       if (lyricsText) {
-        tokens.push({
-          type: 'LYRICS_TEXT',
-          value: lyricsText,
-          line,
-          column: bodyLine.indexOf(lyricsText) + 1,
-          offset: pos + bodyLine.indexOf(lyricsText)
-        });
+        const textOffset = bodyLine.indexOf(lyricsText, lyricsStart);
+        tokens.push({ type: 'LYRICS_TEXT', value: lyricsText, line,
+          column: textOffset + 1, offset: pos + textOffset });
       }
-      
-      tokens.push({
-        type: 'NEWLINE',
-        value: '\n',
-        line,
-        column: bodyLine.length + 1,
-        offset: pos + bodyLine.length
-      });
-      
+      tokens.push({ type: 'NEWLINE', value: '\n', line, column: bodyLine.length + 1, offset: pos + bodyLine.length });
       line++;
       pos += bodyLine.length + 1;
       continue;
     }
-    
+
     // 解析音符内容（使用处理后的 lineContent）
     // baseOffset：lineContent[i] 在原始源文本中的实际字节偏移
     const baseOffset = pos + contentOffset;
+    column = contentOffset + 1;
     for (let i = 0; i < lineContent.length; i++) {
       const ch = lineContent[i];
 
@@ -366,7 +333,9 @@ export function tokenize(source: string): Token[] {
         const prevCh = lookBehind >= 0 ? lineContent[lookBehind] : '';
         
         // 在数字或减时线后面，才是高八度标记
-        if ((prevCh >= '1' && prevCh <= '7') || prevCh === '/') {
+        const isSuffix = (prevCh >= '1' && prevCh <= '7') || prevCh === '/';
+        const isPrefix = !isSuffix && (lookBehind < 0 || /[\s|(^~#b]/.test(prevCh));
+        if (isSuffix || isPrefix) {
           tokens.push({ 
             type: 'OCTAVE_UP', 
             value: ch, 
@@ -377,7 +346,9 @@ export function tokenize(source: string): Token[] {
           });
           hasSpaceBeforeNext = false;
         }
-        // 如果不在数字或下划线后面，就忽略这个字符（不生成token）
+        else {
+          tokens.push({ type: 'ERROR', value: ch, line, column, offset: baseOffset + i });
+        }
       }
       // 减时线
       else if (ch === '/') {
@@ -424,10 +395,29 @@ export function tokenize(source: string): Token[] {
           });
           hasSpaceBeforeNext = false;
         }
-        // 否则忽略逗号
+        else {
+          tokens.push({ type: 'ERROR', value: ch, line, column, offset: baseOffset + i });
+        }
       }
       // 点号：附点或其他用途（下波音等）
       else if (ch === '.') {
+        let prefixEnd = i;
+        while (prefixEnd < lineContent.length && lineContent[prefixEnd] === '.') prefixEnd++;
+        const hasNoteAfterPrefix = prefixEnd < lineContent.length && lineContent[prefixEnd] >= '1' && lineContent[prefixEnd] <= '7';
+        let prefixStart = i;
+        while (prefixStart > 0 && lineContent[prefixStart - 1] === '.') prefixStart--;
+        const hasPrefixBoundary = prefixStart === 0 || /[\s|(^]/.test(lineContent[prefixStart - 1]);
+        if (hasNoteAfterPrefix && hasPrefixBoundary) {
+          tokens.push({
+            type: 'OCTAVE_DOWN',
+            value: ch,
+            line,
+            column,
+            offset: baseOffset + i,
+            hasSpaceBefore: hasSpaceBeforeNext,
+          });
+          hasSpaceBeforeNext = false;
+        } else {
         tokens.push({ 
           type: 'DOT', 
           value: ch, 
@@ -437,6 +427,7 @@ export function tokenize(source: string): Token[] {
           hasSpaceBefore: hasSpaceBeforeNext 
         });
         hasSpaceBeforeNext = false;
+        }
       }
       // 降号
       else if (ch === 'b') {
@@ -451,6 +442,8 @@ export function tokenize(source: string): Token[] {
             hasSpaceBefore: hasSpaceBeforeNext 
           });
           hasSpaceBeforeNext = false;
+        } else {
+          tokens.push({ type: 'ERROR', value: ch, line, column, offset: baseOffset + i });
         }
       }
       // 换气记号

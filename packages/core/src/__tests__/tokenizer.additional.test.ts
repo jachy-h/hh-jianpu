@@ -4,16 +4,11 @@
 
 import { describe, it, expect } from 'vitest';
 import { tokenize } from '../parser/tokenizer';
-import type { Token, TokenType } from '../parser/tokenizer';
 
 // Helper functions
-function bodyTokens(tokens: Token[]): Token[] {
-  return tokens.filter(t => t.type !== 'NEWLINE' && t.type !== 'EOF');
-}
 
-function types(tokens: Token[]): TokenType[] {
-  return bodyTokens(tokens).map(t => t.type);
-}
+
+
 
 // ============================================================
 // Offset tracking

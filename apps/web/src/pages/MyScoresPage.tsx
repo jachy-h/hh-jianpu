@@ -7,7 +7,7 @@ import TopBar from '../components/Layout/TopBar';
 import ButtonTip from '../components/ui/ButtonTip';
 import FeedbackWidget from '../components/Feedback/FeedbackWidget';
 import type { MyScore } from '../services/myScores';
-import { migrateScoresToFileSystem, scanScoresFromFileSystem, clearAllScores } from '../services/myScores';
+import { migrateScoresToFileSystem, scanScoresFromFileSystem, clearAllScores, serializeMyScoresBackup, importMyScoresBackup, getFilesystemSyncError } from '../services/myScores';
 import {
   getStorageLocation,
   pickStorageDirectory,
@@ -26,13 +26,16 @@ function formatTime(ts: number): string {
 
 const MyScoresPage: React.FC = () => {
   const navigate = useNavigate();
-  const { myScores, currentScoreId, loadMyScore, deleteScore, renameScore, newScore, loadExample, refreshMyScores } =
+  const { myScores, saveError, retrySave, currentScoreId, loadMyScore, deleteScore, renameScore, newScore, loadExample, refreshMyScores, saveAsNewScore } =
     useStore();
 
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [backupMessage, setBackupMessage] = useState<string | null>(null);
+  const visibleScores = myScores.filter((score) => score.title.toLocaleLowerCase().includes(searchQuery.trim().toLocaleLowerCase()));
 
   // ---- 存储位置 ----
   const [storageLocation, setStorageLocation] = useState<StorageLocation>({ type: 'localStorage' });
@@ -51,7 +54,11 @@ const MyScoresPage: React.FC = () => {
       setStorageLocation(loc);
       if (loc.type === 'fileSystem') {
         // 有本地目录：扫描目录文件，合并到 localStorage 后刷新列表
-        await scanScoresFromFileSystem();
+        const scan = await scanScoresFromFileSystem();
+        setStorageError(getFilesystemSyncError());
+        if (scan.conflictCopies > 0) {
+          setBackupMessage(`发现 ${scan.conflictCopies} 首曲谱在浏览器与目录中的内容不同，已将较旧版本保留为“冲突副本”`);
+        }
       }
       // 无论何种模式，均从 localStorage 刷新 store
       refreshMyScores();
@@ -115,6 +122,61 @@ const MyScoresPage: React.FC = () => {
     navigate('/edit');
   }, [newScore, navigate]);
 
+  const downloadBackup = (scores: MyScore[], fileName: string) => {
+    const blob = new Blob([serializeMyScoresBackup(scores)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = fileName;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleExportSingle = (score: MyScore) => {
+    const current = useStore.getState();
+    downloadBackup([{ ...score, ...(current.currentScoreId === score.id ? { source: current.source, updatedAt: Date.now() } : {}) }], `hh-jianpu-${score.id}.json`);
+    setBackupMessage('单曲备份已导出');
+  };
+
+  const handleExportBackup = () => {
+    const state = useStore.getState();
+    const scores = [...state.myScores];
+    const currentScore = state.currentScoreId
+      ? scores.find((score) => score.id === state.currentScoreId)
+      : undefined;
+    const sourceTitle = state.source.match(/^\s*(?:标题|title)\s*[:：]\s*(.+)$/mi)?.[1]?.trim();
+    const draft = {
+      id: state.currentScoreId ?? `draft-${Date.now()}`,
+      title: sourceTitle || state.score?.metadata?.title || '未命名曲谱（当前草稿）',
+      source: state.source,
+      createdAt: currentScore?.createdAt ?? Date.now(),
+      updatedAt: Date.now(),
+    };
+
+    if (currentScore) {
+      const index = scores.findIndex((score) => score.id === currentScore.id);
+      scores[index] = { ...currentScore, ...draft };
+    } else {
+      scores.unshift(draft);
+    }
+
+    downloadBackup(scores, `hh-jianpu-backup-${new Date().toISOString().slice(0, 10)}.json`);
+    setBackupMessage('备份文件已导出，已包含当前编辑内容');
+  };
+
+  const handleImportBackup = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    try {
+      const result = importMyScoresBackup(await file.text());
+      refreshMyScores();
+      setBackupMessage(`导入 ${result.imported} 首，跳过 ${result.skipped} 首`);
+    } catch (error) {
+      setBackupMessage(error instanceof Error ? error.message : '备份导入失败');
+    }
+  };
+
   // ---- 更改存储位置 ----
   const handleChangeStorage = useCallback(async () => {
     setStorageError(null);
@@ -130,6 +192,8 @@ const MyScoresPage: React.FC = () => {
       // 迁移现有数据到新目录
       await migrateScoresToFileSystem();
       setStorageLocation(location);
+      const backupError = getFilesystemSyncError();
+      setStorageError(backupError ? `浏览器曲谱已保存，但目录备份失败：${backupError}` : null);
     } catch (e) {
       const err = e as Error;
       if (err.name === 'AbortError') {
@@ -216,6 +280,28 @@ const MyScoresPage: React.FC = () => {
 
           {/* 我的谱谱区 */}
           <section>
+            <div className="mb-3 flex flex-wrap items-center gap-2">
+              <button onClick={handleExportBackup} className="rounded border border-gray-200 bg-white px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-50">
+                导出备份
+              </button>
+              <label className="cursor-pointer rounded border border-gray-200 bg-white px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-50">
+                导入备份
+                <input type="file" accept="application/json,.json" onChange={handleImportBackup} className="hidden" />
+              </label>
+              {backupMessage && <span className="text-xs text-gray-500" role="status">{backupMessage}</span>}
+            </div>
+            {myScores.length > 0 && (
+              <label className="block mb-3">
+                <span className="sr-only">搜索曲谱</span>
+                <input
+                  type="search"
+                  value={searchQuery}
+                  onChange={(event) => setSearchQuery(event.target.value)}
+                  placeholder="按标题搜索曲谱"
+                  className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+                />
+              </label>
+            )}
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-2">
                 我的谱谱
@@ -267,6 +353,11 @@ const MyScoresPage: React.FC = () => {
                 </ButtonTip>
               </div>
             </div>
+            {saveError && (
+              <div role="alert" className="mb-3 rounded-lg bg-orange-50 px-3 py-2 text-xs text-error">
+                {saveError} <button onClick={retrySave} className="underline">重试保存</button>
+              </div>
+            )}
             {storageError && (
               <div className="mb-3 px-3 py-2 text-xs text-orange-600 bg-orange-50 border border-orange-200 rounded-lg flex items-start gap-2">
                 <span className="flex-shrink-0 mt-0.5">⚠️</span>
@@ -301,8 +392,10 @@ const MyScoresPage: React.FC = () => {
                 </ButtonTip>
               </div>
             ) : (
-              <ul className="space-y-2">
-                {myScores.map((score) => {
+              visibleScores.length === 0 ? (
+                <p className="py-8 text-center text-sm text-gray-400">没有匹配的曲谱</p>
+              ) : <ul className="space-y-2">
+                {visibleScores.map((score) => {
                   const isActive = score.id === currentScoreId;
                   const isRenaming = renamingId === score.id;
                   const isConfirmingDelete = deleteConfirmId === score.id;
@@ -354,7 +447,8 @@ const MyScoresPage: React.FC = () => {
                       </div>
 
                       {/* 操作按钮 */}
-                      <div className="flex items-center gap-1 flex-shrink-0">
+                      <div className="flex flex-wrap items-center justify-end gap-1 flex-shrink-0">
+                        <ButtonTip tipContent="导出这首曲谱的恢复备份" onClick={() => handleExportSingle(score)} variant="ghost" size="sm">导出</ButtonTip>
                         {isConfirmingDelete ? (
                           <>
                             <span className="text-xs text-red-500 mr-1 hidden sm:inline">
@@ -381,6 +475,19 @@ const MyScoresPage: React.FC = () => {
                           </>
                         ) : (
                           <>
+                            <ButtonTip
+                              tipContent="复制曲谱"
+                              position="top"
+                              onClick={() => {
+                                saveAsNewScore(score.source, '副本');
+                                navigate('/edit');
+                              }}
+                              variant="ghost"
+                              size="sm"
+                              className="text-gray-600 border border-gray-200 hover:bg-gray-100"
+                            >
+                              复制
+                            </ButtonTip>
                             <ButtonTip
                               tipContent="重命名"
                               position="top"

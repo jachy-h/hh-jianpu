@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { scheduleNotes, noteToFrequency } from '../player/index';
+import { scheduleNotes, selectMeasureSegment, noteToFrequency } from '../player/index';
 import type { Score, Note } from '../types/index';
 
 describe('Player', () => {
@@ -52,6 +52,48 @@ describe('Player', () => {
       expect(scheduled[1].startTime).toBeCloseTo(0.5);
       expect(scheduled[2].startTime).toBeCloseTo(1.0);
       expect(scheduled[3].startTime).toBeCloseTo(1.5);
+    });
+
+    it('should expose tempo-independent beat positions alongside seconds', () => {
+      const at120 = scheduleNotes(mockScore, 120);
+      const at60 = scheduleNotes(mockScore, 60);
+
+      expect(at120[2].startBeat).toBeCloseTo(2);
+      expect(at60[2].startBeat).toBeCloseTo(2);
+      expect(at120[2].durationBeats).toBeCloseTo(1);
+      expect(at60[2].durationBeats).toBeCloseTo(1);
+      expect(at60[2].startTime).toBeCloseTo(at120[2].startTime * 2);
+    });
+
+    it('should retain measure boundaries for segment playback', () => {
+      const score: Score = {
+        ...mockScore,
+        measures: [
+          { ...mockScore.measures[0], number: 3, notes: mockScore.measures[0].notes.slice(0, 2) },
+          { ...mockScore.measures[0], number: 4, notes: mockScore.measures[0].notes.slice(2) },
+        ],
+      };
+      const scheduled = scheduleNotes(score);
+
+      expect(scheduled.map((note) => note.measureNumber)).toEqual([3, 3, 4, 4]);
+      expect(scheduled[2].measureStartBeat).toBeCloseTo(2);
+      expect(scheduled[2].measureDurationBeats).toBeCloseTo(2);
+    });
+
+    it('should select only the requested measures and clip a tie at the loop boundary', () => {
+      const score: Score = {
+        ...mockScore,
+        measures: [
+          { number: 8, notes: [mockScore.measures[0].notes[0]] },
+          { number: 9, notes: [{ type: 'tie', duration: { base: 4, dots: 0 } }, mockScore.measures[0].notes[1]] },
+        ],
+      };
+      const segment = selectMeasureSegment(scheduleNotes(score), { startMeasure: 8, endMeasure: 8 });
+
+      expect(segment).not.toBeNull();
+      expect(segment?.durationBeats).toBeCloseTo(1);
+      expect(segment?.events.map((event) => event.measureNumber)).toEqual([8]);
+      expect(segment?.events[0].durationBeats).toBeCloseTo(1);
     });
 
     it('should merge tie duration into previous note', () => {

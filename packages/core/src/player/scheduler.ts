@@ -2,20 +2,84 @@
 // Scheduler — 将 Score 转化为时间事件序列
 // ============================================================
 
-import type { Score, NoteElement, Note } from '../types/index.js';
+import { getScoreVoices } from '../music.js';
+import type { Score, NoteElement, Note, VoiceId } from '../types/index.js';
 
 /** 音符调度事件 */
 export interface ScheduledNote {
+  /** 显式双声部的事件归属。 */
+  voiceId?: VoiceId;
   /** 在扁平化序列中的索引 */
   index: number;
   /** 开始时间（秒） */
   startTime: number;
   /** 持续时间（秒） */
   duration: number;
+  /** 开始位置（拍）；供可变速播放器使用 */
+  startBeat: number;
+  /** 持续拍数；供可变速播放器使用 */
+  durationBeats: number;
+  /** 所属小节编号，供选段播放使用 */
+  measureNumber: number;
+  /** 所属小节在整谱中的起始拍位置 */
+  measureStartBeat: number;
+  /** 所属小节总拍数 */
+  measureDurationBeats: number;
   /** 音高频率（Hz），休止符/延音线为 null */
   frequency: number | null;
+  /** 同音圆滑线延续的音高；区间裁剪时恢复入口发声。 */
+  continuationFrequency?: number;
   /** 原始音符数据 */
   note: NoteElement;
+}
+
+export interface MeasureLoopRange {
+  readonly startMeasure: number;
+  readonly endMeasure: number;
+}
+
+export interface ScheduledSegment {
+  readonly events: ScheduledNote[];
+  readonly startBeat: number;
+  readonly endBeat: number;
+  readonly durationBeats: number;
+}
+
+/** 提取按小节编号闭区间选择的播放段，并将事件拍数归一到段落起点。 */
+export function selectMeasureSegment(events: ScheduledNote[], range: MeasureLoopRange): ScheduledSegment | null {
+  const selected = events.filter((event) => event.measureNumber >= range.startMeasure && event.measureNumber <= range.endMeasure);
+  if (selected.length === 0) return null;
+
+  // 从所选小节最早的事件开始，保留起始倚音/波音相对主音的时序。
+  const startBeat = Math.min(...selected.map(event => Math.min(event.measureStartBeat, event.startBeat)));
+  const endBeat = Math.max(...selected.map(event => event.measureStartBeat + event.measureDurationBeats));
+  const normalizedEvents = selected.map((event) => ({
+    ...event,
+    startBeat: Math.max(0, event.startBeat - startBeat),
+    durationBeats: Math.max(0.01, Math.min(event.durationBeats, endBeat - event.startBeat)),
+  }));
+
+  const soundingByVoice = new Map<VoiceId | undefined, ScheduledNote>();
+  for (const event of normalizedEvents) {
+    let sounding = soundingByVoice.get(event.voiceId);
+    if (event.continuationFrequency !== undefined) {
+      if (sounding?.frequency === event.continuationFrequency
+        && sounding.startBeat + sounding.durationBeats >= event.startBeat - 0.001) {
+        sounding.durationBeats = Math.max(sounding.durationBeats, event.startBeat + event.durationBeats - sounding.startBeat);
+      } else {
+        event.frequency = event.continuationFrequency;
+        sounding = event;
+      }
+    } else if (event.frequency !== null) {
+      sounding = event;
+    } else if (event.note.type === 'rest') {
+      sounding = undefined;
+    }
+    if (sounding) soundingByVoice.set(event.voiceId, sounding);
+    else soundingByVoice.delete(event.voiceId);
+  }
+
+  return { events: normalizedEvents, startBeat, endBeat, durationBeats: Math.max(0.25, endBeat - startBeat) };
 }
 
 /** 音符名到频率的基准映射（C4 八度，中央 C） */
@@ -91,7 +155,27 @@ function durationInBeats(note: NoteElement): number {
  * @param tempoOverride - 可选的速度覆盖（BPM），不传则使用曲谱元数据中的速度
  */
 export function scheduleNotes(score: Score, tempoOverride?: number): ScheduledNote[] {
-  const scheduled: ScheduledNote[] = [];
+  if (score.secondaryVoice) {
+    return getScoreVoices(score).flatMap(voice =>
+      scheduleNotes({ metadata: score.metadata, measures: voice.measures }, tempoOverride)
+        .map(event => ({ ...event, index: event.index + voice.indexOffset, voiceId: voice.id }))
+    ).sort((a, b) => a.startBeat - b.startBeat || a.index - b.index);
+  }
+  const scheduled: Array<Omit<ScheduledNote, 'startBeat' | 'durationBeats' | 'measureNumber' | 'measureStartBeat' | 'measureDurationBeats'>> = [];
+  const measureByIndex = new Map<number, number>();
+  const measureStartBeatByNumber = new Map<number, number>();
+  const measureDurationByNumber = new Map<number, number>();
+  let measureNoteIndex = 0;
+  let measureStartBeat = 0;
+  for (const measure of score.measures) {
+    measureStartBeatByNumber.set(measure.number, measureStartBeat);
+    const measureDuration = measure.notes.reduce((sum, note) => sum + durationInBeats(note), 0);
+    measureDurationByNumber.set(measure.number, measureDuration);
+    for (let i = 0; i < measure.notes.length; i++) {
+      measureByIndex.set(measureNoteIndex++, measure.number);
+    }
+    measureStartBeat += measureDuration;
+  }
   const keyOffset = KEY_OFFSET[score.metadata.key] ?? 0;
   const bpm = tempoOverride ?? score.metadata.tempo;
   const secondsPerBeat = 60 / bpm;
@@ -126,6 +210,7 @@ export function scheduleNotes(score: Score, tempoOverride?: number): ScheduledNo
             startTime: currentTime,
             duration: durationSec,
             frequency: null,
+            continuationFrequency: currentFreq,
             note,
           });
 
@@ -157,9 +242,8 @@ export function scheduleNotes(score: Score, tempoOverride?: number): ScheduledNo
       // 延长线：将时值合并到前一个有效音符的发音时长，
       // 但仍产生一个静默事件用于 UI 高亮
       if (note.type === 'tie') {
-        const lastWithFreq = [...scheduled].reverse().find(s => s.frequency !== null);
-        if (lastWithFreq) {
-          lastWithFreq.duration += durationSec;
+        if (lastScheduledWithFreq) {
+          lastScheduledWithFreq.duration += durationSec;
         }
 
         // 产生静默事件（frequency=null），让 UI 在此时间点高亮延长线符号
@@ -184,12 +268,14 @@ export function scheduleNotes(score: Score, tempoOverride?: number): ScheduledNo
         // 波音处理：在主音符之前快速播放相邻音
         if (note.trillType) {
           const trillDuration = 0.05; // 每个波音音符50ms
-          const neighborPitch = note.trillType === 'lower' ? note.pitch - 1 : note.pitch + 1;
+          const neighborDegree = note.trillType === 'lower' ? note.pitch - 2 : note.pitch;
+          const neighborPitch = ((neighborDegree % 7) + 7) % 7 + 1;
           
           // 创建临时音符对象用于计算相邻音频率
           const neighborNote: Note = {
             ...note,
             pitch: neighborPitch,
+            octave: note.octave + Math.floor(neighborDegree / 7),
           };
           const neighborFreq = noteToFrequency(neighborNote, keyOffset);
           
@@ -271,10 +357,22 @@ export function scheduleNotes(score: Score, tempoOverride?: number): ScheduledNo
         }
       }
 
+      if (note.type === 'rest') {
+        lastScheduledWithFreq = null;
+        lastSlurGroup = undefined;
+      }
+
       currentTime += durationSec;
       globalIndex++;
     }
   }
 
-  return scheduled;
+  return scheduled.map((event): ScheduledNote => ({
+    ...event,
+    startBeat: event.startTime / secondsPerBeat,
+    durationBeats: event.duration / secondsPerBeat,
+    measureNumber: measureByIndex.get(event.index) ?? 1,
+    measureStartBeat: measureStartBeatByNumber.get(measureByIndex.get(event.index) ?? 1) ?? 0,
+    measureDurationBeats: measureDurationByNumber.get(measureByIndex.get(event.index) ?? 1) ?? 0,
+  }));
 }

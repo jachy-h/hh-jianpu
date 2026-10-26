@@ -1,6 +1,7 @@
 // ============================================================
 // config.ts — Web 应用默认配置常量
 // ============================================================
+import packageInfo from '../../../package.json';
 
 /**
  * 编辑器自动保存防抖延迟（毫秒）
@@ -11,5 +12,6 @@ export const AUTO_SAVE_DELAY_MS = 1000;
 /**
  * 帮助页面版本信息
  */
-export const HELP_PAGE_VERSION = 'v0.6.2';
-export const HELP_PAGE_UPDATED_DATE = '2026年03月29日';
+export const APP_VERSION = `v${packageInfo.version}`;
+export const HELP_PAGE_VERSION = APP_VERSION;
+export const HELP_PAGE_UPDATED_DATE = '2026年10月26日';

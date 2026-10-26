@@ -1,6 +1,6 @@
-import type { Note, NoteElement, Score, KeyName, FluteFingering } from '../types';
-import type { LyricsSyllable } from '../types';
-import { FLUTE_FINGERING_LOWEST_NOTE, KEY_SEMITONE_OFFSET } from '../types';
+import type { Note, Score, KeyName, FluteFingering } from '../types/index.js';
+import type { LyricsSyllable } from '../types/index.js';
+import { FLUTE_FINGERING_LOWEST_NOTE, KEY_SEMITONE_OFFSET } from '../types/index.js';
 
 const PITCH_OFFSET: Record<number, number> = {
   1: 0, // C
@@ -44,22 +44,6 @@ export function midiToNote(midi: number): { pitch: number; octave: number; accid
   return { pitch, octave, accidental };
 }
 
-function transposeNoteElement(element: NoteElement, semitones: number): NoteElement {
-  if (element.type === 'note') {
-    const midi = noteToMidi(element.pitch, element.octave);
-    const newMidi = midi + semitones;
-    const { pitch, octave, accidental } = midiToNote(newMidi);
-
-    return {
-      ...element,
-      pitch,
-      octave,
-      accidental,
-    };
-  }
-  return element;
-}
-
 export function calculateSemitoneDistance(fromKey: KeyName, toKey: KeyName): number {
   const from = KEY_SEMITONE_OFFSET[fromKey];
   const to = KEY_SEMITONE_OFFSET[toKey];
@@ -101,14 +85,17 @@ export function transposeScore(score: Score, semitones: number): Score {
   }
   newMetadata.key = newKey;
 
-  const newMeasures = score.measures.map((measure) => ({
-    ...measure,
-    notes: measure.notes.map((note) => transposeNoteElement(note, semitones)),
-  }));
-
   return {
     metadata: newMetadata,
-    measures: newMeasures,
+    ...(score.secondaryVoice ? { secondaryVoice: { id: 'lower' as const,
+      measures: transposeScore({ metadata: score.metadata, measures: score.secondaryVoice.measures }, semitones).measures } } : {}),
+    // 调号表示模 12 的偏移，跨越 C 边界的整八度必须保留在音符上。
+    measures: score.measures.map((measure) => ({
+      ...measure,
+      notes: measure.notes.map((note) => note.type === 'note'
+        ? { ...note, octave: note.octave + Math.floor(newKeyOffset / 12) }
+        : note),
+    })),
   };
 }
 
@@ -119,7 +106,8 @@ function formatNote(note: Note): string {
   const slashes = Math.max(0, Math.log2(note.duration.base) - 2);
   const duration = slashes > 0 ? '/'.repeat(slashes) : '';
   const dot = note.dot ? '.' : '';
-  return `${accidental}${note.pitch}${octaveMark}${duration}${dot}`;
+  const ornament = note.isGrace ? '^' : note.trillType === 'single' ? '~' : note.trillType === 'double' ? '~~' : note.trillType === 'lower' ? '~.' : '';
+  return `${ornament}${accidental}${note.pitch}${octaveMark}${duration}${dot}`;
 }
 
 function formatRest(element: { type: 'rest'; duration: { base: number; dots: number } }): string {
@@ -148,12 +136,24 @@ export function scoreToSource(score: Score): string {
   lines.push(`调号：${score.metadata.key}`);
   lines.push(`拍号：${score.metadata.timeSignature.beats}/${score.metadata.timeSignature.beatValue}`);
   lines.push(`速度：${score.metadata.tempo}`);
+  for (const [key, value] of Object.entries(score.metadata.custom ?? {})) {
+    lines.push(`${key}：${value}`);
+  }
   lines.push('---');
   lines.push('');
 
-  for (const measure of score.measures) {
-    let measureStr = 'Q';
-    let openSlurGroup: number | undefined = undefined;
+  if (score.secondaryVoice) {
+    for (const [id, measures] of [['upper', score.measures], ['lower', score.secondaryVoice.measures]] as const) {
+      const voiceSource = scoreToSource({ metadata: score.metadata, measures });
+      const body = voiceSource.slice(voiceSource.indexOf('\n---\n') + 5).trim();
+      lines.push(body.replace(/^([QC]) /gm, `$1[${id}] `));
+    }
+    return lines.join('\n');
+  }
+
+  let openSlurGroup: number | undefined;
+  for (const [measureIndex, measure] of score.measures.entries()) {
+    let measureStr = '';
 
     for (const note of measure.notes) {
       let token = '';
@@ -170,7 +170,8 @@ export function scoreToSource(score: Score): string {
       if (token) {
         // 保留原始间距：hasSpaceBefore=false 表示与上一个音符紧连（共享连音线）
         const needSpace = (note as { hasSpaceBefore?: boolean }).hasSpaceBefore !== false;
-        const noteSlurGroup = (note as { slurGroup?: number }).slurGroup;
+        // 休止和延长线不结束跨越它们的圆滑线。
+        const noteSlurGroup = note.type === 'note' ? note.slurGroup : openSlurGroup;
 
         // 关闭上一个圆滑线组（slurGroup 发生变化）
         if (openSlurGroup !== undefined && noteSlurGroup !== openSlurGroup) {
@@ -191,18 +192,23 @@ export function scoreToSource(score: Score): string {
       }
     }
 
-    // 关闭小节末尾未关闭的圆滑线组
-    if (openSlurGroup !== undefined) {
+    if (measureIndex === score.measures.length - 1 && openSlurGroup !== undefined) {
       measureStr += ')';
     }
 
-    lines.push(measureStr + ' |');
-
-    // 输出该小节的歌词行
-    if (measure.lyrics && measure.lyrics.syllables.length > 0) {
-      lines.push(`C ${serializeLyrics(measure.lyrics.syllables)}`);
+    const text = measureStr.trimStart() + ' |';
+    if (measureIndex > 0 && !measure.lineBreakBefore) {
+      lines[lines.length - 1] += ` ${text}`;
+    } else {
+      lines.push(`Q ${text}`);
     }
+
   }
+
+  // Lyrics are associated with notes rather than measures; serialize them as
+  // one sequence so that their existing alignment survives a parse round trip.
+  const lyrics = score.measures.flatMap((measure) => measure.lyrics?.syllables ?? []);
+  if (lyrics.length > 0) lines.push(`C ${serializeLyrics(lyrics)}`);
 
   return lines.join('\n');
 }

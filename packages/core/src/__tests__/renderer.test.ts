@@ -305,7 +305,7 @@ describe('Renderer', () => {
     const layout = createLayout(scoreWithGrace, { width: 800 });
 
     expect(layout.allNotes).toHaveLength(2);
-    expect((layout.allNotes[0].note as any).isGrace).toBe(true);
+    expect(layout.allNotes[0].note).toMatchObject({ type: 'note', isGrace: true });
   });
 
   it('should handle breath marks in layout', () => {

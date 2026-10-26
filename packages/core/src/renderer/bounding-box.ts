@@ -1,5 +1,5 @@
 import { NoteElement, BoundingBox, NoteBoundingBox } from '../types/index.js';
-import { calculateSymbolWidth, getSymbolRatio } from './symbol-width.js';
+import { calculateSymbolWidth } from './symbol-width.js';
 
 const boundingBoxCache = new Map<string, NoteBoundingBox>();
 
@@ -45,7 +45,6 @@ export function calculateNoteBoundingBox(
   
   // 处理八度点
   if (note.type === 'note' && note.octave !== 0) {
-    const dotSize = calculateSymbolWidth('octaveDot', fontSize);
     if (note.octave > 0) {
       // 高八度点在上方
       const dotCount = note.octave;
@@ -89,6 +88,11 @@ export function calculateNoteBoundingBox(
   
   // 处理附点
   if (note.type === 'note' && note.dot) {
+    const dotWidth = calculateSymbolWidth('dot', fontSize);
+    right = Math.max(right, x + noteWidth / 2 + dotWidth);
+  }
+
+  if (note.type === 'rest' && note.duration.dots > 0) {
     const dotWidth = calculateSymbolWidth('dot', fontSize);
     right = Math.max(right, x + noteWidth / 2 + dotWidth);
   }

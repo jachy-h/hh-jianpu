@@ -13,9 +13,7 @@ function types(tokens: Token[]): TokenType[] {
   return bodyTokens(tokens).map(t => t.type);
 }
 
-function values(tokens: Token[]): string[] {
-  return bodyTokens(tokens).map(t => t.value);
-}
+
 
 // ============================================================
 // 元信息 Token

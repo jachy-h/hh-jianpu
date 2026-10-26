@@ -216,19 +216,24 @@ export async function resetStorageLocation(): Promise<void> {
  * 注意：此操作不可逆，调用方应先弹出二次确认
  */
 export async function abandonStorage(): Promise<void> {
-  // 1. 尝试删除目录中所有 .jsonc 文件
+  // 1. 仅删除应用 manifest 登记的曲谱，保留目录中的其他文件
   try {
     const handle = await loadHandleFromIDB();
     if (handle) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      for await (const [name, entry] of handle as any) {
-        if ((entry as FileSystemHandle).kind === 'file' && (name as string).endsWith('.jsonc')) {
-          try {
-            await handle.removeEntry(name as string);
-          } catch {
-            // 忽略单个文件删除失败
+      try {
+        const manifestEntry = await handle.getFileHandle('hh-jianpu-manifest.json');
+        const manifestFile = await manifestEntry.getFile();
+        const manifest = JSON.parse(await manifestFile.text()) as { scoreIds?: unknown; deletedIds?: unknown };
+        if (Array.isArray(manifest.scoreIds)) {
+          for (const id of [...manifest.scoreIds, ...(Array.isArray(manifest.deletedIds) ? manifest.deletedIds : [])]) {
+            if (typeof id !== 'string') continue;
+            const safeId = id.replace(/[^\w-]/g, '_');
+            await handle.removeEntry(`${safeId}.jsonc`).catch(() => undefined);
           }
         }
+        await handle.removeEntry('hh-jianpu-manifest.json');
+      } catch {
+        // No valid manifest: leave files untouched.
       }
     }
   } catch {

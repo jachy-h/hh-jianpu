@@ -47,13 +47,14 @@ pnpm build        # 构建 core + web
 pnpm build:core   # 仅构建 core
 pnpm build:web    # 仅构建 web
 pnpm lint         # Lint 所有包
-pnpm test         # 运行所有测试
+pnpm test         # 单次运行 core 与 Web 回归测试
 ```
 
 ### Core 包命令
 ```bash
 cd packages/core
-pnpm test                            # 运行所有测试
+pnpm test                            # 单次运行所有 core 测试
+pnpm test:watch                      # 交互监听模式
 pnpm test tokenizer.test.ts          # 运行单个测试文件
 pnpm test src/__tests__/parser.test.ts
 pnpm test -t "createLayout"          # 按名称匹配测试
@@ -242,6 +243,12 @@ const store = useStore();
 ---
 
 ## 测试约定
+
+### 自动化质量门禁
+
+- 根目录 `pnpm lint`、`pnpm build:core`、`pnpm test`、`pnpm build:web` 必须通过；PR 由 `.github/workflows/quality.yml` 自动检查。
+- ESLint flat config 统一检查 TypeScript、React Hooks 和刷新边界。
+- Web 回归覆盖文档保存隔离、失败恢复和备份导入；播放器音频和响应式布局还需浏览器验收。
 
 ### 单元测试 (Vitest)
 
@@ -442,6 +449,7 @@ export function createLayout(score: Score, config?: Partial<LayoutConfig>): Scor
 
 ---
 
-**项目版本**: v0.1.1  
-**最后更新**: 2026年3月1日  
+**项目版本**: v0.7.1
+
+**最后更新**: 2026年10月26日
 **维护者**: Jachy

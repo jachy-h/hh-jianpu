@@ -11,6 +11,12 @@ const FONT_SIZES = [
 interface PlayerBarProps {
   playButtonRef?: React.RefObject<HTMLButtonElement>;
   status: PlaybackStatus;
+  voices?: { id: 'upper' | 'lower'; name: string }[];
+  mutedVoices?: ('upper' | 'lower')[];
+  onVoiceMutedChange?: (id: 'upper' | 'lower', muted: boolean) => void;
+  isLoading?: boolean;
+  practiceSpeed?: number;
+  onPracticeSpeedChange?: (speed: number) => void;
   playDelay: number;
   isMetronomeActive?: boolean;
   countdownValue?: number;
@@ -22,11 +28,19 @@ interface PlayerBarProps {
   onPause: () => void;
   onStop: () => void;
   onPlayDelayChange: (beats: number) => void;
+  loopSelection?: { startMeasure: number; endMeasure: number | null } | null;
+  onClearLoopSelection?: () => void;
 }
 
 const PlayerBar: React.FC<PlayerBarProps> = ({
   playButtonRef,
   status,
+  voices,
+  mutedVoices = [],
+  onVoiceMutedChange,
+  isLoading = false,
+  practiceSpeed = 1,
+  onPracticeSpeedChange,
   playDelay,
   isMetronomeActive = false,
   countdownValue = 0,
@@ -38,6 +52,8 @@ const PlayerBar: React.FC<PlayerBarProps> = ({
   onPause,
   onStop,
   onPlayDelayChange,
+  loopSelection = null,
+  onClearLoopSelection,
 }) => {
   const [isPinned, setIsPinned] = useState(pinned);
   const isCollapsed = collapsed && !isPinned;
@@ -55,7 +71,7 @@ const PlayerBar: React.FC<PlayerBarProps> = ({
 
   return (
     <div
-      className={`fixed bottom-0 left-0 right-0 flex items-center justify-center gap-4 px-4 py-2 bg-white/80 backdrop-blur border-t border-barline transition-transform duration-300 ease-in-out ${
+      className={`fixed bottom-0 left-0 right-0 flex items-center justify-center gap-2 px-2 py-2 bg-white/80 backdrop-blur border-t border-barline transition-transform duration-300 ease-in-out ${
         isCollapsed ? "translate-y-full" : "translate-y-0"
       }`}
     >
@@ -73,7 +89,7 @@ const PlayerBar: React.FC<PlayerBarProps> = ({
       </button>
 
       {/* 按钮区域右移，留出pin按钮空间 */}
-      <div className="ml-8 flex items-center gap-4">
+      <div className="ml-7 flex flex-wrap items-center justify-center gap-2 sm:gap-4">
         <button
           onClick={onStop}
           className="p-2 rounded-lg hover:bg-gray-100 text-ink"
@@ -86,6 +102,8 @@ const PlayerBar: React.FC<PlayerBarProps> = ({
 
         <button
           ref={playButtonRef}
+          disabled={isLoading}
+          aria-busy={isLoading}
           onClick={handlePlayClick}
           className={`p-2.5 rounded-full text-white shadow-md ${
             isMetronomeActive ? "bg-amber-500 hover:bg-amber-600" : "bg-highlight hover:bg-blue-700"
@@ -121,6 +139,19 @@ const PlayerBar: React.FC<PlayerBarProps> = ({
           ))}
         </div>
 
+        {voices?.map(voice => <button key={voice.id} type="button"
+          aria-pressed={!mutedVoices.includes(voice.id)}
+          aria-label={`${voice.name}声部${mutedVoices.includes(voice.id) ? '已静音' : '发声中'}`}
+          onClick={() => onVoiceMutedChange?.(voice.id, !mutedVoices.includes(voice.id))}
+          className={`rounded border px-2 py-1 text-xs ${mutedVoices.includes(voice.id) ? 'border-barline text-played' : 'border-blue-200 bg-blue-50 text-highlight'}`}>
+          {voice.name} {mutedVoices.includes(voice.id) ? '静音' : '发声'}
+        </button>)}
+        <label className="flex items-center gap-1 text-xs text-played">
+          练习速度
+          <select aria-label="练习速度倍率" value={practiceSpeed} onChange={(event) => onPracticeSpeedChange?.(Number(event.target.value))} className="rounded bg-gray-100 px-1 py-0.5 text-ink">
+            {[0.5, 0.75, 1, 1.25, 1.5, 2].map((speed) => <option key={speed} value={speed}>{speed}×</option>)}
+          </select>
+        </label>
         <div className="flex items-center gap-1">
           {FONT_SIZES.map(({ label, value }) => (
             <button
@@ -133,6 +164,18 @@ const PlayerBar: React.FC<PlayerBarProps> = ({
               {label}
             </button>
           ))}
+        </div>
+        <div className="flex items-center gap-1 text-xs text-played">
+          <span>
+            {loopSelection
+              ? loopSelection.endMeasure === null
+                ? `循环起点：第 ${loopSelection.startMeasure} 小节（再选终点）`
+                : `循环：第 ${loopSelection.startMeasure}–${loopSelection.endMeasure} 小节`
+              : '点击小节设置循环段'}
+          </span>
+          {loopSelection && (
+            <button onClick={onClearLoopSelection} className="text-gray-400 hover:text-error" title="清除选段">清除</button>
+          )}
         </div>
       </div>
     </div>

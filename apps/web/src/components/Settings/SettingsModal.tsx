@@ -70,10 +70,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
     try {
       await testLLMConnection(config);
       setTestResult({ success: true, message: '连接成功！' });
-    } catch (error: any) {
+    } catch (error: unknown) {
       setTestResult({
         success: false,
-        message: error.message || '连接失败，请检查配置',
+        message: error instanceof Error ? error.message : '连接失败，请检查配置',
       });
     } finally {
       setIsTesting(false);
@@ -125,7 +125,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                   id="provider"
                   value={config.provider}
                   onChange={(e) =>
-                    setConfig({ ...config, provider: e.target.value as any })
+                    setConfig({ ...config, provider: e.target.value as LLMProviderConfig['provider'] })
                   }
                   className="w-full px-3 py-2 border border-barline rounded-md bg-paper text-ink focus:outline-none focus:ring-2 focus:ring-highlight"
                 >

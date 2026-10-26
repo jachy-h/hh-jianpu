@@ -276,6 +276,14 @@ const NoteView: React.FC<NoteViewProps> = ({ note, x, y, index, isActive, isPlay
           fill={fillColor}
         />
       )}
+      {note.type === 'rest' && note.duration.dots > 0 && (
+        <circle
+          cx={x + 12}
+          cy={y}
+          r={2}
+          fill={fillColor}
+        />
+      )}
     </g>
   );
 };

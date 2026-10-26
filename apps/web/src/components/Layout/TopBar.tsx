@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { APP_VERSION } from '../../config';
 
 interface TopBarProps {
   /** 右侧操作区内容 */
@@ -42,6 +43,9 @@ const TopBar: React.FC<TopBarProps> = ({ actions, backTo, backLabel = '返回', 
         >
           🎵 hh-jianpu
         </Link>
+        <span className="text-[11px] text-gray-400" aria-label={`版本 ${APP_VERSION}`}>
+          {APP_VERSION}
+        </span>
 
         {subtitle && <span className="ml-1">{subtitle}</span>}
       </div>

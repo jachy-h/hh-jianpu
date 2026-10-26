@@ -1,15 +1,19 @@
 import React, { useMemo, useEffect, useState, useRef } from 'react';
-import { createLayout } from '@hh-jianpu/core';
-import type { Score, NotePosition } from '@hh-jianpu/core';
+import { createLayout, getScoreVoices } from '@hh-jianpu/core';
+import type { Score } from '@hh-jianpu/core';
+import { createSlurSegments } from './slur-segments';
 import MeasureView from './MeasureView';
 
 interface ScoreViewProps {
   score: Score;
   currentNoteIndex: number;
+  activeNoteIndices?: number[];
   width?: number;
   measuresPerLine?: number;
   noteFontSize?: number;
   onNoteClick?: (index: number) => void;
+  onMeasureClick?: (measureNumber: number, voiceId?: 'upper' | 'lower') => void;
+  loopSelection?: { startMeasure: number; endMeasure: number | null } | null;
   /** 滚动到指定小节编号（从 1 开始） */
   scrollToMeasure?: number;
 }
@@ -17,15 +21,19 @@ interface ScoreViewProps {
 const ScoreView: React.FC<ScoreViewProps> = ({
   score,
   currentNoteIndex,
+  activeNoteIndices,
   width,
   measuresPerLine,
   noteFontSize = 18,
   onNoteClick,
+  onMeasureClick,
+  loopSelection,
   scrollToMeasure,
 }) => {
-  // 响应式：根据窗口宽度自动调整
+  // 响应式：根据预览容器宽度自动调整
   const [containerWidth, setContainerWidth] = useState(width || 800);
   const [autoMeasuresPerLine, setAutoMeasuresPerLine] = useState(measuresPerLine || 4);
+  const [followPlayback, setFollowPlayback] = useState(true);
   // 容器引用，用于滚动
   const containerRef = useRef<HTMLDivElement>(null);
   // 存储每行的引用，用于滚动到指定行
@@ -33,64 +41,76 @@ const ScoreView: React.FC<ScoreViewProps> = ({
 
   useEffect(() => {
     if (width !== undefined && measuresPerLine !== undefined) return;
-
+    const container = containerRef.current;
+    if (!container) return;
     const updateDimensions = () => {
-      const w = window.innerWidth;
-      if (w < 640) {
-        // 移动端
-        setContainerWidth(w - 32);
-        setAutoMeasuresPerLine(2);
-      } else if (w < 1024) {
-        // 平板
-        setContainerWidth(Math.min(w - 64, 700));
-        setAutoMeasuresPerLine(3);
-      } else {
-        // 桌面
-        setContainerWidth(Math.min(w - 128, 900));
-        setAutoMeasuresPerLine(4);
+      const availableWidth = container.clientWidth;
+      setContainerWidth(Math.max(160, Math.min(availableWidth - 16, 1100)));
+      if (measuresPerLine === undefined) {
+        setAutoMeasuresPerLine(availableWidth < 560 ? 2 : availableWidth < 840 ? 3 : 4);
       }
     };
-
     updateDimensions();
-    window.addEventListener('resize', updateDimensions);
-    return () => window.removeEventListener('resize', updateDimensions);
+    const observer = new ResizeObserver(updateDimensions);
+    observer.observe(container);
+    return () => observer.disconnect();
   }, [width, measuresPerLine]);
 
   const finalWidth = width || containerWidth;
   const finalMeasuresPerLine = measuresPerLine || autoMeasuresPerLine;
 
   const layout = useMemo(
-    () => createLayout(score, { width: finalWidth, measuresPerLine: finalMeasuresPerLine }),
-    [score, finalWidth, finalMeasuresPerLine]
+    () => createLayout(score, {
+      width: finalWidth,
+      measuresPerLine: finalMeasuresPerLine,
+      noteFontSize,
+      lineHeight: Math.max(60, noteFontSize * 3.3),
+    }),
+    [score, finalWidth, finalMeasuresPerLine, noteFontSize]
   );
 
-  // 处理滚动到指定小节
+  const activeIndices = activeNoteIndices ?? (currentNoteIndex < 0 ? [] : [currentNoteIndex]);
+  const voiceIndex = (voiceId?: 'upper' | 'lower'): number => score.secondaryVoice
+    ? activeIndices.find(index => layout.allNotes[index]?.voiceId === voiceId) ?? -1 : currentNoteIndex;
+  const voices = getScoreVoices(score);
+  const latestActive = activeIndices.map(index => layout.allNotes[index]).filter(Boolean)
+    .sort((a, b) => (b.startBeat ?? 0) - (a.startBeat ?? 0))[0];
+
+  const slurs = useMemo(() => createSlurSegments(layout, noteFontSize), [layout, noteFontSize]);
+
   useEffect(() => {
-    if (scrollToMeasure === undefined || !containerRef.current) return;
-    
-    // 找到包含目标小节的行
-    for (const line of layout.lines) {
-      const hasTargetMeasure = line.measures.some(m => m.measure.number === scrollToMeasure);
-      if (hasTargetMeasure) {
-        const lineElement = lineRefs.current.get(line.y);
-        if (lineElement) {
-          // 计算滚动位置，将目标行滚动到容器顶部附近
-          const containerRect = containerRef.current.getBoundingClientRect();
-          const lineRect = lineElement.getBoundingClientRect();
-          const scrollTop = lineRect.top - containerRect.top + containerRef.current.scrollTop - 20;
-          
-          containerRef.current.scrollTo({
-            top: scrollTop,
-            behavior: 'smooth'
-          });
-        }
-        break;
-      }
-    }
-  }, [scrollToMeasure, layout.lines]);
+    if (currentNoteIndex < 0) setFollowPlayback(true);
+  }, [currentNoteIndex]);
+
+  // 源码定位以及演奏跟随共用行坐标；手动浏览后暂停自动跟随。
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container || (currentNoteIndex >= 0 && !followPlayback)) return;
+    const activeMeasure = currentNoteIndex >= 0 && followPlayback
+      ? layout.allNotes[currentNoteIndex]?.measureNumber
+      : scrollToMeasure;
+    if (activeMeasure === undefined) return;
+    const line = layout.lines.find((item) => item.measures.some((measure) => measure.measure.number === activeMeasure));
+    if (!line) return;
+    const element = lineRefs.current.get(line.y);
+    if (!element) return;
+    const containerRect = container.getBoundingClientRect();
+    const lineRect = element.getBoundingClientRect();
+    const isPlayback = currentNoteIndex >= 0 && followPlayback;
+    if (isPlayback && lineRect.top >= containerRect.top + 16 && lineRect.bottom <= containerRect.bottom - 16) return;
+    container.scrollTo({ top: lineRect.top - containerRect.top + container.scrollTop - 20, behavior: 'smooth' });
+  }, [scrollToMeasure, layout, currentNoteIndex, followPlayback]);
 
   return (
-    <div ref={containerRef} className="score-view overflow-auto">
+    <div className="relative h-full min-h-0">
+      {currentNoteIndex >= 0 && !followPlayback && (
+        <button type="button" onClick={() => setFollowPlayback(true)} className="absolute right-3 top-3 z-10 rounded-full border border-barline bg-paper px-3 py-1.5 text-xs text-ink shadow-sm">
+          恢复播放跟随
+        </button>
+      )}
+      <div ref={containerRef} className="score-view h-full overflow-auto" onWheel={() => setFollowPlayback(false)} onTouchStart={() => setFollowPlayback(false)} onKeyDown={(event) => {
+        if (['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End', ' '].includes(event.key)) setFollowPlayback(false);
+      }} tabIndex={0} aria-label="曲谱预览">
       <svg
         width={layout.width}
         height={layout.height}
@@ -141,82 +161,47 @@ const ScoreView: React.FC<ScoreViewProps> = ({
               x1={line.measures[0]?.x ?? 0}
               y1={line.y + 8}
               x2={line.measures[0]?.x ?? 0}
-              y2={line.y + 52}
+              y2={line.y + line.height - 8}
               stroke="#D6D3D1"
               strokeWidth={1}
             />
-            {line.measures.map((measureLayout) => (
+            {line.secondaryMeasures && (() => {
+              const x = (line.measures[0]?.x ?? 40) - 12;
+              const top = line.y + 8;
+              const bottom = line.y + line.height - 8;
+              const mid = (top + bottom) / 2;
+              return <g aria-label="双声部联谱">
+                <path d={`M ${x},${top} C ${x - 12},${top} ${x},${mid - 12} ${x - 12},${mid} C ${x},${mid + 12} ${x - 12},${bottom} ${x},${bottom}`} fill="none" stroke="#57534E" strokeWidth={1.5} />
+                {[line.measures, line.secondaryMeasures].map((row, index) => <text key={index} x={row[0]?.x} y={(row[0]?.y ?? top) + noteFontSize * 0.65} fontSize={noteFontSize * 0.55} fill="#78716C">{voices[index].name}</text>)}
+                {latestActive && line.measures.some(item => item.measure.number === latestActive.measureNumber) && <rect x={latestActive.x - 3} y={top} width={6} height={bottom - top} fill="#2563EB" opacity={0.16} pointerEvents="none" />}
+              </g>;
+            })()}
+            {[...line.measures, ...(line.secondaryMeasures ?? [])].map((measureLayout) => (
               <MeasureView
-                key={measureLayout.measure.number}
+                key={`${measureLayout.voiceId ?? 'upper'}-${measureLayout.measure.number}`}
                 layout={measureLayout}
-                currentNoteIndex={currentNoteIndex}
+                currentNoteIndex={voiceIndex(measureLayout.voiceId)}
                 noteFontSize={noteFontSize}
                 onNoteClick={onNoteClick}
+                onMeasureClick={onMeasureClick}
+                isLoopSelected={Boolean(loopSelection && measureLayout.measure.number >= loopSelection.startMeasure && measureLayout.measure.number <= (loopSelection.endMeasure ?? loopSelection.startMeasure))}
               />
             ))}
           </g>
         ))}
 
         {/* 圆滑线（在所有音符之上渲染，支持跨小节） */}
-        {renderSlurs(layout.allNotes, currentNoteIndex)}
+        {slurs.map((segment) => {
+          const current = voiceIndex(segment.voiceId);
+          const hasActive = segment.notes.some((note) => note.index === current);
+          const hasPlayed = segment.notes.some((note) => current >= 0 && note.index < current);
+          return <path key={`slur-${segment.voiceId}-${segment.group}-${segment.line}`} d={segment.path} fill="none" stroke={hasActive ? '#2563EB' : hasPlayed ? '#94A3B8' : '#1C1917'} strokeWidth={1.5} opacity={0.8} />;
+        })}
       </svg>
+      </div>
     </div>
   );
 };
-
-// 辅助函数：渲染圆滑线
-function renderSlurs(allNotes: NotePosition[], currentNoteIndex: number) {
-  const slurGroups = new Map<number, NotePosition[]>();
-  
-  // 收集所有圆滑线组
-  allNotes.forEach(note => {
-    if (note.slurGroup !== undefined) {
-      if (!slurGroups.has(note.slurGroup)) {
-        slurGroups.set(note.slurGroup, []);
-      }
-      slurGroups.get(note.slurGroup)!.push(note);
-    }
-  });
-
-  return Array.from(slurGroups.entries()).map(([groupId, notes]) => {
-    if (notes.length < 2) return null;
-
-    const firstNote = notes[0];
-    const lastNote = notes[notes.length - 1];
-
-    // 检查是否有高亮/已播放状态
-    const hasActive = notes.some(n => n.index === currentNoteIndex);
-    const hasPlayed = notes.some(n => currentNoteIndex >= 0 && n.index < currentNoteIndex);
-    
-    let strokeColor = '#1C1917'; // ink
-    if (hasActive) strokeColor = '#2563EB'; // highlight
-    else if (hasPlayed) strokeColor = '#94A3B8'; // played
-
-    // 计算贝塞尔曲线控制点
-    const startX = firstNote.x;
-    const startY = firstNote.y - 24; // 音符上方
-    const endX = lastNote.x;
-    const endY = lastNote.y - 24;
-    
-    // 控制点：弧线中点向上弯曲
-    const midX = (startX + endX) / 2;
-    const midY = Math.min(startY, endY) - 15; // 向上弯曲15px
-    
-    // 使用二次贝塞尔曲线
-    const pathD = `M ${startX},${startY} Q ${midX},${midY} ${endX},${endY}`;
-
-    return (
-      <path
-        key={`slur-${groupId}`}
-        d={pathD}
-        fill="none"
-        stroke={strokeColor}
-        strokeWidth={1.5}
-        opacity={0.8}
-      />
-    );
-  });
-}
 
 export default React.memo(ScoreView);
 

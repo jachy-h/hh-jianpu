@@ -8,11 +8,12 @@ import type {
   LineLayout,
   MeasureLayout,
   NotePosition,
-  NoteElement,
   LyricsPosition,
   Measure,
 } from '../types/index.js';
-import { calculateDynamicSpacing, calculateNotePositions } from './dynamic-spacing.js';
+import { createDuetLayout } from './duet-layout.js';
+import { calculateDynamicSpacing } from './dynamic-spacing.js';
+import { calculateNoteBoundingBox } from './bounding-box.js';
 
 /** 布局配置 */
 export interface LayoutConfig {
@@ -57,103 +58,82 @@ export const DEFAULT_LAYOUT_CONFIG: LayoutConfig = {
  */
 export function createLayout(score: Score, config: Partial<LayoutConfig> = {}): ScoreLayout {
   const cfg = { ...DEFAULT_LAYOUT_CONFIG, ...config };
+  if (score.secondaryVoice) return createDuetLayout(score, cfg);
+  cfg.lineHeight = Math.max(cfg.lineHeight, cfg.noteFontSize * 3.3);
+  cfg.lineGap = Math.max(cfg.lineGap, cfg.noteFontSize * 1.6);
+  cfg.lyricsOffset = config.lyricsOffset ?? cfg.noteFontSize * DEFAULT_LAYOUT_CONFIG.lyricsOffset / 18;
+  const availableWidth = Math.max(cfg.noteFontSize * 2, cfg.width - cfg.marginLeft * 2);
+  const maxMeasures = Math.max(1, Math.floor(cfg.measuresPerLine));
+  const baseWidth = availableWidth / maxMeasures;
+  const padding = cfg.noteFontSize * 0.8;
+  // 每个音符拥有独立的空间；长歌词组会扩展该音符的空间，避免与相邻歌词重叠。
+  const metrics = score.measures.map((measure) => {
+    const spacing = calculateDynamicSpacing(measure.notes, cfg.noteFontSize);
+    let syllableIndex = 0;
+    const slots = measure.notes.map((note) => {
+      const box = calculateNoteBoundingBox(note, cfg.noteFontSize, 0, 0).horizontal;
+      let lyricWidth = 0;
+      if (note.type === 'note' && !note.isGrace) {
+        const syllable = measure.lyrics?.syllables[syllableIndex++];
+        if (syllable && !syllable.isPlaceholder) {
+          // CJK 全角字占一格，ASCII 使用保守的 0.65 格估计。
+          const units = Array.from(syllable.text).reduce((sum, char) => sum + (char.codePointAt(0)! > 255 ? 1 : 0.65), 0);
+          lyricWidth = units * cfg.noteFontSize * cfg.lyricsFontSizeRatio;
+        }
+      }
+      return Math.max(spacing, 2 * Math.max(-box.left, box.right), note.type === 'note' && note.accidental ? cfg.noteFontSize * 1.5 : 0, lyricWidth + cfg.noteFontSize * 0.4);
+    });
+    return { measure, slots, width: Math.max(baseWidth, padding * 2 + slots.reduce((sum, slot) => sum + slot, 0)) };
+  });
+
+  const groups: (typeof metrics)[] = [];
+  let group: typeof metrics = [];
+  let groupWidth = 0;
+  for (const metric of metrics) {
+    if (group.length > 0 && (metric.measure.lineBreakBefore || group.length >= maxMeasures || groupWidth + metric.width > availableWidth + 0.01)) {
+      groups.push(group);
+      group = [];
+      groupWidth = 0;
+    }
+    group.push(metric);
+    groupWidth += metric.width;
+  }
+  if (group.length > 0) groups.push(group);
+
   const lines: LineLayout[] = [];
   const allNotes: NotePosition[] = [];
-  let globalNoteIndex = 0;
-
-  // 按行分组小节：优先使用源文本换行，同时受 measuresPerLine 上限约束
-  const lineGroups: Measure[][] = [];
-  let currentGroup: Measure[] = [];
-
-  for (let i = 0; i < score.measures.length; i++) {
-    const measure = score.measures[i];
-    const shouldBreak =
-      (measure.lineBreakBefore && currentGroup.length > 0) ||
-      currentGroup.length >= cfg.measuresPerLine;
-
-    if (shouldBreak) {
-      lineGroups.push(currentGroup);
-      currentGroup = [];
-    }
-    currentGroup.push(measure);
-  }
-  if (currentGroup.length > 0) {
-    lineGroups.push(currentGroup);
-  }
-
-  for (let lineIdx = 0; lineIdx < lineGroups.length; lineIdx++) {
-    const lineMeasures = lineGroups[lineIdx];
-
-    const lineY = cfg.marginTop + lineIdx * (cfg.lineHeight + cfg.lineGap);
-    const measureWidth = (cfg.width - cfg.marginLeft * 2) / cfg.measuresPerLine;
-
-    const measureLayouts: MeasureLayout[] = [];
+  let layoutWidth = cfg.width;
+  for (const [lineIndex, lineGroup] of groups.entries()) {
+    const lineY = cfg.marginTop + lineIndex * (cfg.lineHeight + cfg.lineGap);
     let currentX = cfg.marginLeft;
-
-    for (let mIdx = 0; mIdx < lineMeasures.length; mIdx++) {
-      const measure = lineMeasures[mIdx];
-      const notePositions: NotePosition[] = [];
-
-      // 使用动态间距计算
-      const noteSpacing = calculateDynamicSpacing(measure.notes, cfg.noteFontSize, measureWidth * 0.8);
-      const positions = calculateNotePositions(measure.notes, cfg.noteFontSize, currentX + noteSpacing / 2, noteSpacing);
-
-      for (let nIdx = 0; nIdx < measure.notes.length; nIdx++) {
-        const note = measure.notes[nIdx];
-        const { x, y } = positions[nIdx];
-        const noteY = lineY + cfg.lineHeight / 2;
-        
-        const notePos: NotePosition = {
-          index: globalNoteIndex,
-          x: x,
-          y: noteY,
+    const measures: MeasureLayout[] = [];
+    for (const { measure, slots, width } of lineGroup) {
+      const spare = Math.max(0, width - padding * 2 - slots.reduce((sum, slot) => sum + slot, 0));
+      let cursor = currentX + padding + spare / 2;
+      const notes = measure.notes.map((note, index): NotePosition => {
+        const slot = slots[index];
+        const position: NotePosition = {
+          index: allNotes.length,
+          x: cursor + slot / 2,
+          y: lineY + cfg.lineHeight / 2,
           note,
           measureNumber: measure.number,
-          // 直接从 AST 中读取 beamGroup 和 slurGroup
-          beamGroup: (note.type === 'note' || note.type === 'rest') ? note.beamGroup : undefined,
+          beamGroup: note.type === 'note' || note.type === 'rest' ? note.beamGroup : undefined,
           slurGroup: note.type === 'note' ? note.slurGroup : undefined,
         };
-
-        notePositions.push(notePos);
-        allNotes.push(notePos);
-        globalNoteIndex++;
-      }
-
-      // 计算小节的实际宽度（基于音符位置）
-      let actualMeasureWidth = measureWidth;
-      if (notePositions.length > 0) {
-        const lastNote = notePositions[notePositions.length - 1];
-        // 实际宽度 = 最后一个音符到起始位置的距离 + 音符间距
-        actualMeasureWidth = lastNote.x - currentX + noteSpacing;
-      }
-
-      measureLayouts.push({
-        measure,
-        x: currentX,
-        y: lineY,
-        width: actualMeasureWidth,
-        notes: notePositions,
-        lyrics: calculateLyricsPositions(measure, notePositions, lineY, cfg),
+        cursor += slot;
+        allNotes.push(position);
+        return position;
       });
-
-      // 更新下一个小节的起始位置
-      currentX += actualMeasureWidth;
+      measures.push({ measure, x: currentX, y: lineY, width, notes, lyrics: calculateLyricsPositions(measure, notes, lineY, cfg) });
+      currentX += width;
     }
-
-    lines.push({
-      measures: measureLayouts,
-      y: lineY,
-      height: cfg.lineHeight,
-    });
+    layoutWidth = Math.max(layoutWidth, currentX + cfg.marginLeft);
+    lines.push({ measures, y: lineY, height: cfg.lineHeight });
   }
-
-  const totalHeight = lines.length > 0
-    ? lines[lines.length - 1].y + cfg.lineHeight + cfg.lineGap
-    : cfg.marginTop;
-
   return {
-    width: cfg.width,
-    height: totalHeight,
+    width: layoutWidth,
+    height: lines.length > 0 ? lines[lines.length - 1].y + cfg.lineHeight + cfg.lineGap : cfg.marginTop,
     lines,
     allNotes,
   };

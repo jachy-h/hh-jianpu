@@ -1,5 +1,5 @@
 import { NoteElement } from '../types/index.js';
-import { calculateNoteBoundingBox, checkBoundingBoxOverlap } from './bounding-box.js';
+import { calculateNoteBoundingBox } from './bounding-box.js';
 
 export function calculateDynamicSpacing(
   notes: NoteElement[],
@@ -54,7 +54,7 @@ export function calculateNotePositions(
   let currentX = startX;
   const y = 0; // 暂时使用固定Y
   
-  for (const note of notes) {
+  for (let index = 0; index < notes.length; index++) {
     positions.push({ x: currentX, y });
     currentX += spacing;
   }

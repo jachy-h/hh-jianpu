@@ -17,7 +17,6 @@ import type { DecorationSet } from '@codemirror/view';
 
 import { jianpu } from './jianpu-language';
 import { jianpuTheme } from './jianpu-theme';
-import { ButtonTip } from '../ui';
 
 // ============================================================
 // 解析错误 Decoration Extension
@@ -186,6 +185,8 @@ interface EditorProps {
   onBlur?: () => void;
   /** 编辑器滚动时的回调，参数为当前可见的第一行行号（从 1 开始） */
   onScroll?: (firstVisibleLine: number) => void;
+  /** 从预览点击小节时定位到的文档范围 */
+  sourceRangeToLocate?: { from: number; to: number } | null;
 }
 
 /** 将自动保存间隔为可读字符串，如 "1秒" 或 "1000ms" */
@@ -196,15 +197,30 @@ function formatDelay(ms: number): string {
 /**
  * 简谱文本编辑器（CodeMirror 6）
  */
-const Editor: React.FC<EditorProps> = ({ value, onChange, parseErrors = [], isAutoSaving = false, lastSavedAt = null, onTransposeApply, onFocus, onBlur, onScroll }) => {
+const Editor: React.FC<EditorProps> = ({ value, onChange, parseErrors = [], isAutoSaving = false, lastSavedAt = null, onTransposeApply, onFocus, onBlur, onScroll, sourceRangeToLocate }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
   const [copied, setCopied] = useState(false);
   const [isTransposeOpen, setIsTransposeOpen] = useState(false);
+  const [activeErrorIndex, setActiveErrorIndex] = useState(0);
   // 记录上一次由内部变更产生的值，避免 value prop 变化时重复写回 EditorView
   const internalValueRef = useRef<string>(value);
   // 记录上一次滚动的行号，避免重复调用 onScroll
   const lastScrollLineRef = useRef<number>(1);
+
+  const handleLocateError = () => {
+    const view = viewRef.current;
+    if (!view || parseErrors.length === 0) return;
+    const index = activeErrorIndex % parseErrors.length;
+    const range = errorRange(view.state.doc, parseErrors[index]);
+    setActiveErrorIndex((index + 1) % parseErrors.length);
+    if (!range) return;
+    view.dispatch({
+      selection: { anchor: range.from, head: Math.max(range.from, range.to) },
+      effects: EditorView.scrollIntoView(range.from, { y: 'center' }),
+    });
+    view.focus();
+  };
 
   // ── 初始化 EditorView（仅 mount 时创建一次）────────────────
   useEffect(() => {
@@ -274,6 +290,17 @@ const Editor: React.FC<EditorProps> = ({ value, onChange, parseErrors = [], isAu
     view.dispatch({ effects: setErrorsEffect.of(parseErrors) });
   }, [parseErrors]);
 
+  useEffect(() => {
+    const view = viewRef.current;
+    if (!view || !sourceRangeToLocate) return;
+    const from = Math.min(sourceRangeToLocate.from, view.state.doc.length);
+    const to = Math.min(Math.max(from, sourceRangeToLocate.to), view.state.doc.length);
+    view.dispatch({
+      selection: { anchor: from, head: to },
+      effects: EditorView.scrollIntoView(from, { y: 'center' }),
+    });
+  }, [sourceRangeToLocate]);
+
   return (
     <div className="h-full flex flex-col">
       {/* 标题栏 */}
@@ -337,13 +364,15 @@ const Editor: React.FC<EditorProps> = ({ value, onChange, parseErrors = [], isAu
           ) : null}
           {/* 解析错误数量 */}
           {parseErrors.length > 0 && (
-            <TextTip
-              tipContent="点击编辑器查看详细信息"
-              color="#DC2626"
-              position="top"
+            <button
+              type="button"
+              onClick={handleLocateError}
+              className="text-red-600 hover:text-red-700 underline decoration-dotted underline-offset-2"
+              aria-label={`定位第 ${activeErrorIndex + 1} 个解析错误`}
+              title="点击定位到源码中的错误"
             >
               {parseErrors.length} 个错误
-            </TextTip>
+            </button>
           )}
         </span>
       </div>

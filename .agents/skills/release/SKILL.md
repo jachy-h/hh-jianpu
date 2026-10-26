@@ -9,7 +9,7 @@ metadata:
 
 # Release Skill - 版本发布
 
-自动化版本发布流程。工作区可以有未提交内容，脚本统一处理。
+自动化版本发布流程。先显式暂存本次发布文件；无关未暂存内容保留在工作区。
 
 ## 什么时候使用
 
@@ -27,12 +27,17 @@ metadata:
 
 ### 步骤 2：运行发布脚本
 
+先审查 `git diff` 并用明确路径暂存发布所需文件。脚本只提交暂存区，另行暂存固定的版本文件，不会执行全工作区 `git add -A`。
+
 ```bash
 # 人工交互模式（会询问是否确认发布版本号）
 ./scripts/release.sh [patch|minor|major]
 
 # AI Agent / 非交互模式（传入 --yes 跳过所有确认）
 ./scripts/release.sh [patch|minor|major] --yes
+
+# 指定目标版本并关联 issue
+./scripts/release.sh 0.7.1 --yes --issue=3
 ```
 
 脚本自动执行：
@@ -40,9 +45,9 @@ metadata:
 2. 更新版本文件：`package.json`、`packages/core/package.json`、`apps/web/package.json`
 3. 更新 `apps/web/src/config.ts`（版本号 + 发布日期）
 4. 将 `CHANGELOG [Unreleased]` 内容归档到新版本下，恢复空 `[Unreleased]`
-5. 运行测试（`pnpm test`）
+5. 运行完整质量门禁（`pnpm lint`、`pnpm build:core`、`pnpm test`）
 6. 构建项目（`pnpm build`）
-7. `git add -A` — 提交工作区全部内容，生成 `chore: release vX.Y.Z`
+7. 暂存固定版本文件并提交已审查的暂存区，生成 `chore: release vX.Y.Z`；`--issue=N` 将 `Refs #N` 写入提交正文
 8. 打标签 `vX.Y.Z`
 
 ### 步骤 3：推送

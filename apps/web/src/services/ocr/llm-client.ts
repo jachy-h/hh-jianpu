@@ -7,7 +7,6 @@ import type { LLMProviderConfig, LLMRequest, LLMResponse, OCRError } from './typ
 
 /** API 请求超时时间（毫秒） */
 // const API_TIMEOUT = 30000; // 30 秒
-const API_TIMEOUT = 0; // 暂时禁用超时，用于测试实际响应时间
 
 /** 简谱识别 Prompt */
 const RECOGNITION_PROMPT = `你是一个简谱识别专家。请分析图片中的简谱（数字简谱/jianpu），将其转换为以下文本格式。

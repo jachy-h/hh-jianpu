@@ -1,12 +1,9 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
 import TopBar from '../components/Layout/TopBar';
-import ButtonTip from '../components/ui/ButtonTip';
 import FeedbackWidget from '../components/Feedback/FeedbackWidget';
 import { HELP_PAGE_VERSION, HELP_PAGE_UPDATED_DATE } from '../config';
 
 const HelpPage: React.FC = () => {
-  const navigate = useNavigate();
 
   return (
     <div className="h-screen flex flex-col">
@@ -33,6 +30,28 @@ const HelpPage: React.FC = () => {
               然后播放！
             </p>
           </div>
+
+          <section className="rounded-lg border border-gray-300 bg-gray-50 p-4">
+            <h3 className="mb-3 text-xl font-bold text-gray-800">选段与练习</h3>
+            <p className="mb-2 text-sm text-gray-800">
+              在预览中先点击起点小节 A，再点击终点小节 B，播放会循环包含 A、B 在内的完整区间。再次点击可重新选择；播放器中的清除选段按钮恢复全曲播放。
+            </p>
+            <p className="mb-2 text-sm text-gray-800">
+              播放时预览会跟随当前小节。手动滚动浏览后暂停自动跟随，点击「恢复播放跟随」继续跟随。
+            </p>
+            <p className="text-sm text-gray-800">
+              练习速度可选 0.5× 至 2×，实际播放速度等于曲谱 BPM 乘倍率。倍率独立于源码中的原始 BPM，循环和播放前倒计时使用相同的练习速度。
+            </p>
+          </section>
+
+          <section className="rounded-lg border border-blue-200 bg-blue-50 p-4">
+            <h3 className="mb-3 text-xl font-bold text-gray-800">上下双声部联谱</h3>
+            <p className="mb-2 text-sm text-gray-800">用 Q[upper] 写旋律、Q[lower] 写伴奏；上下行同时演奏，拍点与小节线对齐，换行时保持一组。可以从首页「上下双声部」示例开始。</p>
+            <pre className="mb-2 overflow-x-auto rounded bg-white p-3 text-sm">{"Q[upper] 3/5/ 7/1'/ 1' - |\nQ[lower] 1 0 0 1 |"}</pre>
+            <p className="mb-2 text-sm text-gray-800">歌词使用 C[upper]、C[lower]，分别按所属声部从头分配；无词音符用 _ 占位。上下小节数须一致，每小节各自满足拍号，整小节休止请写足 0。双声部语法或时值有误时，先修正再播放或移调。</p>
+            <p className="mb-2 text-sm text-gray-800">播放条可分别静音旋律或伴奏；选段循环、练习倍率、倒计时和暂停恢复共用时间轴。点击下声部小节可定位其源码。</p>
+            <p className="text-sm text-gray-800">目前每声部支持单音，和弦、琶音及第三声部暂未支持。旧谱的连续 Q / P 行仍顺序演奏，不会自动转成双声部。</p>
+          </section>
 
           {/* 完整语法表 */}
           <section>
@@ -94,8 +113,8 @@ const HelpPage: React.FC = () => {
                   </tr>
                   <tr>
                     <td className="border border-gray-300 px-4 py-2"><code className="font-mono bg-gray-100 px-2 py-1 rounded">.</code></td>
-                    <td className="border border-gray-300 px-4 py-2">低八度（后置）</td>
-                    <td className="border border-gray-300 px-4 py-2"><code className="font-mono">5. 6. 7.</code></td>
+                    <td className="border border-gray-300 px-4 py-2">低八度（后置逗号；兼容前置点号）</td>
+                    <td className="border border-gray-300 px-4 py-2"><code className="font-mono">5, .6 7,</code></td>
                   </tr>
                   <tr>
                     <td className="border border-gray-300 px-4 py-2"><code className="font-mono bg-gray-100 px-2 py-1 rounded">#</code></td>
@@ -201,9 +220,9 @@ const HelpPage: React.FC = () => {
                 </thead>
                 <tbody>
                   <tr>
-                    <td className="border border-gray-300 px-4 py-2"><code className="font-mono bg-gray-100 px-2 py-1 rounded">P</code></td>
-                    <td className="border border-gray-300 px-4 py-2">旋律行标记（可选）</td>
-                    <td className="border border-gray-300 px-4 py-2"><code className="font-mono">P 1 2 3 4</code></td>
+                    <td className="border border-gray-300 px-4 py-2"><code className="font-mono bg-gray-100 px-2 py-1 rounded">Q</code></td>
+                    <td className="border border-gray-300 px-4 py-2">旋律行标记（可选；P 为兼容别名）</td>
+                    <td className="border border-gray-300 px-4 py-2"><code className="font-mono">Q 1 2 3 4</code></td>
                   </tr>
                   <tr>
                     <td className="border border-gray-300 px-4 py-2"><code className="font-mono bg-gray-100 px-2 py-1 rounded">C</code></td>
@@ -217,8 +236,8 @@ const HelpPage: React.FC = () => {
                   </tr>
                   <tr>
                     <td className="border border-gray-300 px-4 py-2"><code className="font-mono bg-gray-100 px-2 py-1 rounded">-</code></td>
-                    <td className="border border-gray-300 px-4 py-2">占位符（跳过该音符）</td>
-                    <td className="border border-gray-300 px-4 py-2"><code className="font-mono">C 星 _ _ 光</code></td>
+                    <td className="border border-gray-300 px-4 py-2">占位符（某个发声音符没有歌词；休止、延长不占歌词）</td>
+                    <td className="border border-gray-300 px-4 py-2"><code className="font-mono">C 星 _ 光</code></td>
                   </tr>
                 </tbody>
               </table>
@@ -286,10 +305,10 @@ const HelpPage: React.FC = () => {
 ---
 
 P 1 1 5 5 | 6 6 5 - |
-C 一 闪 一 闪 亮 晶 晶 -
+C 一 闪 一 闪 亮 晶 晶
 
 P 4 4 3 3 | 2 2 1 - |
-C 满 天 都 是 小 星 星 -`}
+C 满 天 都 是 小 星 星`}
               </pre>
             </div>
           </section>
@@ -301,7 +320,7 @@ C 满 天 都 是 小 星 星 -`}
               <details className="bg-gray-50 p-3 rounded border border-gray-200">
                 <summary className="font-semibold cursor-pointer">为什么没有声音？</summary>
                 <p className="mt-2 text-gray-600">
-                  检查：1) 音符之间有空格 2) 小节线两边有空格 3) 浏览器音量已开启
+                  检查：1) 解析诊断中的符号和小节时值 2) 浏览器音量已开启。音符和小节线两侧的空格可省略；空格会影响减时线分组。
                 </p>
               </details>
               <details className="bg-gray-50 p-3 rounded border border-gray-200">

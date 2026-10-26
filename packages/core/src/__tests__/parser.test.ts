@@ -792,8 +792,7 @@ b7 b6 b3 - |`;
     }
   });
 
-  // Skip: parser拍数计算与音符时值不匹配，这是parser的已知bug
-  it.skip('should parse combined flat with octave and underline', () => {
+  it('should parse combined flat with octave and underline', () => {
     const source = `---
 调号：C
 拍号：4/4
@@ -810,7 +809,7 @@ b3,/ b3,/ b3,/ b3,/ b3/ b3/ b3/ b3/ |`;
       expect(note.pitch).toBe(3);
       expect(note.accidental).toBe('flat');
       expect(note.octave).toBe(-1);
-      expect(note.duration.base).toBe(16);
+      expect(note.duration.base).toBe(8);
     }
   });
 });
@@ -1130,15 +1129,14 @@ describe('Dotted Notes', () => {
 // ============================================================
 
 describe('Beam Groups', () => {
-  // Skip: parser拍数计算与音符时值不匹配
-  it.skip('should group consecutive eighth notes without space', () => {
+  it('should group consecutive eighth notes without space', () => {
     const source = `---
 调号：C
 拍号：4/4
 速度：120
 ---
 
-1/2/3/4/ |`;
+1/2/3/4/ 5 6 |`;
 
     const result = parse(source);
     expect(result.errors).toHaveLength(0);
@@ -1154,8 +1152,7 @@ describe('Beam Groups', () => {
     }
   });
 
-  // Skip: parser拍数计算与音符时值不匹配
-  it.skip('should not group notes separated by space', () => {
+  it('should not group notes separated by space', () => {
     const source = `---
 调号：C
 拍号：4/4
@@ -1168,15 +1165,10 @@ describe('Beam Groups', () => {
     expect(result.errors).toHaveLength(0);
     const notes = result.score!.measures[0].notes;
 
-    // 1/ 和 2/ 一组，3/ 和 4/ 另一组
-    if (notes[0].type === 'note' && notes[1].type === 'note' &&
-        notes[2].type === 'note' && notes[3].type === 'note') {
-      expect(notes[0].beamGroup).toBeDefined();
-      expect(notes[1].beamGroup).toBe(notes[0].beamGroup);
-      // 2/ 和 3/ 之间有空格，应该不同组
-      expect(notes[2].beamGroup).toBeDefined();
-      expect(notes[2].beamGroup).not.toBe(notes[0].beamGroup);
-      expect(notes[3].beamGroup).toBe(notes[2].beamGroup);
+    expect(notes).toHaveLength(8);
+    for (const note of notes) {
+      expect(note.type).toBe('note');
+      if (note.type === 'note') expect(note.beamGroup).toBeUndefined();
     }
   });
 
@@ -1302,15 +1294,14 @@ describe('Edge Cases and Error Handling', () => {
     expect(result.score?.measures.length).toBeGreaterThan(1);
   });
 
-  // Skip: parser拍数计算与音符时值不匹配
-  it.skip('should handle rest with underline', () => {
+  it('should handle rest with underline', () => {
     const source = `---
 调号：C
 拍号：4/4
 速度：120
 ---
 
-0/ 0// 1 - - |`;
+0/ 0// 0// 1 - - |`;
 
     const result = parse(source);
     expect(result.errors).toHaveLength(0);

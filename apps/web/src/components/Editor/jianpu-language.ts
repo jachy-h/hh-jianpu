@@ -11,6 +11,7 @@ import { StreamLanguage, LanguageSupport, StringStream } from '@codemirror/langu
 interface JianpuState {
   /** 元信息头已结束（空行之后） */
   metaDone: boolean;
+  inFrontmatter: boolean;
   /** 当前行 token 类型：meta / lyrics / melody / body */
   lineKind: 'meta' | 'lyrics' | 'melody' | 'body';
   /** 当前行是否已消费 C/Q 前缀 */
@@ -20,7 +21,7 @@ interface JianpuState {
 // ============================================================
 // 元信息关键字集合（与 tokenizer.ts 保持同步）
 // ============================================================
-const META_KEYS = new Set(['标题', '调号', '拍号', '速度', 'title', 'key', 'time', 'tempo']);
+const META_KEYS = new Set(['标题', '调号', '拍号', '速度', 'title', 'key', 'time', 'tempo', '声部']);
 
 function isMetaKey(word: string): boolean {
   return META_KEYS.has(word) || META_KEYS.has(word.toLowerCase());
@@ -33,7 +34,7 @@ const jianpuLanguage = StreamLanguage.define<JianpuState>({
   name: 'jianpu',
 
   startState(): JianpuState {
-    return { metaDone: false, lineKind: 'meta', prefixConsumed: false };
+    return { metaDone: false, inFrontmatter: false, lineKind: 'meta', prefixConsumed: false };
   },
 
   /**
@@ -43,6 +44,16 @@ const jianpuLanguage = StreamLanguage.define<JianpuState>({
     // ── 行首处理 ──────────────────────────────────────────────
     if (stream.sol()) {
       state.prefixConsumed = false;
+      if (stream.string.trim() === '---') {
+        state.inFrontmatter = !state.inFrontmatter;
+        state.metaDone = !state.inFrontmatter;
+        stream.skipToEnd();
+        return 'meta';
+      }
+      if (state.inFrontmatter && /^\s*(?:#|\/\/)/.test(stream.string)) {
+        stream.skipToEnd();
+        return 'comment';
+      }
 
       // 空白行：如果还在元信息头，标记元信息结束
       if (stream.eol()) {
@@ -56,7 +67,7 @@ const jianpuLanguage = StreamLanguage.define<JianpuState>({
         // 检查当前行是否为合法的元信息行
         const rest = stream.string;
         const metaMatch = rest.match(/^([\u4e00-\u9fa5a-zA-Z]+)\s*[:：]/);
-        if (metaMatch && isMetaKey(metaMatch[1])) {
+        if (metaMatch && (state.inFrontmatter || isMetaKey(metaMatch[1]))) {
           state.lineKind = 'meta';
         } else {
           // 不匹配元信息时，元信息头结束，当作 body 处理
@@ -81,7 +92,7 @@ const jianpuLanguage = StreamLanguage.define<JianpuState>({
     if (state.lineKind === 'lyrics') {
       // 消费 C 标记
       if (!state.prefixConsumed) {
-        if (stream.eat('C')) {
+        if (stream.match(/^C(?:\[[^\]]*\])?/)) {
           state.prefixConsumed = true;
           return 'keyword'; // 对应 tags.keyword
         }
@@ -94,7 +105,7 @@ const jianpuLanguage = StreamLanguage.define<JianpuState>({
     // ── 旋律行：消费 Q 后按 body 处理 ────────────────────────
     if (state.lineKind === 'melody') {
       if (!state.prefixConsumed) {
-        if (stream.eat('Q')) {
+        if (stream.match(/^[QP](?:\[[^\]]*\])?/)) {
           state.prefixConsumed = true;
           return 'keyword';
         }
@@ -109,7 +120,7 @@ const jianpuLanguage = StreamLanguage.define<JianpuState>({
 
   blankLine(state): void {
     // 空行触发：重置行状态
-    if (!state.metaDone) {
+    if (!state.metaDone && !state.inFrontmatter) {
       state.metaDone = true;
     }
     state.lineKind = 'body';
@@ -122,7 +133,6 @@ const jianpuLanguage = StreamLanguage.define<JianpuState>({
 
   // 将返回的字符串 tag 名映射到 @lezer/highlight tags
   languageData: {
-    commentTokens: { line: '//' },
   },
 });
 
@@ -131,8 +141,8 @@ const jianpuLanguage = StreamLanguage.define<JianpuState>({
 // ============================================================
 function classifyBodyLine(line: string): 'lyrics' | 'melody' | 'body' {
   const trimmed = line.trimStart();
-  if (trimmed === 'C' || trimmed.startsWith('C ')) return 'lyrics';
-  if (trimmed === 'Q' || trimmed.startsWith('Q ')) return 'melody';
+  if (/^C(?:\[[^\]]*\])?(?:\s|$)/.test(trimmed)) return 'lyrics';
+  if (/^[QP](?:\[[^\]]*\])?(?:\s|$)/.test(trimmed)) return 'melody';
   return 'body';
 }
 

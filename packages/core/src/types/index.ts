@@ -134,10 +134,21 @@ export interface Measure {
   lineBreakBefore?: boolean;
 }
 
+/** 双声部的稳定标识；旧谱默认属于 upper。 */
+export type VoiceId = 'upper' | 'lower';
+
+/** 下声部；主声部继续使用 Score.measures，避免重复存储旋律。 */
+export interface SecondaryVoice {
+  readonly id: 'lower';
+  readonly measures: Measure[];
+}
+
 /** 完整曲谱 AST */
 export interface Score {
   metadata: Metadata;
   measures: Measure[];
+  /** 显式双声部曲谱的下声部。 */
+  secondaryVoice?: SecondaryVoice;
 }
 
 // ---- 解析错误 ----
@@ -190,6 +201,10 @@ export interface PlaybackState {
 
 /** 音符渲染位置 */
 export interface NotePosition {
+  /** 所属声部与全曲四分音符拍坐标（双声部使用）。 */
+  voiceId?: VoiceId;
+  startBeat?: number;
+  durationBeats?: number;
   /** 在扁平化音符序列中的索引（用于高亮定位） */
   index: number;
   /** SVG x 坐标 */
@@ -250,6 +265,8 @@ export interface LyricsPosition {
 
 /** 小节渲染布局 */
 export interface MeasureLayout {
+  voiceId?: VoiceId;
+  height?: number;
   measure: Measure;
   x: number;
   y: number;
@@ -261,6 +278,8 @@ export interface MeasureLayout {
 
 /** 行布局 */
 export interface LineLayout {
+  /** 联谱的下声部与主声部共享横坐标。 */
+  secondaryMeasures?: MeasureLayout[];
   measures: MeasureLayout[];
   y: number;
   height: number;

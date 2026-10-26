@@ -17,7 +17,7 @@ describe('BoundingBox Overlap Check', () => {
     const x = 100;
     const y = 100;
     
-    const bbox = calculateNoteBoundingBox(note, fontSize, x, y);
+    expect(calculateNoteBoundingBox(note, fontSize, x, y).vertical.height).toBeGreaterThan(fontSize);
     
     // 低八度点位置：y + 16 (非倚音)
     const lowOctaveDotY = y + 16;
@@ -53,11 +53,9 @@ describe('BoundingBox Overlap Check', () => {
     expect(bbox.vertical.height).toBeGreaterThan(fontSize); // 应该比基本音符高
     
     // 低八度点位置
-    const firstOctaveDotY = y + 16;
     const secondOctaveDotY = y + 22;
     
     // 减时线位置
-    const firstBeamY = y + 12;
     const secondBeamY = y + 20;
     const thirdBeamY = y + 28;
     

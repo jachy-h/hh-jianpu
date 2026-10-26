@@ -4,7 +4,6 @@
 
 import { tokenize, type Token } from './tokenizer.js';
 import type {
-  Score,
   Metadata,
   Measure,
   NoteElement,
@@ -18,7 +17,6 @@ import type {
   ParseError,
   ParseResult,
   LyricsSyllable,
-  MeasureLyrics,
 } from '../types/index.js';
 
 /** 默认元信息 */
@@ -229,11 +227,13 @@ function parseBody(tokens: Token[]): { measures: Measure[]; errors: ParseError[]
   // 遇到 BARLINE 后等待下一个内容 token 来确定新小节的起始行号
   let pendingNewMeasure = false;
   let i = 0;
+  let prefixStartIndex = 0;
   while (i < bodyTokens.length) {
     const token = bodyTokens[i];
 
     // 遇到 BARLINE 后，用第一个内容 token 的行号作为新小节起始行号
     if (pendingNewMeasure && token.type !== 'SLUR_START' && token.type !== 'SLUR_END') {
+      if (measureStartLine !== token.line) measureStartOffset = token.offset;
       measureStartLine = token.line;
       pendingNewMeasure = false;
     }
@@ -282,26 +282,17 @@ function parseBody(tokens: Token[]): { measures: Measure[]; errors: ParseError[]
         }
         
         if (foundNote) {
-          // 先检查音符后的下划线数量（在 parseNote 消耗它们之前）
-          let peekIndex = noteIndex + 1; // 音符的下一个 token
-          let underlineCount = 0;
-          
-          // 计数连续的下划线
-          while (peekIndex < bodyTokens.length && bodyTokens[peekIndex].type === 'UNDERLINE') {
-            underlineCount++;
-            peekIndex++;
-          }
-          
-          const noteResult = parseNote(bodyTokens, noteIndex);
+          const noteResult = parseNote(bodyTokens, noteIndex, prefixStartIndex);
+          reportUnsupportedDuration(bodyTokens, noteIndex, noteResult.nextIndex, errors);
           const note = noteResult.note;
           note.isGrace = true; // 标记为倚音
-          note.hasSpaceBefore = bodyTokens[noteIndex]?.hasSpaceBefore || false;
+          note.hasSpaceBefore = token.hasSpaceBefore || false;
           
           // 根据下划线数量判断类型
-          if (underlineCount === 1) {
+          if (note.duration.base === 8) {
             // 单减时线：长帚音
             note.graceType = 'long';
-          } else if (underlineCount >= 2) {
+          } else if (note.duration.base >= 16) {
             // 双减时线：短帚音
             note.graceType = 'short';
           } else {
@@ -329,7 +320,8 @@ function parseBody(tokens: Token[]): { measures: Measure[]; errors: ParseError[]
       }
 
       case 'NOTE': {
-        const noteResult = parseNote(bodyTokens, i);
+        const noteResult = parseNote(bodyTokens, i, prefixStartIndex);
+        reportUnsupportedDuration(bodyTokens, i, noteResult.nextIndex, errors);
         const note = noteResult.note;
         // 记录空格信息：需要向前回溯前置修饰符（#、b、八度标记），
         // 空格可能被标记在修饰符 token 上（如 " #6" 中，空格记在 SHARP 上而非 NOTE 上）
@@ -338,7 +330,7 @@ function parseBody(tokens: Token[]): { measures: Measure[]; errors: ParseError[]
           let checkBack = i - 1;
           while (checkBack >= 0) {
             const pt = bodyTokens[checkBack];
-            if (pt.type === 'SHARP' || pt.type === 'FLAT' || pt.type === 'OCTAVE_UP' || pt.type === 'OCTAVE_DOWN') {
+            if (pt.type === 'SHARP' || pt.type === 'FLAT' || pt.type === 'OCTAVE_UP' || pt.type === 'OCTAVE_DOWN' || pt.type === 'TRILL' || pt.type === 'DOT' || pt.type === 'SLUR_START') {
               if (pt.hasSpaceBefore) {
                 noteHasSpaceBefore = true;
                 break;
@@ -395,9 +387,11 @@ function parseBody(tokens: Token[]): { measures: Measure[]; errors: ParseError[]
       }
 
       case 'REST': {
+        const restStart = i;
         const rest: Rest = {
           type: 'rest',
           duration: { base: 4, dots: 0 },
+          hasSpaceBefore: token.hasSpaceBefore,
         };
         currentNotes.push(rest);
         i++;
@@ -405,6 +399,19 @@ function parseBody(tokens: Token[]): { measures: Measure[]; errors: ParseError[]
         const underlineResult = consumeUnderlines(bodyTokens, i);
         rest.duration.base = underlineResult.base;
         i = underlineResult.nextIndex;
+        if (bodyTokens[i]?.type === 'DOT' && !bodyTokens[i]?.hasSpaceBefore) {
+          rest.duration.dots = 1;
+          i++;
+        }
+        while (bodyTokens[i]?.type === 'DOT' && !bodyTokens[i]?.hasSpaceBefore) {
+          errors.push({
+            message: '暂不支持双附点，请将时值拆分为多个音符或休止符',
+            position: { line: bodyTokens[i].line, column: bodyTokens[i].column, offset: bodyTokens[i].offset },
+            length: 1,
+          });
+          i++;
+        }
+        reportUnsupportedDuration(bodyTokens, restStart, i, errors);
         break;
       }
 
@@ -443,10 +450,31 @@ function parseBody(tokens: Token[]): { measures: Measure[]; errors: ParseError[]
         i++;
         break;
 
-      default:
+      default: {
+        // 未被音符消费的修饰符只能作为紧邻下一音符的前缀。
+        let next = i + 1;
+        const prefixTypes = ['SHARP', 'FLAT', 'OCTAVE_UP', 'OCTAVE_DOWN', 'TRILL', 'DOT'];
+        while (prefixTypes.includes(bodyTokens[next]?.type) && !bodyTokens[next]?.hasSpaceBefore) next++;
+        const isPrefix = prefixTypes.includes(token.type) && bodyTokens[next]?.type === 'NOTE'
+          && !bodyTokens[next]?.hasSpaceBefore;
+        const duplicateAccidental = ['SHARP', 'FLAT'].includes(token.type)
+          && ['SHARP', 'FLAT'].includes(bodyTokens[i + 1]?.type)
+          && !bodyTokens[i + 1]?.hasSpaceBefore;
+        const excessTrill = token.type === 'TRILL' && bodyTokens[i + 1]?.type === 'TRILL'
+          && bodyTokens[i + 2]?.type === 'TRILL';
+        if (!isPrefix || duplicateAccidental || excessTrill) {
+          errors.push({
+            message: `修饰符 ${token.value} 必须紧邻有效音符`,
+            position: { line: token.line, column: token.column, offset: token.offset },
+            length: token.value.length,
+          });
+        }
         i++;
         break;
+      }
     }
+    // 已消费的前一音符后缀不能再次作为下一个无空格音符的前缀。
+    if (['NOTE', 'REST', 'TIE', 'BREATH', 'BARLINE', 'GRACE_PREFIX'].includes(token.type)) prefixStartIndex = i;
   }
 
   // 最后一个小节
@@ -466,7 +494,19 @@ function parseBody(tokens: Token[]): { measures: Measure[]; errors: ParseError[]
   }
 
   // 为所有小节识别连音组（基于空格分隔）
-  assignBeamGroups(measures, bodyTokens);
+  assignBeamGroups(measures);
+
+  const slurStack: Token[] = [];
+  for (const token of bodyTokens) {
+    if (token.type === 'SLUR_START') slurStack.push(token);
+    if (token.type === 'SLUR_END') {
+      if (slurStack.length > 0) slurStack.pop();
+      else errors.push({ message: '圆滑线右括号没有对应的左括号', position: { line: token.line, column: token.column, offset: token.offset }, length: 1 });
+    }
+  }
+  for (const token of slurStack) {
+    errors.push({ message: '圆滑线左括号未闭合', position: { line: token.line, column: token.column, offset: token.offset }, length: 1 });
+  }
 
   // 识别圆滑线组（基于括号）
   assignSlurGroups(measures, bodyTokens);
@@ -482,7 +522,7 @@ function parseBody(tokens: Token[]): { measures: Measure[]; errors: ParseError[]
  * 识别并标记连音组
  * 规则：相邻的八分音符或八分休止符（duration.base >= 8），且中间没有空格，属于同一个连音组
  */
-function assignBeamGroups(measures: Measure[], tokens: Token[]): void {
+function assignBeamGroups(measures: Measure[]): void {
   let globalBeamGroupId = 0;
   
   for (const measure of measures) {
@@ -544,7 +584,6 @@ function assignSlurGroups(measures: Measure[], tokens: Token[]): void {
   let globalSlurGroupId = 0;
   let slurDepth = 0; // 当前嵌套深度（支持嵌套括号）
   let currentSlurGroupId = 0;
-  let noteIndex = 0; // 当前处理到第几个音符
 
   // 扁平化所有音符用于标记
   const allNotes: Note[] = [];
@@ -587,28 +626,31 @@ function assignSlurGroups(measures: Measure[], tokens: Token[]): void {
 /**
  * 解析一个音符及其修饰符（八度、升降、减时线、附点）
  */
-function parseNote(tokens: Token[], startIndex: number): { note: Note; nextIndex: number } {
+function parseNote(tokens: Token[], startIndex: number, prefixStartIndex: number): { note: Note; nextIndex: number } {
   let i = startIndex;
   let octave = 0;
   let accidental: Note['accidental'] = undefined;
   let dot = false;
 
-  // 检查前置修饰符（升降号）
-  // 向前回溯检查升降号
+  // 接受前置八度标记和变音记号作为兼容写法。
   let checkIdx = i - 1;
-  while (checkIdx >= 0) {
+  while (checkIdx >= prefixStartIndex && !tokens[checkIdx + 1]?.hasSpaceBefore) {
     const prevToken = tokens[checkIdx];
     if (prevToken.type === 'SHARP') {
       accidental = 'sharp';
-      break;
     } else if (prevToken.type === 'FLAT') {
       accidental = 'flat';
-      break;
-    } else if (prevToken.type === 'BARLINE' || prevToken.type === 'NOTE' || prevToken.type === 'REST') {
+    } else if (prevToken.type === 'OCTAVE_UP') {
+      octave++;
+    } else if (prevToken.type === 'OCTAVE_DOWN') {
+      octave--;
+    } else if (prevToken.type === 'BARLINE' || prevToken.type === 'NOTE' || prevToken.type === 'REST' || prevToken.type === 'SLUR_START' || prevToken.type === 'GRACE_PREFIX') {
       break;
     } else {
       checkIdx--;
+      continue;
     }
+    checkIdx--;
   }
 
   // 当前 token 是 NOTE
@@ -616,7 +658,7 @@ function parseNote(tokens: Token[], startIndex: number): { note: Note; nextIndex
   i++;
 
   // 后置修饰符：八度标记、附点（减时线前）
-  while (i < tokens.length) {
+  while (i < tokens.length && !tokens[i].hasSpaceBefore) {
     if (tokens[i].type === 'OCTAVE_UP') {
       octave++;
       i++;
@@ -624,6 +666,7 @@ function parseNote(tokens: Token[], startIndex: number): { note: Note; nextIndex
       octave--;
       i++;
     } else if (tokens[i].type === 'DOT') {
+      if (dot) break;
       dot = true;
       i++;
     } else {
@@ -637,7 +680,7 @@ function parseNote(tokens: Token[], startIndex: number): { note: Note; nextIndex
 
   // 后置修饰符：八度标记（减时线后）
   // 支持 5,/ 和 5/, 两种写法；也支持附点在减时线后（6/.）
-  while (i < tokens.length) {
+  while (i < tokens.length && !tokens[i].hasSpaceBefore) {
     if (tokens[i].type === 'OCTAVE_UP') {
       octave++;
       i++;
@@ -645,6 +688,7 @@ function parseNote(tokens: Token[], startIndex: number): { note: Note; nextIndex
       octave--;
       i++;
     } else if (tokens[i].type === 'DOT') {
+      if (dot) break;
       dot = true;
       i++;
     } else {
@@ -678,7 +722,7 @@ function consumeUnderlines(tokens: Token[], startIndex: number): { base: 1 | 2 |
   let i = startIndex;
   let underlineCount = 0;
 
-  while (i < tokens.length && tokens[i].type === 'UNDERLINE') {
+  while (i < tokens.length && tokens[i].type === 'UNDERLINE' && !tokens[i].hasSpaceBefore) {
     underlineCount++;
     i++;
   }
@@ -688,6 +732,28 @@ function consumeUnderlines(tokens: Token[], startIndex: number): { base: 1 | 2 |
   if (underlineCount >= 2) base = 16;
 
   return { base, nextIndex: i };
+}
+
+function reportUnsupportedDuration(tokens: Token[], start: number, end: number, errors: ParseError[]): void {
+  const slashes = tokens.slice(start, end).filter((token) => token.type === 'UNDERLINE');
+  if (slashes.length > 2) {
+    const token = slashes[2];
+    errors.push({
+      message: '暂不支持三条及以上减时线（小于十六分音符）',
+      position: { line: token.line, column: token.column, offset: token.offset },
+      length: 1,
+    });
+  }
+  const dots = tokens.slice(start, end).filter((token) => token.type === 'DOT');
+  if (tokens[end]?.type === 'DOT') dots.push(tokens[end]);
+  if (dots.length > 1) {
+    const token = dots[1];
+    errors.push({
+      message: '暂不支持双附点，请将时值拆分为多个音符或休止符',
+      position: { line: token.line, column: token.column, offset: token.offset },
+      length: 1,
+    });
+  }
 }
 
 /**
@@ -744,7 +810,7 @@ function validateMeasureBeats(
     if (diff > 0.001) {
       errors.push({
         message: `小节 ${measure.number} 时值不符：期望 ${expectedBeats} 拍，实际 ${totalBeats.toFixed(2)} 拍`,
-        position: { line: 1, column: 0, offset: measure.sourceRange?.from ?? 0 },
+        position: { line: measure.sourceLine ?? 1, column: 1, offset: measure.sourceRange?.from ?? 0 },
         length: (measure.sourceRange?.to ?? 0) - (measure.sourceRange?.from ?? 0),
       });
     }
@@ -760,22 +826,10 @@ export function parse(source: string): ParseResult {
   try {
     const tokens = tokenize(source);
 
-    // 强制要求使用 YAML frontmatter 格式
-    const hasFrontmatter = tokens.some(t => t.type === 'FRONTMATTER_SEPARATOR');
-    if (!hasFrontmatter) {
-      return {
-        score: null,
-        errors: [
-          {
-            message: '元信息必须使用 YAML frontmatter 格式，以 --- 开始和结束。例如：\\n---\\n标题：小星星\\n调号：C\\n拍号：4/4\\n速度：120\\n---',
-            position: { line: 1, column: 1, offset: 0 },
-            length: 0,
-          },
-        ],
-      };
-    }
-
     const metadata = parseMetadata(tokens);
+    const explicitMarkers = tokens.filter(t => ['MELODY_MARKER', 'LYRICS_MARKER'].includes(t.type)
+      && !['Q', 'P', 'C'].includes(t.value));
+    if (explicitMarkers.length > 0) return parseTwoVoices(tokens, metadata);
     const { measures, errors: parseErrors } = parseBody(tokens);
 
     if (measures.length === 0) {
@@ -810,4 +864,48 @@ export function parse(source: string): ParseResult {
       ],
     };
   }
+}
+
+/** 按显式声部标记拆分 Token，保留原始源码位置与声部内的跨行分组。 */
+function parseTwoVoices(tokens: Token[], metadata: Metadata): ParseResult {
+  const streams: Record<'upper' | 'lower', Token[]> = { upper: [], lower: [] };
+  const errors: ParseError[] = [];
+  let target: 'upper' | 'lower' | null = null;
+  let lineHasContent = false;
+  const report = (token: Token, message: string): void => {
+    errors.push({ message, position: { line: token.line, column: token.column, offset: token.offset }, length: Math.max(1, token.value.length) });
+  };
+  for (const token of tokens) {
+    if (['METADATA_KEY', 'METADATA_VALUE', 'FRONTMATTER_SEPARATOR', 'EOF'].includes(token.type)) continue;
+    if (token.type === 'NEWLINE') { target = null; lineHasContent = false; continue; }
+    if (token.type === 'MELODY_MARKER' || token.type === 'LYRICS_MARKER') {
+      if (token.value === 'upper' || token.value === 'lower') {
+        target = token.value;
+        streams[target].push(token);
+      } else {
+        report(token, `双声部曲谱必须使用 Q[upper]/Q[lower] 或 C[upper]/C[lower]，不支持声部「${token.value}」`);
+      }
+      lineHasContent = true;
+      continue;
+    }
+    if (target) streams[target].push(token);
+    else if (!lineHasContent) {
+      report(token, '双声部曲谱中的旋律行必须显式指定 upper 或 lower 声部');
+      lineHasContent = true;
+    }
+  }
+  const upper = parseBody(streams.upper);
+  const lower = parseBody(streams.lower);
+  for (const [id, result] of [['upper', upper], ['lower', lower]] as const) {
+    errors.push(...[...result.errors, ...validateMeasureBeats(result.measures, metadata.timeSignature)]
+      .map(error => ({ ...error, message: `[${id}] ${error.message}` })));
+    if (result.measures.length === 0) report(streams[id][0] ?? tokens[0], `[${id}] 缺少声部小节`);
+  }
+  if (upper.measures.length !== lower.measures.length) {
+    const missing = upper.measures.length < lower.measures.length ? 'upper' : 'lower';
+    const number = Math.min(upper.measures.length, lower.measures.length) + 1;
+    report(streams[missing][streams[missing].length - 1] ?? tokens[0], `[${missing}] 缺少第 ${number} 小节；上下声部小节数必须一致`);
+  }
+  return { score: upper.measures.length || lower.measures.length
+    ? { metadata, measures: upper.measures, secondaryVoice: { id: 'lower', measures: lower.measures } } : null, errors };
 }

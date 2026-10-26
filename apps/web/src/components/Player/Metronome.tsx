@@ -15,7 +15,7 @@ const Metronome: React.FC<MetronomeProps> = ({ tempo, status, onTempoChange }) =
   const isMetronomeActive = useStore((s) => s.isMetronomeActive);
 
   const [currentBeat, setCurrentBeat] = useState(0);
-  const [beatsPerMeasure, setBeatsPerMeasure] = useState(4);
+  const [, setBeatsPerMeasure] = useState(4);
 
   const isPlaying = status === 'playing';
 
