@@ -7,7 +7,6 @@ import ScoreView from '../components/ScoreView/ScoreView';
 import PlayerBar from '../components/Player/PlayerBar';
 import Metronome from '../components/Player/Metronome';
 import { ResizablePanels } from '../components/ResizablePanels';
-import { SettingsModal } from '../components/Settings';
 import { ImageImportModal, ImageImportButton } from '../components/ImageImport';
 import TopBar from '../components/Layout/TopBar';
 import FeedbackWidget from '../components/Feedback/FeedbackWidget';
@@ -88,7 +87,6 @@ const EditorPage: React.FC = () => {
     clearLoopSelection,
   } = useStore();
 
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isImageImportOpen, setIsImageImportOpen] = useState(false);
   const [isEditorFocused, setIsEditorFocused] = useState(false);
   const [isControlPinned] = useState(false);
@@ -185,17 +183,6 @@ const EditorPage: React.FC = () => {
             {/* 图片识别 */}
             <ImageImportButton onClick={() => setIsImageImportOpen(true)} />
 
-            {/* 设置（暂时禁用） */}
-            <button
-              disabled
-              className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg border border-barline text-gray-300 cursor-not-allowed"
-              title="暂不可用"
-            >
-              <span>⚙️</span>
-              <span className="hidden sm:inline">设置</span>
-            </button>
-
-
           </>
         }
       />
@@ -274,8 +261,6 @@ const EditorPage: React.FC = () => {
         <Metronome tempo={Math.round(tempo * practiceSpeed)} status={playbackStatus} onTempoChange={(bpm) => setTempo(bpm / practiceSpeed)} />
       </main>
 
-      {/* 设置模态框 */}
-      <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
 
       {/* 图片导入模态框 */}
       <ImageImportModal isOpen={isImageImportOpen} onClose={() => setIsImageImportOpen(false)} />

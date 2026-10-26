@@ -2,7 +2,6 @@ import React, { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '../store/useStore';
 import { EXAMPLES, EXAMPLE_KEYS } from '../examples';
-import { SettingsModal } from '../components/Settings';
 import TopBar from '../components/Layout/TopBar';
 import ButtonTip from '../components/ui/ButtonTip';
 import FeedbackWidget from '../components/Feedback/FeedbackWidget';
@@ -32,7 +31,6 @@ const MyScoresPage: React.FC = () => {
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [backupMessage, setBackupMessage] = useState<string | null>(null);
   const visibleScores = myScores.filter((score) => score.title.toLocaleLowerCase().includes(searchQuery.trim().toLocaleLowerCase()));
@@ -237,21 +235,7 @@ const MyScoresPage: React.FC = () => {
 
   return (
     <div className="h-screen flex flex-col bg-gray-50">
-      <TopBar
-        actions={
-          <>
-            {/* 设置（暂时禁用） */}
-            <button
-              disabled
-              className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg border border-barline text-gray-300 cursor-not-allowed bg-white"
-              title="暂不可用"
-            >
-              <span>⚙️</span>
-              <span className="hidden sm:inline">设置</span>
-            </button>
-          </>
-        }
-      />
+      <TopBar />
 
       <main className="flex-1 overflow-y-auto">
         <div className="max-w-3xl mx-auto px-4 py-6 space-y-6">
@@ -527,7 +511,6 @@ const MyScoresPage: React.FC = () => {
         </p>
       </footer> */}
 
-      <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
 
       {/* 放弃存储确认弹框 */}
       {isAbandonDialogOpen && (
