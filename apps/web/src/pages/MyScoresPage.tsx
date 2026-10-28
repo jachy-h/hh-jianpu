@@ -4,7 +4,6 @@ import { useStore } from '../store/useStore';
 import { SCORE_CATEGORIES } from '../services/scoreLibrary';
 import TopBar from '../components/Layout/TopBar';
 import ButtonTip from '../components/ui/ButtonTip';
-import FeedbackWidget from '../components/Feedback/FeedbackWidget';
 import type { MyScore } from '../services/myScores';
 import { migrateScoresToFileSystem, scanScoresFromFileSystem, clearAllScores, serializeMyScoresBackup, serializeScoreFile, importScoreFile, getFilesystemSyncError } from '../services/myScores';
 import {
@@ -606,8 +605,6 @@ const MyScoresPage: React.FC = () => {
         </div>
       )}
 
-      {/* 右下角悬浮反馈组件 */}
-      <FeedbackWidget />
     </div>
   );
 };

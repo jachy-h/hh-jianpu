@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { APP_VERSION } from '../../config';
+import FeedbackWidget from '../Feedback/FeedbackWidget';
 
 interface TopBarProps {
   /** 右侧操作区内容 */
@@ -51,7 +52,10 @@ const TopBar: React.FC<TopBarProps> = ({ actions, backTo, backLabel = '返回', 
       </div>
 
       {/* 右侧 */}
-      {actions && <div className="flex items-center gap-2">{actions}</div>}
+      <div className="flex items-center gap-2">
+        {actions}
+        <FeedbackWidget />
+      </div>
     </header>
   );
 };

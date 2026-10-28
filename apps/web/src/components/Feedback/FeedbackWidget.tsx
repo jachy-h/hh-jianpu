@@ -1,4 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 
 interface MenuItem {
@@ -7,43 +8,63 @@ interface MenuItem {
   onClick: () => void;
 }
 
+const MENU_CLOSE_DELAY_MS = 1500;
+
 const FeedbackWidget: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const closeTimerRef = useRef<ReturnType<typeof setTimeout>>();
   const navigate = useNavigate();
+
+  const handleCloseMenu = useCallback(() => {
+    clearTimeout(closeTimerRef.current);
+    setIsOpen(false);
+  }, []);
+
+  const handleOpenMenu = () => {
+    clearTimeout(closeTimerRef.current);
+    setIsOpen(true);
+  };
+
+  const handleMouseLeave = () => {
+    clearTimeout(closeTimerRef.current);
+    closeTimerRef.current = setTimeout(handleCloseMenu, MENU_CLOSE_DELAY_MS);
+  };
+
+  useEffect(() => () => clearTimeout(closeTimerRef.current), []);
 
   // 点击外部关闭菜单
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
+        handleCloseMenu();
       }
     };
 
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+  }, [handleCloseMenu]);
 
   // ESC 键关闭
   useEffect(() => {
     const handleEscape = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
-        setIsOpen(false);
+        handleCloseMenu();
         setShowFeedbackModal(false);
       }
     };
 
     document.addEventListener('keydown', handleEscape);
     return () => document.removeEventListener('keydown', handleEscape);
-  }, []);
+  }, [handleCloseMenu]);
 
   const menuItems: MenuItem[] = [
     {
       label: '查看帮助文档',
       icon: '📖',
       onClick: () => {
-        setIsOpen(false);
+        handleCloseMenu();
         navigate('/help');
       },
     },
@@ -51,7 +72,7 @@ const FeedbackWidget: React.FC = () => {
       label: '建议和反馈',
       icon: '💬',
       onClick: () => {
-        setIsOpen(false);
+        handleCloseMenu();
         setShowFeedbackModal(true);
       },
     }
@@ -59,41 +80,52 @@ const FeedbackWidget: React.FC = () => {
 
   return (
     <>
-      {/* 悬浮按钮 */}
-      <div className="fixed bottom-6 right-3 z-50" ref={menuRef}>
+      <div
+        className="relative z-50 shrink-0"
+        ref={menuRef}
+        onMouseEnter={handleOpenMenu}
+        onMouseLeave={handleMouseLeave}
+        onFocus={handleOpenMenu}
+      >
         {/* 菜单 */}
         {isOpen && (
-          <div className="absolute bottom-14 right-0 bg-white rounded-lg shadow-xl border border-gray-200 py-1 min-w-[160px] animate-in fade-in slide-in-from-bottom-2 duration-200">
-            {menuItems.map((item, index) => (
-              <button
-                key={index}
-                onClick={item.onClick}
-                className="w-full px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-3 transition-colors first:rounded-t-lg last:rounded-b-lg"
-              >
-                <span className="text-base">{item.icon}</span>
-                <span>{item.label}</span>
-              </button>
-            ))}
+          <div className="absolute top-full right-0 min-w-[160px] pt-2">
+            <div className="bg-white rounded-lg shadow-xl border border-gray-200 py-1 animate-in fade-in slide-in-from-top-2 duration-200">
+              {menuItems.map((item, index) => (
+                <button
+                  key={index}
+                  onClick={item.onClick}
+                  className="w-full px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-3 transition-colors first:rounded-t-lg last:rounded-b-lg"
+                >
+                  <span className="text-base">{item.icon}</span>
+                  <span>{item.label}</span>
+                </button>
+              ))}
+            </div>
           </div>
         )}
 
         {/* 主按钮 */}
         <button
-          onClick={() => setIsOpen(!isOpen)}
-          className={`w-10 h-10 rounded-full shadow-lg flex items-center justify-center transition-all duration-200 ${
+          onClick={handleOpenMenu}
+          className={`w-9 h-9 rounded-full flex items-center justify-center transition-all duration-200 ${
             isOpen
-              ? 'bg-blue-600 text-white rotate-90'
-              : 'bg-white text-gray-600 hover:bg-blue-50 hover:text-blue-600'
+              ? 'bg-blue-50 text-blue-700'
+              : 'text-gray-500 hover:bg-blue-50 hover:text-blue-600'
           }`}
           aria-label="帮助与反馈"
           aria-expanded={isOpen}
         >
-          <span className="text-md font-bold">?</span>
+          <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.8" />
+            <path d="M9.7 9a2.35 2.35 0 1 1 3.9 1.77c-.9.76-1.6 1.18-1.6 2.48" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+            <circle cx="12" cy="16.8" r=".9" fill="currentColor" />
+          </svg>
         </button>
       </div>
 
       {/* 反馈弹窗 */}
-      {showFeedbackModal && (
+      {showFeedbackModal && createPortal((
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-200"
           onClick={() => setShowFeedbackModal(false)}
@@ -166,7 +198,7 @@ const FeedbackWidget: React.FC = () => {
             </div>
           </div>
         </div>
-      )}
+      ), document.body)}
     </>
   );
 };

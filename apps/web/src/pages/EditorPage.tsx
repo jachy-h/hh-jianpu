@@ -9,7 +9,6 @@ import Metronome from '../components/Player/Metronome';
 import { ResizablePanels } from '../components/ResizablePanels';
 import { ImageImportModal, ImageImportButton } from '../components/ImageImport';
 import TopBar from '../components/Layout/TopBar';
-import FeedbackWidget from '../components/Feedback/FeedbackWidget';
 import { getFilesystemSyncState, retryFilesystemSync, subscribeFilesystemSync, type FilesystemSyncState } from '../services/myScores';
 
 /** 处理空格键播放/暂停/取消倒计时 */
@@ -269,8 +268,6 @@ const EditorPage: React.FC = () => {
       {/* 图片导入模态框 */}
       <ImageImportModal isOpen={isImageImportOpen} onClose={() => setIsImageImportOpen(false)} />
 
-      {/* 右下角悬浮反馈组件 */}
-      <FeedbackWidget />
     </div>
   );
 };
