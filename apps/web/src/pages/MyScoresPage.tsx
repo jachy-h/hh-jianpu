@@ -1,12 +1,12 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '../store/useStore';
-import { EXAMPLES, EXAMPLE_KEYS } from '../examples';
+import { SCORE_CATEGORIES } from '../services/scoreLibrary';
 import TopBar from '../components/Layout/TopBar';
 import ButtonTip from '../components/ui/ButtonTip';
 import FeedbackWidget from '../components/Feedback/FeedbackWidget';
 import type { MyScore } from '../services/myScores';
-import { migrateScoresToFileSystem, scanScoresFromFileSystem, clearAllScores, serializeMyScoresBackup, importMyScoresBackup, getFilesystemSyncError } from '../services/myScores';
+import { migrateScoresToFileSystem, scanScoresFromFileSystem, clearAllScores, serializeMyScoresBackup, serializeScoreFile, importScoreFile, getFilesystemSyncError } from '../services/myScores';
 import {
   getStorageLocation,
   pickStorageDirectory,
@@ -25,13 +25,14 @@ function formatTime(ts: number): string {
 
 const MyScoresPage: React.FC = () => {
   const navigate = useNavigate();
-  const { myScores, saveError, retrySave, currentScoreId, loadMyScore, deleteScore, renameScore, newScore, loadExample, refreshMyScores, saveAsNewScore } =
+  const { myScores, saveError, retrySave, currentScoreId, loadMyScore, deleteScore, renameScore, newScore, loadLibraryScore, refreshMyScores } =
     useStore();
 
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [libraryTab, setLibraryTab] = useState(SCORE_CATEGORIES[0]?.id ?? '');
   const [backupMessage, setBackupMessage] = useState<string | null>(null);
   const importInputRef = useRef<HTMLInputElement>(null);
   const visibleScores = myScores.filter((score) => score.title.toLocaleLowerCase().includes(searchQuery.trim().toLocaleLowerCase()));
@@ -121,8 +122,8 @@ const MyScoresPage: React.FC = () => {
     navigate('/edit');
   }, [newScore, navigate]);
 
-  const downloadBackup = (scores: MyScore[], fileName: string) => {
-    const blob = new Blob([serializeMyScoresBackup(scores)], { type: 'application/json' });
+  const downloadFile = (text: string, fileName: string) => {
+    const blob = new Blob([text], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement('a');
     anchor.href = url;
@@ -131,13 +132,30 @@ const MyScoresPage: React.FC = () => {
     URL.revokeObjectURL(url);
   };
 
-  const handleExportSingle = (score: MyScore) => {
-    const current = useStore.getState();
-    downloadBackup([{ ...score, ...(current.currentScoreId === score.id ? { source: current.source, updatedAt: Date.now() } : {}) }], `hh-jianpu-${score.id}.json`);
-    setBackupMessage('曲谱已导出，可通过“导入曲谱”重新导入');
+  const createDownloadFileName = (title: string) => {
+    const safeTitle = Array.from(title.trim(), character =>
+      character.charCodeAt(0) < 32 || /[\\/:*?"<>|]/.test(character) ? '_' : character
+    ).join('') || '未命名曲谱';
+    const now = new Date();
+    const timestamp = [
+      now.getFullYear(),
+      String(now.getMonth() + 1).padStart(2, '0'),
+      String(now.getDate()).padStart(2, '0'),
+    ].join('') + '-' + [
+      String(now.getHours()).padStart(2, '0'),
+      String(now.getMinutes()).padStart(2, '0'),
+      String(now.getSeconds()).padStart(2, '0'),
+    ].join('');
+    return `${safeTitle}-${timestamp}.jsonc`;
   };
 
-  const handleExportBackup = () => {
+  const handleDownloadSingle = (score: MyScore) => {
+    const current = useStore.getState();
+    downloadFile(serializeScoreFile({ ...score, ...(current.currentScoreId === score.id ? { source: current.source, updatedAt: Date.now() } : {}) }), createDownloadFileName(score.title));
+    setBackupMessage('曲谱已下载为 JSONC，可通过“导入曲谱”重新导入');
+  };
+
+  const handleDownloadBackup = () => {
     const state = useStore.getState();
     const scores = [...state.myScores];
     const currentScore = state.currentScoreId
@@ -159,8 +177,8 @@ const MyScoresPage: React.FC = () => {
       scores.unshift(draft);
     }
 
-    downloadBackup(scores, `hh-jianpu-backup-${new Date().toISOString().slice(0, 10)}.json`);
-    setBackupMessage('全部曲谱已导出，已包含当前编辑内容');
+    downloadFile(serializeMyScoresBackup(scores), createDownloadFileName('曲谱库备份'));
+    setBackupMessage('全部曲谱已下载为 JSONC，已包含当前编辑内容');
   };
 
   const handleImportScore = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -168,7 +186,7 @@ const MyScoresPage: React.FC = () => {
     event.target.value = '';
     if (!file) return;
     try {
-      const result = importMyScoresBackup(await file.text());
+      const result = importScoreFile(await file.text());
       refreshMyScores();
       setBackupMessage(`导入 ${result.imported} 首，跳过 ${result.skipped} 首`);
     } catch (error) {
@@ -225,14 +243,9 @@ const MyScoresPage: React.FC = () => {
     }
   }, [abandonInput, refreshMyScores]);
 
-  // ---- 加载示例 ----
-  const handleLoadExample = useCallback(
-    (key: string) => {
-      loadExample(key);
-      navigate('/edit');
-    },
-    [loadExample, navigate]
-  );
+  const handleLoadLibraryScore = useCallback((categoryId: string, scoreId: string) => {
+    if (loadLibraryScore(categoryId, scoreId)) navigate('/edit');
+  }, [loadLibraryScore, navigate]);
 
   return (
     <div className="h-screen flex flex-col bg-gray-50">
@@ -241,26 +254,65 @@ const MyScoresPage: React.FC = () => {
       <main className="flex-1 overflow-y-auto">
         <div className="max-w-3xl mx-auto px-4 py-6 space-y-6">
 
-          {/* 示例曲谱区 */}
-          <section>
-            <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">
-              示例曲谱
-            </h2>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              {EXAMPLE_KEYS.map((key) => (
-                <ButtonTip
-                  key={key}
-                  tipContent={`加载示例：${EXAMPLES[key].name}`}
-                  position="top"
-                  onClick={() => handleLoadExample(key)}
-                  variant="ghost"
-                  className="flex items-center gap-2 px-4 py-3 bg-white border border-gray-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 transition-colors text-sm text-left w-full"
+          {/* 公共曲谱分类（由资源配置生成） */}
+          <section aria-labelledby="score-library-heading">
+            <h2 id="score-library-heading" className="sr-only">曲谱库</h2>
+            <div
+              role="tablist"
+              aria-label="曲谱库"
+              className="mb-3 flex items-center gap-1 border-b border-gray-200"
+            >
+              {SCORE_CATEGORIES.map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  role="tab"
+                  id={`library-tab-${tab.id}`}
+                  aria-selected={libraryTab === tab.id}
+                  aria-controls={`library-panel-${tab.id}`}
+                  onClick={() => setLibraryTab(tab.id)}
+                  className={`-mb-px border-b-2 px-4 py-2 text-sm font-semibold transition-colors ${
+                    libraryTab === tab.id
+                      ? 'border-blue-500 text-blue-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700'
+                  }`}
                 >
-                  <span className="text-base">🎵</span>
-                  <span className="text-gray-700 truncate">{EXAMPLES[key].name}</span>
-                </ButtonTip>
+                  {tab.name}
+                </button>
               ))}
             </div>
+
+            {SCORE_CATEGORIES.map(category => (
+              <div
+                key={category.id}
+                role="tabpanel"
+                id={`library-panel-${category.id}`}
+                aria-labelledby={`library-tab-${category.id}`}
+                hidden={libraryTab !== category.id}
+              >
+                {category.scores.length === 0 ? (
+                  <p className="rounded-lg border border-dashed border-gray-200 bg-white px-4 py-5 text-sm text-gray-400">
+                    {category.name}曲谱待补充
+                  </p>
+                ) : (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    {category.scores.map(score => (
+                      <ButtonTip
+                        key={score.id}
+                        tipContent={`加载${category.name}：${score.name}${score.attribution ? `（${score.attribution}）` : ''}`}
+                        position="top"
+                        onClick={() => handleLoadLibraryScore(category.id, score.id)}
+                        variant="ghost"
+                        className="flex items-center gap-2 px-4 py-3 bg-white border border-gray-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 transition-colors text-sm text-left w-full"
+                      >
+                        <span className="text-base">🎵</span>
+                        <span className="text-gray-700 truncate">{score.name}</span>
+                      </ButtonTip>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
           </section>
 
           {/* 我的谱谱区 */}
@@ -294,7 +346,7 @@ const MyScoresPage: React.FC = () => {
                   新建曲谱
                 </button>
                 <ButtonTip
-                  tipContent="导入本工具导出的 JSON 曲谱文件，兼容已有备份"
+                  tipContent="导入 JSON 或 JSONC 曲谱文件，兼容公共曲谱和已有备份"
                   onClick={() => importInputRef.current?.click()}
                   variant="nude"
                   size="sm"
@@ -302,7 +354,7 @@ const MyScoresPage: React.FC = () => {
                 >
                   导入曲谱
                 </ButtonTip>
-                <input ref={importInputRef} type="file" accept="application/json,.json" onChange={handleImportScore} aria-label="选择曲谱文件" className="hidden" />
+                <input ref={importInputRef} type="file" accept=".json,.jsonc,application/json" onChange={handleImportScore} aria-label="选择曲谱文件" className="hidden" />
               </div>
               <div className="flex items-center gap-2">
                 <span
@@ -436,7 +488,7 @@ const MyScoresPage: React.FC = () => {
 
                       {/* 操作按钮 */}
                       <div className="flex flex-wrap items-center justify-end gap-1 flex-shrink-0">
-                        <ButtonTip tipContent="导出 JSON 曲谱文件，可通过“导入曲谱”重新导入" onClick={() => handleExportSingle(score)} variant="ghost" size="sm">导出</ButtonTip>
+                        <ButtonTip tipContent="下载 JSONC 曲谱文件，可通过“导入曲谱”重新导入" onClick={() => handleDownloadSingle(score)} variant="ghost" size="sm">下载</ButtonTip>
                         {isConfirmingDelete ? (
                           <>
                             <span className="text-xs text-red-500 mr-1 hidden sm:inline">
@@ -463,19 +515,6 @@ const MyScoresPage: React.FC = () => {
                           </>
                         ) : (
                           <>
-                            <ButtonTip
-                              tipContent="复制曲谱"
-                              position="top"
-                              onClick={() => {
-                                saveAsNewScore(score.source, '副本');
-                                navigate('/edit');
-                              }}
-                              variant="ghost"
-                              size="sm"
-                              className="text-gray-600 border border-gray-200 hover:bg-gray-100"
-                            >
-                              复制
-                            </ButtonTip>
                             <ButtonTip
                               tipContent="重命名"
                               position="top"
@@ -505,8 +544,8 @@ const MyScoresPage: React.FC = () => {
               </ul>
             )}
             <div className="mt-3 flex justify-end">
-              <ButtonTip tipContent="导出曲谱库与当前编辑内容，用于迁移或恢复" onClick={handleExportBackup} variant="nude" size="sm" className="text-gray-400 hover:text-blue-500">
-                导出全部曲谱
+              <ButtonTip tipContent="下载 JSONC 曲谱库备份，包含当前编辑内容，用于迁移或恢复" onClick={handleDownloadBackup} variant="nude" size="sm" className="text-gray-400 hover:text-blue-500">
+                下载全部曲谱
               </ButtonTip>
             </div>
           </section>

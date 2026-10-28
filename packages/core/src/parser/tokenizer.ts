@@ -9,11 +9,15 @@ export type TokenType =
   | 'NOTE'           // 1-7
   | 'REST'           // 0
   | 'TIE'            // -
+  | 'REPEAT_BOTH'    // :||: 结束并开始反复
+  | 'REPEAT_START'   // ||: 前反复
+  | 'REPEAT_END'     // :|| 后反复
   | 'BARLINE'        // |
   | 'OCTAVE_UP'      // ' (高八度标记)
   | 'OCTAVE_DOWN'    // , (低八度标记)
   | 'UNDERLINE'      // / (减时线)
   | 'DOT'            // . 后缀（附点）
+  | 'STACCATO'       // ! 短顿音后缀
   | 'SHARP'          // #
   | 'FLAT'           // b (在音符前)
   | 'SLUR_START'     // ( 圆滑线开始
@@ -245,8 +249,22 @@ export function tokenize(source: string): Token[] {
         continue;
       }
 
+      // 反复记号必须优先于普通小节线按最长匹配识别。
+      if (lineContent.startsWith(':||:', i)) {
+        tokens.push({ type: 'REPEAT_BOTH', value: ':||:', line, column, offset: baseOffset + i, hasSpaceBefore: hasSpaceBeforeNext });
+        hasSpaceBeforeNext = false;
+        i += 3;
+        column += 3;
+      } else if (lineContent.startsWith('||:', i) || lineContent.startsWith(':||', i)) {
+        const value = lineContent.slice(i, i + 3);
+        tokens.push({ type: value === '||:' ? 'REPEAT_START' : 'REPEAT_END', value,
+          line, column, offset: baseOffset + i, hasSpaceBefore: hasSpaceBeforeNext });
+        hasSpaceBeforeNext = false;
+        i += 2;
+        column += 2;
+      }
       // 音符 1-7
-      if (ch >= '1' && ch <= '7') {
+      else if (ch >= '1' && ch <= '7') {
         tokens.push({ 
           type: 'NOTE', 
           value: ch, 
@@ -283,15 +301,18 @@ export function tokenize(source: string): Token[] {
       }
       // 小节线
       else if (ch === '|') {
+        const value = lineContent.startsWith('||', i) ? '||' : '|';
         tokens.push({ 
           type: 'BARLINE', 
-          value: ch, 
+          value,
           line, 
           column, 
           offset: baseOffset + i,
           hasSpaceBefore: hasSpaceBeforeNext 
         });
         hasSpaceBeforeNext = false;
+        i += value.length - 1;
+        column += value.length - 1;
       }
       // 圆滑线开始
       else if (ch === '(') {
@@ -372,6 +393,11 @@ export function tokenize(source: string): Token[] {
           offset: baseOffset + i,
           hasSpaceBefore: hasSpaceBeforeNext 
         });
+        hasSpaceBeforeNext = false;
+      }
+      // 短顿音
+      else if (ch === '!') {
+        tokens.push({ type: 'STACCATO', value: ch, line, column, offset: baseOffset + i, hasSpaceBefore: hasSpaceBeforeNext });
         hasSpaceBeforeNext = false;
       }
       // 逗号：低八度标记（可以在数字或下划线后面）

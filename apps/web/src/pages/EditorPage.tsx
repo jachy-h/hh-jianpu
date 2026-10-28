@@ -57,6 +57,8 @@ const EditorPage: React.FC = () => {
     parseErrors,
     playbackStatus,
     playbackError,
+    instrumentId,
+    setInstrument,
     currentNoteIndex,
     activeNoteIndices,
     mutedVoices,
@@ -89,7 +91,7 @@ const EditorPage: React.FC = () => {
 
   const [isImageImportOpen, setIsImageImportOpen] = useState(false);
   const [isEditorFocused, setIsEditorFocused] = useState(false);
-  const [isControlPinned] = useState(false);
+  const [isControlPinned] = useState(true);
   const [scrollToMeasure, setScrollToMeasure] = useState<number | undefined>(undefined);
   const [sourceRangeToLocate, setSourceRangeToLocate] = useState<{ from: number; to: number } | null>(null);
   const [filesystemSync, setFilesystemSync] = useState<FilesystemSyncState>(getFilesystemSyncState());
@@ -234,6 +236,8 @@ const EditorPage: React.FC = () => {
 
         {/* 播放控制栏 */}
         <PlayerBar
+          instrumentId={instrumentId}
+          onInstrumentChange={setInstrument}
           playButtonRef={playButtonRef}
           status={playbackStatus}
           voices={score?.secondaryVoice ? getScoreVoices(score) : undefined}

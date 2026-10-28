@@ -1,0 +1,152 @@
+{
+  "A0": {
+    "url": "sustain/A0.wav",
+    "loopStart": 0.3,
+    "loopEnd": 0.5545351473922903
+  },
+  "A1": {
+    "url": "sustain/A1.wav",
+    "loopStart": 0.3,
+    "loopEnd": 0.5363718820861678
+  },
+  "A2": {
+    "url": "sustain/A2.wav",
+    "loopStart": 0.3,
+    "loopEnd": 0.5363718820861678
+  },
+  "A3": {
+    "url": "sustain/A3.wav",
+    "loopStart": 0.3,
+    "loopEnd": 0.540907029478458
+  },
+  "A4": {
+    "url": "sustain/A4.wav",
+    "loopStart": 0.3,
+    "loopEnd": 0.540907029478458
+  },
+  "A5": {
+    "url": "sustain/A5.wav",
+    "loopStart": 0.3,
+    "loopEnd": 0.5397732426303855
+  },
+  "A6": {
+    "url": "sustain/A6.wav",
+    "loopStart": 0.14,
+    "loopEnd": 0.3797732426303855
+  },
+  "A7": {
+    "url": "sustain/A7.wav",
+    "loopStart": 0.14,
+    "loopEnd": 0.38006802721088434
+  },
+  "C1": {
+    "url": "sustain/C1.wav",
+    "loopStart": 0.3,
+    "loopEnd": 0.5446258503401361
+  },
+  "C2": {
+    "url": "sustain/C2.wav",
+    "loopStart": 0.3,
+    "loopEnd": 0.5446258503401361
+  },
+  "C3": {
+    "url": "sustain/C3.wav",
+    "loopStart": 0.3,
+    "loopEnd": 0.536984126984127
+  },
+  "C4": {
+    "url": "sustain/C4.wav",
+    "loopStart": 0.3,
+    "loopEnd": 0.5407936507936508
+  },
+  "C5": {
+    "url": "sustain/C5.wav",
+    "loopStart": 0.3,
+    "loopEnd": 0.5407936507936508
+  },
+  "C6": {
+    "url": "sustain/C6.wav",
+    "loopStart": 0.14,
+    "loopEnd": 0.37984126984126987
+  },
+  "C7": {
+    "url": "sustain/C7.wav",
+    "loopStart": 0.14,
+    "loopEnd": 0.37984126984126987
+  },
+  "C8": {
+    "url": "sustain/C8.wav",
+    "loopStart": 0.14,
+    "loopEnd": 0.3800907029478458
+  },
+  "D#1": {
+    "url": "sustain/Ds1.wav",
+    "loopStart": 0.3,
+    "loopEnd": 0.53140589569161
+  },
+  "D#2": {
+    "url": "sustain/Ds2.wav",
+    "loopStart": 0.3,
+    "loopEnd": 0.5442630385487528
+  },
+  "D#3": {
+    "url": "sustain/Ds3.wav",
+    "loopStart": 0.3,
+    "loopEnd": 0.5378458049886621
+  },
+  "D#4": {
+    "url": "sustain/Ds4.wav",
+    "loopStart": 0.3,
+    "loopEnd": 0.5410657596371882
+  },
+  "D#5": {
+    "url": "sustain/Ds5.wav",
+    "loopStart": 0.3,
+    "loopEnd": 0.5394557823129251
+  },
+  "D#6": {
+    "url": "sustain/Ds6.wav",
+    "loopStart": 0.14,
+    "loopEnd": 0.38024943310657594
+  },
+  "D#7": {
+    "url": "sustain/Ds7.wav",
+    "loopStart": 0.14,
+    "loopEnd": 0.3798639455782313
+  },
+  "F#1": {
+    "url": "sustain/Fs1.wav",
+    "loopStart": 0.3,
+    "loopEnd": 0.5378458049886621
+  },
+  "F#2": {
+    "url": "sustain/Fs2.wav",
+    "loopStart": 0.3,
+    "loopEnd": 0.5378458049886621
+  },
+  "F#3": {
+    "url": "sustain/Fs3.wav",
+    "loopStart": 0.3,
+    "loopEnd": 0.5378458049886621
+  },
+  "F#4": {
+    "url": "sustain/Fs4.wav",
+    "loopStart": 0.3,
+    "loopEnd": 0.5405442176870748
+  },
+  "F#5": {
+    "url": "sustain/Fs5.wav",
+    "loopStart": 0.3,
+    "loopEnd": 0.5405442176870748
+  },
+  "F#6": {
+    "url": "sustain/Fs6.wav",
+    "loopStart": 0.14,
+    "loopEnd": 0.3798639455782313
+  },
+  "F#7": {
+    "url": "sustain/Fs7.wav",
+    "loopStart": 0.14,
+    "loopEnd": 0.3798639455782313
+  }
+}

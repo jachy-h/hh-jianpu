@@ -16,7 +16,7 @@ export function createDuetLayout(score: Score, cfg: LayoutConfig): ScoreLayout {
   const font = cfg.noteFontSize;
   const margin = Math.max(cfg.marginLeft, font * 2.2);
   const available = Math.max(font * 2, cfg.width - margin * 2);
-  const maxMeasures = Math.max(1, Math.floor(cfg.measuresPerLine));
+  const maxMeasures = cfg.measuresPerLine === undefined ? Infinity : Math.max(1, Math.floor(cfg.measuresPerLine));
   const gap = font * 0.7;
   const padding = font;
   const indices = voices.map(voice => voice.indexOffset);
@@ -41,21 +41,27 @@ export function createDuetLayout(score: Score, cfg: LayoutConfig): ScoreLayout {
       // 不占拍的装饰音/换气排列在同一拍主音左侧，主音仍保持纵向对齐。
       const timed = notes.map((entry, index) => {
         let remaining = 0;
-        for (let next = index + 1; next < notes.length && notes[next].beat === entry.beat; next++) remaining++;
+        for (let next = index + 1; next < notes.length && notes[next].beat === entry.beat; next++) {
+          const nextNote = notes[next].position.note;
+          if (nextNote.type !== 'breath' || !nextNote.barlineSide) remaining++;
+        }
         return { ...entry, offset: -remaining * font * 1.4 };
       });
       return { measure, notes: timed, duration: beat };
     });
     const duration = Math.max(...rows.map(row => row.duration));
-    const beats = [...new Set(rows.flatMap(row => row.notes.map(note => note.beat)))].sort((a, b) => a - b);
-    let cursor = padding;
+    const isAnchored = (entry: TimedNote): boolean => entry.position.note.type === 'breath' && Boolean(entry.position.note.barlineSide);
+    const beats = [...new Set(rows.flatMap(row => row.notes.filter(entry => !isAnchored(entry)).map(note => note.beat)))].sort((a, b) => a - b);
+    const leftPadding = padding + (rows.some(row => row.measure.repeatStart) ? font : 0);
+    const rightPadding = padding + (rows.some(row => row.measure.repeatEnd) ? font : 0);
+    let cursor = leftPadding;
     let previousRight = 0;
     let previousBeat = 0;
     const centers = new Map<number, number>();
     for (const beat of beats) {
       let left = font * 0.4;
       let right = font * 0.4;
-      for (const row of rows) for (const entry of row.notes.filter(note => note.beat === beat)) {
+      for (const row of rows) for (const entry of row.notes.filter(note => note.beat === beat && !isAnchored(note))) {
         const box = calculateNoteBoundingBox(entry.position.note, font, entry.offset, 0).horizontal;
         const lyricWidth = entry.lyric && !entry.lyric.isPlaceholder
           ? Array.from(entry.lyric.text).reduce((sum, char) => sum + (char.codePointAt(0)! > 255 ? 1 : 0.65), 0) * font * cfg.lyricsFontSizeRatio : 0;
@@ -67,7 +73,7 @@ export function createDuetLayout(score: Score, cfg: LayoutConfig): ScoreLayout {
       previousRight = right;
       previousBeat = beat;
     }
-    const minimumWidth = cursor + previousRight + padding;
+    const minimumWidth = cursor + previousRight + rightPadding;
     const width = Math.max(available / maxMeasures, minimumWidth);
     measureBeat += duration;
     return { rows, centers, duration, minimumWidth, width };
@@ -89,6 +95,8 @@ export function createDuetLayout(score: Score, cfg: LayoutConfig): ScoreLayout {
   let y = cfg.marginTop;
   let width = cfg.width;
   for (const lineGroup of groups) {
+    const extraWidth = cfg.measuresPerLine === undefined
+      ? Math.max(0, available - lineGroup.reduce((sum, metric) => sum + metric.width, 0)) / lineGroup.length : 0;
     const geometry = voices.map((_, voiceIndex) => {
       let top = font * 1.7;
       let bottom = font * 1.5;
@@ -106,22 +114,28 @@ export function createDuetLayout(score: Score, cfg: LayoutConfig): ScoreLayout {
     const measures: MeasureLayout[][] = [[], []];
     let x = margin;
     for (const metric of lineGroup) {
+      const measureWidth = metric.width + extraWidth;
       metric.rows.forEach((row, voiceIndex) => {
         const geo = geometry[voiceIndex];
         const notes = row.notes.map(entry => {
-          const extra = metric.width - metric.minimumWidth;
+          const extra = measureWidth - metric.minimumWidth;
           const position = { ...entry.position,
             x: x + (metric.centers.get(entry.beat) ?? padding) + entry.offset + extra * (metric.duration ? entry.beat / metric.duration : 0),
             y: rowY[voiceIndex] + geo.top };
+          const note = position.note;
+          if (note.type === 'breath' && note.barlineSide) {
+            position.x = note.barlineSide === 'start' ? x : x + measureWidth;
+            position.y = rowY[voiceIndex] + 16 - font * 0.65;
+          }
           allNotes.push(position);
           return position;
         });
         const lyrics = row.notes.flatMap((entry, index) => entry.lyric ? [{ ...entry.lyric, x: notes[index].x,
           y: rowY[voiceIndex] + geo.lyricY, noteIndex: notes[index].index }] : []);
         measures[voiceIndex].push({ measure: row.measure, voiceId: voices[voiceIndex].id, x, y: rowY[voiceIndex],
-          width: metric.width, height: geo.height, notes, lyrics });
+          width: measureWidth, height: geo.height, notes, lyrics });
       });
-      x += metric.width;
+      x += measureWidth;
     }
     const height = geometry[0].height + gap + geometry[1].height;
     lines.push({ measures: measures[0], secondaryMeasures: measures[1], y, height });

@@ -8,6 +8,8 @@
  *       若用户已选择本地目录，每次写入后异步同步一份 JSON 文件到该目录。
  */
 
+import { parse as parseJsonc, printParseErrorCode } from 'jsonc-parser';
+import type { ParseError } from 'jsonc-parser';
 import { getActiveDirectoryHandle, getStorageLocation } from '../storageLocation';
 
 const STORAGE_KEY = 'hh-jianpu-my-scores';
@@ -78,24 +80,66 @@ function generateId(): string {
 }
 
 export function serializeMyScoresBackup(scores: MyScore[] = loadMyScores()): string {
-  return JSON.stringify({ format: 'hh-jianpu-backup', version: 1, exportedAt: Date.now(), scores }, null, 2);
+  return '// 哈哈简谱曲谱备份，可通过“导入曲谱”恢复。\n'
+    + JSON.stringify({ format: 'hh-jianpu-backup', version: 1, exportedAt: Date.now(), scores }, null, 2) + '\n';
 }
 
-export function importMyScoresBackup(text: string): { imported: number; skipped: number } {
-  const parsed: unknown = JSON.parse(text);
-  if (typeof parsed !== 'object' || parsed === null || !('format' in parsed) || !('version' in parsed) || !('scores' in parsed)) {
-    throw new Error('备份文件格式不正确');
+/** 下载单首曲谱，字段与公共曲谱库保持一致，时间戳用于往返恢复。 */
+export function serializeScoreFile(score: MyScore): string {
+  return '// 哈哈简谱曲谱，每个 source 字符串对应一行谱文。\n' + JSON.stringify({
+    id: score.id,
+    name: score.title,
+    source: score.source.split('\n'),
+    createdAt: score.createdAt,
+    updatedAt: score.updatedAt,
+  }, null, 2) + '\n';
+}
+
+function parseScoreJsonc(text: string): unknown {
+  const errors: ParseError[] = [];
+  const value: unknown = parseJsonc(text, errors, { allowTrailingComma: true });
+  if (errors.length) throw new Error(`曲谱 JSON/JSONC 格式错误：${printParseErrorCode(errors[0].error)}（位置 ${errors[0].offset}）`);
+  return value;
+}
+
+function normalizeScoreFile(value: Record<string, unknown>): MyScore {
+  const source = typeof value.source === 'string' ? value.source
+    : Array.isArray(value.source) && value.source.every((line): line is string => typeof line === 'string')
+      ? value.source.join('\n') : undefined;
+  const title = value.name ?? value.title;
+  if (source === undefined || typeof title !== 'string' || !title.trim()) {
+    throw new Error('曲谱文件需要非空的 name（或 title），以及 source（谱文字符串或逐行数组）');
   }
-  const backup = parsed as { format: unknown; version: unknown; scores: unknown };
-  if (backup.format !== 'hh-jianpu-backup' || backup.version !== 1 || !Array.isArray(backup.scores)) {
-    throw new Error('不支持此备份格式或版本');
+  const score = {
+    id: value.id ?? generateId(), title, source,
+    createdAt: value.createdAt ?? Date.now(), updatedAt: value.updatedAt ?? Date.now(),
+  };
+  if (!isBackupScore(score)) throw new Error('曲谱 ID 或时间戳格式不正确');
+  return score;
+}
+
+/** 导入 JSON/JSONC 单首曲谱或版本化备份；同 ID 的不同内容另存副本。 */
+export function importScoreFile(text: string): { imported: number; skipped: number } {
+  const parsed = parseScoreJsonc(text);
+  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+    throw new Error('曲谱文件必须是 JSON/JSONC 对象');
+  }
+  const record = parsed as Record<string, unknown>;
+  let incoming: unknown[];
+  if ('format' in record || 'version' in record || 'scores' in record) {
+    if (record.format !== 'hh-jianpu-backup' || record.version !== 1 || !Array.isArray(record.scores)) {
+      throw new Error('不支持此备份格式或版本');
+    }
+    incoming = record.scores;
+  } else {
+    incoming = [normalizeScoreFile(record)];
   }
 
   const existing = loadMyScores();
   const byId = new Map(existing.map((score) => [score.id, score]));
   let imported = 0;
   let skipped = 0;
-  for (const item of backup.scores) {
+  for (const item of incoming) {
     if (!isBackupScore(item)) {
       skipped++;
       continue;
@@ -314,9 +358,7 @@ export async function scanScoresFromFileSystem(): Promise<FilesystemScanResult> 
       try {
         const file = await (fileEntry as FileSystemFileHandle).getFile();
         const text = await file.text();
-        // 去掉文件头注释行（第一行 // 注释 + 紧随的空行）
-        const jsonStr = text.replace(/^\/\/[^\n]*\n\n?/, '');
-        const score: unknown = JSON.parse(jsonStr);
+        const score = parseScoreJsonc(text);
         if (isBackupScore(score) && !deletedIds.has(score.id)) scanned.push(score);
       } catch {
         // 跳过格式错误的文件
@@ -364,7 +406,7 @@ export async function scanScoresFromFileSystem(): Promise<FilesystemScanResult> 
     await syncToFileSystem(merged);
     return { scores: merged, conflictCopies };
   } catch (error) {
-    lastFilesystemSyncError = error instanceof Error ? error.message : '目录恢复失败，请重试或导出备份';
+    lastFilesystemSyncError = error instanceof Error ? error.message : '目录恢复失败，请重试或下载备份';
     setFilesystemSyncState({ ...filesystemSyncState, status: 'error', error: lastFilesystemSyncError });
     return { scores: loadMyScores(), conflictCopies: 0 };
   }

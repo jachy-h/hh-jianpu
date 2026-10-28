@@ -168,6 +168,15 @@ const NoteView: React.FC<NoteViewProps> = ({ note, x, y, index, isActive, isPlay
         </>
       )}
 
+      {/* 短顿音实心倒三角 */}
+      {note.type === 'note' && note.articulation === 'staccatissimo' && (
+        <path
+          d={`M ${x - noteFontSize * 0.25},${y - noteFontSize * 1.75} L ${x + noteFontSize * 0.25},${y - noteFontSize * 1.75} L ${x},${y - noteFontSize * 1.4} Z`}
+          fill={fillColor}
+          opacity={0.9}
+        />
+      )}
+
       {/* 音符数字 */}
       <text
         x={x + graceOffsetX}

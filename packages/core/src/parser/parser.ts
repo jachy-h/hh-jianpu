@@ -208,13 +208,22 @@ function parseBody(tokens: Token[]): { measures: Measure[]; errors: ParseError[]
   const errors: ParseError[] = [];
   let currentNotes: NoteElement[] = [];
   let measureNumber = 1;
+  let pendingRepeatStart: Token | undefined;
+  let openRepeat: Token | undefined;
+  const articulationPositions = new Map<Note, Token>();
+  const reportRepeat = (token: Token, message: string): void => {
+    errors.push({ message, position: { line: token.line, column: token.column, offset: token.offset }, length: token.value.length });
+  };
+  const repeatStartFields = (): Pick<Measure, 'repeatStart' | 'repeatStartRange'> => pendingRepeatStart
+    ? { repeatStart: true, repeatStartRange: { from: pendingRepeatStart.offset, to: pendingRepeatStart.offset + pendingRepeatStart.value.length } } : {};
 
   // 过滤掉元信息和换行 Token，但保留歌词 Token
   const lyricsTokens = tokens.filter(
     t => t.type === 'LYRICS_MARKER' || t.type === 'LYRICS_TEXT'
   );
   
-  const bodyTokens = tokens.filter(
+  const bodyTokens = tokens.flatMap((token): Token[] => token.type === 'REPEAT_BOTH'
+    ? [{ ...token, type: 'REPEAT_END' }, { ...token, type: 'REPEAT_START' }] : [token]).filter(
     t => !['METADATA_KEY', 'METADATA_VALUE', 'NEWLINE', 'EOF', 'MELODY_MARKER', 'LYRICS_MARKER', 'LYRICS_TEXT', 'FRONTMATTER_SEPARATOR'].includes(t.type)
   );
 
@@ -228,31 +237,73 @@ function parseBody(tokens: Token[]): { measures: Measure[]; errors: ParseError[]
   let pendingNewMeasure = false;
   let i = 0;
   let prefixStartIndex = 0;
+  const saveCurrentMeasure = (endOffset: number): void => {
+    if (currentNotes.length === 0) return;
+    const lineBreakBefore = lastSavedMeasureLine !== -1 && measureStartLine !== lastSavedMeasureLine;
+    measures.push({
+      number: measureNumber,
+      ...repeatStartFields(),
+      notes: currentNotes,
+      sourceRange: { from: measureStartOffset, to: endOffset },
+      sourceLine: measureStartLine,
+      lineBreakBefore,
+    });
+    lastSavedMeasureLine = measureStartLine;
+    measureNumber++;
+    currentNotes = [];
+    pendingRepeatStart = undefined;
+  };
   while (i < bodyTokens.length) {
     const token = bodyTokens[i];
+    const previousType = bodyTokens[i - 1]?.type;
+    const nextType = bodyTokens[i + 1]?.type;
+    // 归属上一小节的线后换气不能提前确定下一小节的源码行号。
+    const breathOnPreviousBarline = token.type === 'BREATH'
+      && (previousType === 'BARLINE' || previousType === 'REPEAT_END')
+      && nextType !== 'REPEAT_START' && nextType !== 'BARLINE' && nextType !== 'REPEAT_END'
+      && measures.length > 0;
 
     // 遇到 BARLINE 后，用第一个内容 token 的行号作为新小节起始行号
-    if (pendingNewMeasure && token.type !== 'SLUR_START' && token.type !== 'SLUR_END') {
+    if (pendingNewMeasure && !breathOnPreviousBarline && token.type !== 'SLUR_START' && token.type !== 'SLUR_END') {
       if (measureStartLine !== token.line) measureStartOffset = token.offset;
       measureStartLine = token.line;
       pendingNewMeasure = false;
     }
 
     switch (token.type) {
+      case 'REPEAT_START': {
+        if (openRepeat) {
+          reportRepeat(token, '暂不支持嵌套反复或重复的前反复记号');
+        } else {
+          // 前反复本身也是小节边界，先保存它前面的音符。
+          if (currentNotes.some(note => note.type !== 'breath' || note.barlineSide !== 'start')) {
+            saveCurrentMeasure(token.offset);
+          }
+          pendingRepeatStart = token;
+          openRepeat = token;
+          measureStartOffset = token.offset;
+          measureStartLine = token.line;
+        }
+        i++;
+        break;
+      }
+      case 'REPEAT_END':
       case 'BARLINE': {
         // 遇到小节线，保存当前小节
-        if (currentNotes.length > 0) {
-          const lineBreakBefore = lastSavedMeasureLine !== -1 && measureStartLine !== lastSavedMeasureLine;
-          measures.push({
-            number: measureNumber,
-            notes: currentNotes,
-            sourceRange: { from: measureStartOffset, to: token.offset },
-            sourceLine: measureStartLine,
-            lineBreakBefore,
-          });
-          lastSavedMeasureLine = measureStartLine;
-          measureNumber++;
-          currentNotes = [];
+        saveCurrentMeasure(token.offset);
+        if (token.type === 'REPEAT_END') {
+          const measure = measures[measures.length - 1];
+          if (pendingRepeatStart || !measure || measure.repeatEnd) {
+            reportRepeat(token, '后反复记号必须结束非空反复段');
+          } else {
+            measure.repeatEnd = true;
+            measure.repeatEndRange = { from: token.offset, to: token.offset + token.value.length };
+            if (token.value === ':||:') measure.combinedRepeat = true;
+            openRepeat = undefined;
+          }
+        }
+        if (token.type === 'BARLINE' && token.value === '||' && measures.length > 0) {
+          measures[measures.length - 1].finalBarline = true;
         }
         // 下一小节从 | 之后开始
         measureStartOffset = token.offset + token.value.length;
@@ -285,6 +336,8 @@ function parseBody(tokens: Token[]): { measures: Measure[]; errors: ParseError[]
           const noteResult = parseNote(bodyTokens, noteIndex, prefixStartIndex);
           reportUnsupportedDuration(bodyTokens, noteIndex, noteResult.nextIndex, errors);
           const note = noteResult.note;
+          const articulationToken = bodyTokens.slice(noteIndex + 1, noteResult.nextIndex).find(item => item.type === 'STACCATO');
+          if (articulationToken) articulationPositions.set(note, articulationToken);
           note.isGrace = true; // 标记为倚音
           note.hasSpaceBefore = token.hasSpaceBefore || false;
           
@@ -323,6 +376,8 @@ function parseBody(tokens: Token[]): { measures: Measure[]; errors: ParseError[]
         const noteResult = parseNote(bodyTokens, i, prefixStartIndex);
         reportUnsupportedDuration(bodyTokens, i, noteResult.nextIndex, errors);
         const note = noteResult.note;
+        const articulationToken = bodyTokens.slice(i + 1, noteResult.nextIndex).find(item => item.type === 'STACCATO');
+        if (articulationToken) articulationPositions.set(note, articulationToken);
         // 记录空格信息：需要向前回溯前置修饰符（#、b、八度标记），
         // 空格可能被标记在修饰符 token 上（如 " #6" 中，空格记在 SHARP 上而非 NOTE 上）
         let noteHasSpaceBefore = bodyTokens[i]?.hasSpaceBefore || false;
@@ -429,6 +484,21 @@ function parseBody(tokens: Token[]): { measures: Measure[]; errors: ParseError[]
         const breath: Breath = {
           type: 'breath',
         };
+        const previous = bodyTokens[i - 1];
+        const next = bodyTokens[i + 1];
+        if (next?.type === 'REPEAT_START') {
+          breath.barlineSide = 'start';
+        } else if (next?.type === 'BARLINE' || next?.type === 'REPEAT_END') {
+          breath.barlineSide = 'end';
+        } else if (previous?.type === 'REPEAT_START') {
+          breath.barlineSide = 'start';
+        } else if (breathOnPreviousBarline) {
+          // 线后的换气归属已结束的小节，避免行首错位和末尾空小节。
+          breath.barlineSide = 'end';
+          measures[measures.length - 1].notes.push(breath);
+          i++;
+          break;
+        }
         currentNotes.push(breath);
         i++;
         break;
@@ -437,6 +507,16 @@ function parseBody(tokens: Token[]): { measures: Measure[]; errors: ParseError[]
       case 'ERROR': {
         errors.push({
           message: `未识别的字符: "${token.value}"`,
+          position: { line: token.line, column: token.column, offset: token.offset },
+          length: 1,
+        });
+        i++;
+        break;
+      }
+
+      case 'STACCATO': {
+        errors.push({
+          message: '短顿音标记 ! 必须紧随一个有效音符',
           position: { line: token.line, column: token.column, offset: token.offset },
           length: 1,
         });
@@ -474,7 +554,7 @@ function parseBody(tokens: Token[]): { measures: Measure[]; errors: ParseError[]
       }
     }
     // 已消费的前一音符后缀不能再次作为下一个无空格音符的前缀。
-    if (['NOTE', 'REST', 'TIE', 'BREATH', 'BARLINE', 'GRACE_PREFIX'].includes(token.type)) prefixStartIndex = i;
+    if (['NOTE', 'REST', 'TIE', 'BREATH', 'BARLINE', 'REPEAT_START', 'REPEAT_END', 'GRACE_PREFIX'].includes(token.type)) prefixStartIndex = i;
   }
 
   // 最后一个小节
@@ -486,12 +566,15 @@ function parseBody(tokens: Token[]): { measures: Measure[]; errors: ParseError[]
     const lineBreakBefore = lastSavedMeasureLine !== -1 && measureStartLine !== lastSavedMeasureLine;
     measures.push({
       number: measureNumber,
+      ...repeatStartFields(),
       notes: currentNotes,
       sourceRange: { from: measureStartOffset, to: measureEnd },
       sourceLine: measureStartLine,
       lineBreakBefore,
     });
   }
+
+  if (openRepeat) reportRepeat(openRepeat, '前反复记号缺少对应的后反复记号');
 
   // 为所有小节识别连音组（基于空格分隔）
   assignBeamGroups(measures);
@@ -510,6 +593,24 @@ function parseBody(tokens: Token[]): { measures: Measure[]; errors: ParseError[]
 
   // 识别圆滑线组（基于括号）
   assignSlurGroups(measures, bodyTokens);
+
+  // 暂不支持短顿音与倚音、波音或圆滑线组合。
+  for (const measure of measures) {
+    for (const [index, element] of measure.notes.entries()) {
+      if (element.type !== 'note' || element.articulation !== 'staccatissimo') continue;
+      const note = element;
+    const combination = note.isGrace ? '短顿音暂不支持用于倚音'
+      : note.trillType ? '短顿音暂不支持与波音组合'
+        : note.slurGroup !== undefined ? '短顿音暂不支持与圆滑线组合'
+          : measure.notes[index + 1]?.type === 'tie' ? '短顿音暂不支持与延长线组合' : undefined;
+      if (combination) {
+        const token = articulationPositions.get(note);
+        errors.push({ message: combination, position: token
+          ? { line: token.line, column: token.column, offset: token.offset }
+          : { line: measure.sourceLine ?? 1, column: 1, offset: measure.sourceRange?.from ?? 0 }, length: 1 });
+      }
+    }
+  }
 
   // 关联歌词到小节
   const lyricsErrors = associateLyricsToMeasures(measures, lyricsTokens);
@@ -631,6 +732,7 @@ function parseNote(tokens: Token[], startIndex: number, prefixStartIndex: number
   let octave = 0;
   let accidental: Note['accidental'] = undefined;
   let dot = false;
+  let articulation: Note['articulation'];
 
   // 接受前置八度标记和变音记号作为兼容写法。
   let checkIdx = i - 1;
@@ -644,7 +746,7 @@ function parseNote(tokens: Token[], startIndex: number, prefixStartIndex: number
       octave++;
     } else if (prevToken.type === 'OCTAVE_DOWN') {
       octave--;
-    } else if (prevToken.type === 'BARLINE' || prevToken.type === 'NOTE' || prevToken.type === 'REST' || prevToken.type === 'SLUR_START' || prevToken.type === 'GRACE_PREFIX') {
+    } else if (prevToken.type === 'BARLINE' || prevToken.type === 'REPEAT_START' || prevToken.type === 'REPEAT_END' || prevToken.type === 'NOTE' || prevToken.type === 'REST' || prevToken.type === 'SLUR_START' || prevToken.type === 'GRACE_PREFIX') {
       break;
     } else {
       checkIdx--;
@@ -669,6 +771,10 @@ function parseNote(tokens: Token[], startIndex: number, prefixStartIndex: number
       if (dot) break;
       dot = true;
       i++;
+    } else if (tokens[i].type === 'STACCATO') {
+      if (articulation) break;
+      articulation = 'staccatissimo';
+      i++;
     } else {
       break;
     }
@@ -691,6 +797,10 @@ function parseNote(tokens: Token[], startIndex: number, prefixStartIndex: number
       if (dot) break;
       dot = true;
       i++;
+    } else if (tokens[i].type === 'STACCATO') {
+      if (articulation) break;
+      articulation = 'staccatissimo';
+      i++;
     } else {
       break;
     }
@@ -709,6 +819,7 @@ function parseNote(tokens: Token[], startIndex: number, prefixStartIndex: number
       accidental,
       duration,
       dot,
+      ...(articulation ? { articulation } : {}),
     },
     nextIndex: i,
   };
@@ -835,7 +946,7 @@ export function parse(source: string): ParseResult {
     if (measures.length === 0) {
       return {
         score: null,
-        errors: [
+        errors: [...parseErrors,
           {
             message: '未找到任何音符',
             position: { line: 1, column: 1, offset: 0 },
@@ -905,6 +1016,15 @@ function parseTwoVoices(tokens: Token[], metadata: Metadata): ParseResult {
     const missing = upper.measures.length < lower.measures.length ? 'upper' : 'lower';
     const number = Math.min(upper.measures.length, lower.measures.length) + 1;
     report(streams[missing][streams[missing].length - 1] ?? tokens[0], `[${missing}] 缺少第 ${number} 小节；上下声部小节数必须一致`);
+  }
+  for (const [index, measure] of upper.measures.entries()) {
+    const other = lower.measures[index];
+    if (other && (Boolean(measure.repeatStart) !== Boolean(other.repeatStart)
+      || Boolean(measure.repeatEnd) !== Boolean(other.repeatEnd))) {
+      const from = other.repeatStartRange?.from ?? other.repeatEndRange?.from ?? other.sourceRange?.from ?? 0;
+      errors.push({ message: `第 ${index + 1} 小节上下声部反复记号必须一致`,
+        position: { line: other.sourceLine ?? 1, column: 1, offset: from }, length: 3 });
+    }
   }
   return { score: upper.measures.length || lower.measures.length
     ? { metadata, measures: upper.measures, secondaryVoice: { id: 'lower', measures: lower.measures } } : null, errors };

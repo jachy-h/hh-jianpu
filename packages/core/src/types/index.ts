@@ -66,6 +66,8 @@ export interface Note {
   graceType?: 'short' | 'long';
   /** 波音类型：single=单波音(~)，double=复波音(~~)，lower=下波音(~.) */
   trillType?: 'single' | 'double' | 'lower';
+  /** 短顿音：保留记谱时值，只缩短实际发声时长 */
+  articulation?: 'staccatissimo';
   /** 连音组ID（用于渲染连音线beam），相同ID的音符共享一条横线 */
   beamGroup?: number;
   /** 圆滑线组ID（用于渲染圆滑线slur），相同ID的音符共享一条弧线 */
@@ -93,6 +95,8 @@ export interface Tie {
 /** 换气记号 */
 export interface Breath {
   type: 'breath';
+  /** 紧邻小节线时锚定到所属小节的边界，不占横向空间。 */
+  barlineSide?: 'start' | 'end';
 }
 
 /** 音符组内元素 */
@@ -120,6 +124,16 @@ export interface MeasureLyrics {
 
 /** 小节 */
 export interface Measure {
+  /** 双竖线结束符，渲染为黑色结束线。 */
+  finalBarline?: boolean;
+  /** 本小节以 :||: 结束，并开启下一反复段。 */
+  combinedRepeat?: boolean;
+  /** 本小节开始/结束反复段；一段总共演奏两遍。 */
+  repeatStart?: boolean;
+  repeatEnd?: boolean;
+  /** 反复记号在源码中的范围。 */
+  repeatStartRange?: { from: number; to: number };
+  repeatEndRange?: { from: number; to: number };
   /** 小节编号（从 1 开始） */
   number: number;
   /** 小节内的音符序列 */

@@ -9,10 +9,15 @@ interface MeasureViewProps {
   onNoteClick?: (index: number) => void;
   onMeasureClick?: (measureNumber: number, voiceId?: 'upper' | 'lower') => void;
   isLoopSelected?: boolean;
+  joinedRepeatStart?: boolean;
+  joinedRepeatEnd?: boolean;
 }
 
-const MeasureView: React.FC<MeasureViewProps> = ({ layout, currentNoteIndex, noteFontSize = 18, onNoteClick, onMeasureClick, isLoopSelected = false }) => {
+const MeasureView: React.FC<MeasureViewProps> = ({ layout, currentNoteIndex, noteFontSize = 18, onNoteClick, onMeasureClick, isLoopSelected = false, joinedRepeatStart = false, joinedRepeatEnd = false }) => {
   const { measure, x, y, width, notes } = layout;
+  const barTop = y + 8;
+  const barBottom = y + (layout.height ?? Math.max(60, noteFontSize * 3.3)) - 8;
+  const repeatCenter = notes.find(position => position.note.type === 'note')?.y ?? (barTop + barBottom) / 2;
 
   // 收集连音组（beamGroup）并渲染连音线
   const beamGroups = new Map<number, typeof notes>();
@@ -48,9 +53,31 @@ const MeasureView: React.FC<MeasureViewProps> = ({ layout, currentNoteIndex, not
         y1={y + 8}
         x2={x + width}
         y2={y + (layout.height ?? Math.max(60, noteFontSize * 3.3)) - 8}
-        stroke="#D6D3D1"
-        strokeWidth={1}
+        stroke={measure.finalBarline ? "#1C1917" : "#D6D3D1"}
+        strokeWidth={measure.finalBarline ? 3 : 1}
       />
+
+      {/* 反复点与双线位于布局专门保留的左右边距内。 */}
+      {([
+        { visible: measure.repeatStart && !joinedRepeatStart, edge: x, direction: 1, label: '前反复记号' },
+        { visible: measure.repeatEnd && !joinedRepeatEnd, edge: x + width, direction: -1, label: '后反复记号' },
+      ]).map(({ visible, edge, direction, label }) => visible && (
+        <g key={label} aria-label={label} fill="#1C1917" stroke="#1C1917">
+          <line x1={edge} x2={edge} y1={barTop} y2={barBottom} strokeWidth={3} />
+          <line x1={edge + direction * noteFontSize * 0.3} x2={edge + direction * noteFontSize * 0.3} y1={barTop} y2={barBottom} strokeWidth={1.2} />
+          {[-1, 1].map(offset => <circle key={offset} cx={edge + direction * noteFontSize * 0.65} cy={repeatCenter + offset * noteFontSize * 0.22} r={noteFontSize * 0.09} stroke="none" />)}
+        </g>
+      ))}
+
+      {joinedRepeatEnd && (
+        <g aria-label="前后反复记号" fill="#1C1917" stroke="#1C1917">
+          <line x1={x + width} x2={x + width} y1={barTop} y2={barBottom} strokeWidth={3} />
+          {[-1, 1].flatMap(side => [-1, 1].map(offset => (
+            <circle key={`${side}-${offset}`} cx={x + width + side * noteFontSize * 0.65}
+              cy={repeatCenter + offset * noteFontSize * 0.22} r={noteFontSize * 0.09} stroke="none" />
+          )))}
+        </g>
+      )}
 
       {/* 小节编号（调试用，生产环境可隐藏） */}
       {/* <text x={x + 4} y={y + 12} fontSize={9} fill="#D6D3D1">{measure.number}</text> */}

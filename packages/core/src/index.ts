@@ -1,7 +1,8 @@
 export { getScoreVoices, durationInBeats } from './music.js';
 export { parse } from './parser/index.js';
 export { createLayout } from './renderer/index.js';
-export { Player } from './player/index.js';
+export { Player, TRIANGLE_INSTRUMENT, createSampleInstrument } from './player/index.js';
+export type { PlayerOptions, InstrumentDefinition, InstrumentBank, InstrumentNote, PlaybackInstrument, SampleDefinition, SampleInstrumentOptions } from './player/index.js';
 export {
   transposeScore,
   scoreToSource,

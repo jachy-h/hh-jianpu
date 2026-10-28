@@ -29,12 +29,15 @@ const HelpPage: React.FC = () => {
               <code className="bg-white px-2 py-1 rounded font-mono">1 1 5 5 | 6 6 5 -</code>{' '}
               然后播放！
             </p>
+            <p className="mt-2 text-sm text-gray-800">
+              预览优先按源码换行，不限制每行固定小节数；宽度不足时才在小节之间自动拆行，字号保持不变。单个小节过宽时可横向滚动。行尾的 |v 不影响下一行的换行位置。
+            </p>
           </div>
 
           <section className="rounded-lg border border-gray-300 bg-gray-50 p-4">
             <h3 className="mb-3 text-xl font-bold text-gray-800">选段与练习</h3>
             <p className="mb-2 text-sm text-gray-800">
-              在预览中先点击起点小节 A，再点击终点小节 B，播放会循环包含 A、B 在内的完整区间。再次点击可重新选择；播放器中的清除选段按钮恢复全曲播放。
+              在预览中先点击起点小节 A，再点击终点小节 B，播放会按书写顺序循环包含 A、B 在内的完整区间，忽略区间内谱面反复。再次点击可重新选择；播放器中的清除选段按钮恢复全曲播放及谱面反复。
             </p>
             <p className="mb-2 text-sm text-gray-800">
               播放时预览会跟随当前小节。手动滚动浏览后暂停自动跟随，点击「恢复播放跟随」继续跟随。
@@ -42,6 +45,7 @@ const HelpPage: React.FC = () => {
             <p className="text-sm text-gray-800">
               练习速度可选 0.5× 至 2×，实际播放速度等于曲谱 BPM 乘倍率。倍率独立于源码中的原始 BPM，循环和播放前倒计时使用相同的练习速度。
             </p>
+            <p className="mb-2 text-sm text-gray-800">播放条默认使用钢琴音色，也可选择「原声（合成音）」。音色选择会在本浏览器记住；切换时停止当前播放和倒计时。钢琴首次播放需要加载采样，失败后可重试或切换原声。教学钢琴的长音会持续到谱面规定的拍点；播放中调整练习速度，长音结束拍点也会随之调整。</p>
           </section>
 
           <section className="rounded-lg border border-blue-200 bg-blue-50 p-4">
@@ -51,6 +55,19 @@ const HelpPage: React.FC = () => {
             <p className="mb-2 text-sm text-gray-800">歌词使用 C[upper]、C[lower]，分别按所属声部从头分配；无词音符用 _ 占位。上下小节数须一致，每小节各自满足拍号，整小节休止请写足 0。双声部语法或时值有误时，先修正再播放或移调。</p>
             <p className="mb-2 text-sm text-gray-800">播放条可分别静音旋律或伴奏；选段循环、练习倍率、倒计时和暂停恢复共用时间轴。点击下声部小节可定位其源码。</p>
             <p className="text-sm text-gray-800">目前每声部支持单音，和弦、琶音及第三声部暂未支持。旧谱的连续 Q / P 行仍顺序演奏，不会自动转成双声部。</p>
+          </section>
+
+          <section className="rounded-lg border border-barline bg-paper p-4">
+            <h3 className="mb-3 text-xl font-bold text-ink">反复记号</h3>
+            <p className="mb-2 text-sm text-ink">用 <code>||:</code> 标记反复段起点，<code>:||</code> 标记终点，整段演奏两遍后继续。只有后反复时从曲首重奏；普通 <code>||</code> 仍是小节线。</p>
+            <pre className="mb-2 overflow-x-auto rounded bg-white p-3 text-sm">{"||: 1 2 3 4 | 5 6 7 1' :|| 1' - - - |"}</pre>
+            <p className="mb-2 text-sm text-ink">以上按第 1 → 2 → 1 → 2 → 3 小节演奏，BPM 120 时音乐时长为 10 秒。暂停、恢复和变速保留当前遍次；停止后从第一遍开始。</p>
+            <p className="text-sm text-ink">支持单小节、多段顺序反复，以及同一边界 <code>:|| ||:</code>。<code>:||:</code> 同时结束上一反复段并开始下一反复段，同一行显示为一条黑线左右各两个反复点；跨行分别显示后反复和前反复记号。前反复自身划分小节并开始新小节，前面无需额外的小节线，且必须有匹配终点；双声部必须在对应边界写相同记号。嵌套、空段、跳房子、指定次数与 D.C./D.S. 暂不支持，出现诊断后需修正才能播放。</p>
+          </section>
+
+          <section className="rounded-lg border border-barline bg-paper p-4">
+            <h3 className="mb-3 text-xl font-bold text-ink">竹笛入门</h3>
+            <p className="text-sm text-ink">首页「竹笛入门」沿用示例曲谱的编辑和播放流程。内置《练习(1)》，打开曲目后可变速、选段和移调，编辑时保存为个人副本。</p>
           </section>
 
           {/* 完整语法表 */}
@@ -84,7 +101,7 @@ const HelpPage: React.FC = () => {
                   </tr>
                   <tr>
                     <td className="border border-gray-300 px-4 py-2"><code className="font-mono bg-gray-100 px-2 py-1 rounded">|</code></td>
-                    <td className="border border-gray-300 px-4 py-2">小节线（分隔小节）</td>
+                    <td className="border border-gray-300 px-4 py-2">小节线（分隔小节）；|| 表示结束，显示为一条黑线</td>
                     <td className="border border-gray-300 px-4 py-2"><code className="font-mono">1 2 3 4 | 5 6 7 1</code></td>
                   </tr>
                 </tbody>
@@ -161,6 +178,11 @@ const HelpPage: React.FC = () => {
                       <code className="font-mono">1//</code> (1/4拍)
                     </td>
                   </tr>
+                  <tr>
+                    <td className="border border-gray-300 px-4 py-2"><code className="font-mono bg-gray-100 px-2 py-1 rounded">!</code></td>
+                    <td className="border border-gray-300 px-4 py-2">短顿音：不改变占拍，默认发声时值的 1/4</td>
+                    <td className="border border-gray-300 px-4 py-2"><code className="font-mono">5!</code>（显示实心倒三角）</td>
+                  </tr>
                 </tbody>
               </table>
               <p className="text-xs text-gray-500 mt-2">
@@ -192,7 +214,7 @@ const HelpPage: React.FC = () => {
                   </tr>
                   <tr>
                     <td className="border border-gray-300 px-4 py-2"><code className="font-mono bg-gray-100 px-2 py-1 rounded">v 或 V</code></td>
-                    <td className="border border-gray-300 px-4 py-2">换气记号（0拍）</td>
+                    <td className="border border-gray-300 px-4 py-2">换气记号（0拍）；紧邻小节线或反复记号前后时显示在线正上方</td>
                     <td className="border border-gray-300 px-4 py-2"><code className="font-mono">1 2 3 v 4 5 6</code></td>
                   </tr>
                   <tr>

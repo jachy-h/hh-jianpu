@@ -7,6 +7,23 @@ function schedule(source: string) {
 }
 
 describe('scheduler musical boundaries', () => {
+  it('holds prolongations for the full written duration while short detached notes retain their gate', () => {
+    expect(schedule('1 - - - |')[0].soundingDurationBeats).toBe(4);
+    expect(schedule('(1 1 1 1) |')[0].soundingDurationBeats).toBe(4);
+    expect(schedule('1 2 3 4 |')[0].soundingDurationBeats).toBe(0.9);
+    expect(schedule('1! 2 3 4 |')[0].soundingDurationBeats).toBe(0.25);
+    const shortRange = selectMeasureSegment(schedule('1! - - - |'), { startMeasure: 1, endMeasure: 1 })!;
+    expect(shortRange.events[0].soundingDurationBeats).toBe(1);
+  });
+
+  it('restores a prolongation at a selected range entrance and clips its gate at the range end', () => {
+    const events = schedule('1 - - - | - - - - | 2 - - - |');
+    const selected = selectMeasureSegment(events, { startMeasure: 2, endMeasure: 2 })!;
+    const sounding = selected.events.filter(event => event.frequency !== null);
+    expect(sounding).toHaveLength(1);
+    expect(sounding[0].soundingDurationBeats).toBe(4);
+    expect(sounding[0].startBeat).toBe(0);
+  });
   it('restores the sounding onset when a selected measure begins inside a same-note slur', () => {
     const events = schedule('(1 2 3 4 | 4 4 4 5) |');
     const selected = selectMeasureSegment(events, { startMeasure: 2, endMeasure: 2 })!;

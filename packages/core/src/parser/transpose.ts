@@ -107,7 +107,8 @@ function formatNote(note: Note): string {
   const duration = slashes > 0 ? '/'.repeat(slashes) : '';
   const dot = note.dot ? '.' : '';
   const ornament = note.isGrace ? '^' : note.trillType === 'single' ? '~' : note.trillType === 'double' ? '~~' : note.trillType === 'lower' ? '~.' : '';
-  return `${ornament}${accidental}${note.pitch}${octaveMark}${duration}${dot}`;
+  const articulation = note.articulation === 'staccatissimo' ? '!' : '';
+  return `${ornament}${accidental}${note.pitch}${octaveMark}${duration}${dot}${articulation}`;
 }
 
 function formatRest(element: { type: 'rest'; duration: { base: number; dots: number } }): string {
@@ -196,7 +197,9 @@ export function scoreToSource(score: Score): string {
       measureStr += ')';
     }
 
-    const text = measureStr.trimStart() + ' |';
+    const joinedStart = measureIndex > 0 && score.measures[measureIndex - 1].combinedRepeat;
+    const ending = measure.combinedRepeat ? ' :||:' : measure.repeatEnd ? ' :||' : measure.finalBarline ? ' ||' : ' |';
+    const text = (measure.repeatStart && !joinedStart ? '||: ' : '') + measureStr.trimStart() + ending;
     if (measureIndex > 0 && !measure.lineBreakBefore) {
       lines[lines.length - 1] += ` ${text}`;
     } else {

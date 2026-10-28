@@ -85,6 +85,10 @@ export function calculateNoteBoundingBox(
     left = Math.min(left, x - trillWidth / 2);
     top = Math.min(top, y - 22); // 波音标记在上方
   }
+
+  if (note.type === 'note' && note.articulation === 'staccatissimo') {
+    top = Math.min(top, y - fontSize * 1.75);
+  }
   
   // 处理附点
   if (note.type === 'note' && note.dot) {

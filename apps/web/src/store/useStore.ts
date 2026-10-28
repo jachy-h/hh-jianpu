@@ -1,8 +1,10 @@
 import { create } from 'zustand';
 import { parse, Player } from '@hh-jianpu/core';
 import type { Score, ParseError, PlaybackStatus } from '@hh-jianpu/core';
-import { EXAMPLES } from '../examples';
+import { DEFAULT_SCORE_SOURCE, getLibraryScore } from '../services/scoreLibrary';
+import type { ScoreTemplate } from '../services/scoreLibrary';
 import { AUTO_SAVE_DELAY_MS } from '../config';
+import { PLAYBACK_INSTRUMENTS, loadInstrumentPreference, saveInstrumentPreference } from '../services/playbackInstruments';
 import {
   recognizeImage,
   loadLLMConfig,
@@ -100,6 +102,8 @@ interface AppState {
   // 播放状态
   playbackStatus: PlaybackStatus;
   playbackError: string | null;
+  instrumentId: string;
+  setInstrument: (id: string) => void;
   currentNoteIndex: number;
   activeNoteIndices: number[];
   mutedVoices: ('upper' | 'lower')[];
@@ -144,7 +148,8 @@ interface AppState {
   play: () => Promise<void>;
   pause: () => void;
   stop: () => void;
-  loadExample: (key: string) => void;
+  loadTemplate: (template: ScoreTemplate) => boolean;
+  loadLibraryScore: (categoryId: string, scoreId: string) => boolean;
 
   // OCR 操作
   recognizeImage: (file: File) => Promise<void>;
@@ -173,7 +178,9 @@ let pendingEdit: { source: string; targetId: string | null; revision: number } |
 let editRevision = 0;
 
 export const useStore = create<AppState>((set, get) => {
-  const player = new Player();
+  const initialInstrumentId = loadInstrumentPreference();
+  const player = new Player({ instruments: PLAYBACK_INSTRUMENTS, instrumentId: initialInstrumentId });
+  let playbackRequest = 0;
   let parsedSource = '';
 
   const commitEdit = (edit: { source: string; targetId: string | null }): boolean => {
@@ -205,7 +212,7 @@ export const useStore = create<AppState>((set, get) => {
       return true;
     } catch (error) {
       console.error('曲谱保存失败:', error);
-      set({ isAutoSaving: false, saveStatus: 'error', saveError: '本地保存失败，请重试或导出备份。' });
+      set({ isAutoSaving: false, saveStatus: 'error', saveError: '本地保存失败，请重试或下载备份。' });
       return false;
     }
   };
@@ -236,7 +243,7 @@ export const useStore = create<AppState>((set, get) => {
   const initialSavedScore = initialCurrentScoreId ? findMyScore(initialCurrentScoreId) : null;
   const libraryIsNewer = initialSavedScore && persisted.sourceUpdatedAt !== undefined
     && initialSavedScore.updatedAt > persisted.sourceUpdatedAt;
-  const initialSource = libraryIsNewer ? initialSavedScore.source : persisted.source ?? EXAMPLES.twinkle.source;
+  const initialSource = libraryIsNewer ? initialSavedScore.source : persisted.source ?? DEFAULT_SCORE_SOURCE;
   const initialParse = parseSource(initialSource);
   // 输入时写入 localStorage 的源码是页面崩溃/刷新后的恢复草稿。
   // 启动时按草稿绑定的曲谱 ID 回写库，避免恢复后再次离开时丢失最新编辑。
@@ -296,7 +303,7 @@ export const useStore = create<AppState>((set, get) => {
         source: s,
         isAutoSaving: true,
         saveStatus: draftSaved ? 'saving' : 'error',
-        saveError: draftSaved ? null : '本地草稿保存失败，请及时导出备份。',
+        saveError: draftSaved ? null : '本地草稿保存失败，请及时下载备份。',
       });
       if (parseDebounceTimer) clearTimeout(parseDebounceTimer);
       parseDebounceTimer = setTimeout(() => {
@@ -339,7 +346,7 @@ export const useStore = create<AppState>((set, get) => {
       // setSourceImmediate 用于加载示例/已存曲谱，不触发自动保存流程
       const currentId = get().currentScoreId;
       const persisted = savePersistedState(buildPersistedState(s, scoreTempo ?? get().tempo, get().playDelay, currentId));
-      if (!persisted) set({ saveStatus: 'error', saveError: '本地草稿保存失败，请导出备份。' });
+      if (!persisted) set({ saveStatus: 'error', saveError: '本地草稿保存失败，请下载备份。' });
     },
     retrySave: () => {
       const { source, currentScoreId } = get();
@@ -359,11 +366,19 @@ export const useStore = create<AppState>((set, get) => {
     currentScoreId: initialCurrentScoreId,
     isAutoSaving: false,
     saveStatus: recoveryFailed ? 'error' : 'idle',
-    saveError: recoveryFailed ? '恢复草稿尚未写入曲谱库，请重试或导出备份。' : null,
+    saveError: recoveryFailed ? '恢复草稿尚未写入曲谱库，请重试或下载备份。' : null,
     lastSavedAt: null,
 
     playbackStatus: 'idle',
     playbackError: null,
+    instrumentId: initialInstrumentId,
+    setInstrument: (id) => {
+      if (!PLAYBACK_INSTRUMENTS.some(instrument => instrument.id === id) || id === get().instrumentId) return;
+      get().stop();
+      player.setInstrument(id);
+      set({ instrumentId: id });
+      saveInstrumentPreference(id);
+    },
     currentNoteIndex: -1,
     activeNoteIndices: [],
     mutedVoices: [],
@@ -423,8 +438,9 @@ export const useStore = create<AppState>((set, get) => {
       }
     },
     cancelCountdown: () => {
+      playbackRequest++;
       get().player.stopMetronomeWarmup();
-      set({ countdownValue: 0, isMetronomeActive: false });
+      set({ countdownValue: 0, isMetronomeActive: false, isLoading: false });
     },
 
     player,
@@ -436,6 +452,7 @@ export const useStore = create<AppState>((set, get) => {
 
     play: async () => {
       if (get().isLoading) return;
+      const request = ++playbackRequest;
       set({ playbackError: null });
       let current = get();
       if (parsedSource !== current.source) {
@@ -448,6 +465,10 @@ export const useStore = create<AppState>((set, get) => {
       }
       const { score, player, playDelay, isMetronomeActive } = current;
       if (!score) return;
+      if (current.parseErrors.some(error => error.message.includes('反复'))) {
+        set({ playbackError: '请先修正反复记号诊断，再播放曲谱。' });
+        return;
+      }
       if (score.secondaryVoice && current.parseErrors.length) {
         set({ playbackError: '请先修正双声部曲谱中的语法或小节时值错误。' });
         return;
@@ -477,29 +498,30 @@ export const useStore = create<AppState>((set, get) => {
           await player.play(0);
         } catch (error) {
           console.error('播放失败:', error);
-          set({ playbackError: '播放启动失败，请检查音频权限后重试。' });
+          if (request === playbackRequest) set({ playbackError: '音色加载或播放失败，请重试，或切换为原声（合成音）。' });
         } finally {
-          set({ isLoading: false });
+          if (request === playbackRequest) set({ isLoading: false });
         }
       };
 
       // 延迟拍数 > 0 时，启动预热节拍器
       if (playDelay > 0 && player.status !== 'paused') {
-        set({ countdownValue: playDelay, isMetronomeActive: true });
+        set({ countdownValue: playDelay, isMetronomeActive: true, isLoading: true });
 
         try {
           await player.startMetronomeWarmup(playDelay, () => {
             set({ countdownValue: 0, isMetronomeActive: false });
             void doPlay();
           }, (remainingBeats) => {
-            set({ countdownValue: remainingBeats });
+            if (request === playbackRequest) set({ countdownValue: remainingBeats, isLoading: false });
           });
         } catch (error) {
           console.error('节拍器预热失败:', error);
-          set({
+          if (request === playbackRequest) set({
+            isLoading: false,
             countdownValue: 0,
             isMetronomeActive: false,
-            playbackError: '节拍器启动失败，请检查音频权限后重试。',
+            playbackError: '音色加载或节拍器启动失败，请重试，或切换为原声（合成音）。',
           });
         }
         return;
@@ -517,24 +539,48 @@ export const useStore = create<AppState>((set, get) => {
     },
 
     stop: () => {
+      playbackRequest++;
       // 同时取消倒计时
-      set({ countdownValue: 0, isMetronomeActive: false });
+      set({ countdownValue: 0, isMetronomeActive: false, isLoading: false });
       get().player.stopMetronomeWarmup();
       get().player.stop();
       set({ playbackError: null });
     },
 
-    loadExample: (key: string) => {
-      const example = EXAMPLES[key as keyof typeof EXAMPLES];
-      if (example) {
-        if (!flushPendingEdit()) return;
-        player.setLoopRange(null);
-        set({ loopSelection: null });
-        // 切换到示例时重置 currentScoreId，下次编辑会自动创建新曲谱
-        set({ currentScoreId: null });
-        get().setSourceImmediate(example.source);
-        savePersistedState(buildPersistedState(example.source, get().tempo, get().playDelay, null));
+    loadTemplate: (template: ScoreTemplate) => {
+      if (!flushPendingEdit()) return false;
+      const { score, parseErrors } = parseSource(template.source);
+      const tempo = score?.metadata?.tempo ?? get().tempo;
+      // 先确认恢复状态可写；失败时保持当前文档、绑定和播放状态。
+      if (!savePersistedState(buildPersistedState(template.source, tempo, get().playDelay, null))) {
+        set({ saveStatus: 'error', saveError: '模板未加载：本地草稿保存失败，请重试或下载备份。' });
+        return false;
       }
+      get().stop();
+      player.setLoopRange(null);
+      editRevision++;
+      parsedSource = template.source;
+      player.setTempo(tempo * get().practiceSpeed);
+      set({
+        currentScoreId: null,
+        source: template.source,
+        score,
+        parseErrors,
+        tempo,
+        loopSelection: null,
+        currentNoteIndex: -1,
+        activeNoteIndices: [],
+        isAutoSaving: false,
+        saveStatus: 'idle',
+        saveError: null,
+        lastSavedAt: null,
+      });
+      return true;
+    },
+
+    loadLibraryScore: (categoryId: string, scoreId: string) => {
+      const template = getLibraryScore(categoryId, scoreId);
+      return template ? get().loadTemplate(template) : false;
     },
 
     // OCR 操作实现（新增）
@@ -616,7 +662,7 @@ export const useStore = create<AppState>((set, get) => {
       try {
         deleteMyScore(id);
       } catch {
-        set({ saveStatus: 'error', saveError: '删除未保存，请重试或导出备份。' });
+        set({ saveStatus: 'error', saveError: '删除未保存，请重试或下载备份。' });
         return;
       }
       const updated = loadMyScores();
@@ -642,7 +688,7 @@ export const useStore = create<AppState>((set, get) => {
       try {
         updateMyScore(id, { title, source });
       } catch {
-        set({ saveStatus: 'error', saveError: '重命名未保存，请重试或导出备份。' });
+        set({ saveStatus: 'error', saveError: '重命名未保存，请重试或下载备份。' });
         return;
       }
       if (get().currentScoreId === id) {
@@ -694,7 +740,7 @@ Q | |`;
       try {
         created = createMyScore(finalSource, title);
       } catch {
-        set({ source: finalSource, score, parseErrors, currentScoreId: null, loopSelection: null, saveStatus: 'error', saveError: '另存失败，已保留新稿，请重试或导出备份。' });
+        set({ source: finalSource, score, parseErrors, currentScoreId: null, loopSelection: null, saveStatus: 'error', saveError: '另存失败，已保留新稿，请重试或下载备份。' });
         savePersistedState(buildPersistedState(finalSource, get().tempo, get().playDelay, null));
         return;
       }

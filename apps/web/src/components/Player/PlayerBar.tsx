@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import type { PlaybackStatus } from "@hh-jianpu/core";
+import { PLAYBACK_INSTRUMENTS, DEFAULT_INSTRUMENT_ID } from '../../services/playbackInstruments';
 
 const DELAY_BEATS = [0, 4, 8, 16] as const;
 const FONT_SIZES = [
@@ -15,6 +16,8 @@ interface PlayerBarProps {
   mutedVoices?: ('upper' | 'lower')[];
   onVoiceMutedChange?: (id: 'upper' | 'lower', muted: boolean) => void;
   isLoading?: boolean;
+  instrumentId?: string;
+  onInstrumentChange?: (id: string) => void;
   practiceSpeed?: number;
   onPracticeSpeedChange?: (speed: number) => void;
   playDelay: number;
@@ -39,6 +42,8 @@ const PlayerBar: React.FC<PlayerBarProps> = ({
   mutedVoices = [],
   onVoiceMutedChange,
   isLoading = false,
+  instrumentId = DEFAULT_INSTRUMENT_ID,
+  onInstrumentChange,
   practiceSpeed = 1,
   onPracticeSpeedChange,
   playDelay,
@@ -46,7 +51,7 @@ const PlayerBar: React.FC<PlayerBarProps> = ({
   countdownValue = 0,
   noteFontSize,
   collapsed = false,
-  pinned = false,
+  pinned = true,
   onNoteFontSizeChange,
   onPlay,
   onPause,
@@ -105,12 +110,18 @@ const PlayerBar: React.FC<PlayerBarProps> = ({
           disabled={isLoading}
           aria-busy={isLoading}
           onClick={handlePlayClick}
-          className={`p-2.5 rounded-full text-white shadow-md ${
+          className={`grid h-10 w-10 shrink-0 place-items-center p-2.5 rounded-full text-white shadow-md ${
             isMetronomeActive ? "bg-amber-500 hover:bg-amber-600" : "bg-highlight hover:bg-blue-700"
           }`}
-          title={isMetronomeActive ? "点击取消倒计时" : status === "playing" ? "暂停" : "播放"}
+          title={isLoading ? "音色准备中" : isMetronomeActive ? "点击取消倒计时" : status === "playing" ? "暂停" : "播放"}
         >
-          {isMetronomeActive && countdownValue > 0 ? (
+          <span role="status" className="sr-only">{isLoading ? '音色准备中' : ''}</span>
+          {isLoading ? (
+            <svg className="animate-spin" aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="3" opacity="0.25" />
+              <path d="M12 3a9 9 0 0 1 9 9" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+            </svg>
+          ) : isMetronomeActive && countdownValue > 0 ? (
             <span className="w-5 h-5 flex items-center justify-center text-sm font-bold">{countdownValue}</span>
           ) : status === "playing" ? (
             <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
@@ -123,6 +134,15 @@ const PlayerBar: React.FC<PlayerBarProps> = ({
             </svg>
           )}
         </button>
+
+        <label className="flex items-center gap-1 text-xs text-played">
+          音色
+          <select aria-label="播放音色" value={instrumentId}
+            onChange={(event) => onInstrumentChange?.(event.target.value)}
+            className="rounded bg-gray-100 px-1 py-0.5 text-ink">
+            {PLAYBACK_INSTRUMENTS.map(instrument => <option key={instrument.id} value={instrument.id}>{instrument.label}</option>)}
+          </select>
+        </label>
 
         <div className="flex items-center gap-1">
           <span className="text-xs text-played select-none">延迟:</span>
@@ -170,7 +190,7 @@ const PlayerBar: React.FC<PlayerBarProps> = ({
             {loopSelection
               ? loopSelection.endMeasure === null
                 ? `循环起点：第 ${loopSelection.startMeasure} 小节（再选终点）`
-                : `循环：第 ${loopSelection.startMeasure}–${loopSelection.endMeasure} 小节`
+                : `循环：第 ${loopSelection.startMeasure}–${loopSelection.endMeasure} 小节（按书写顺序）`
               : '点击小节设置循环段'}
           </span>
           {loopSelection && (

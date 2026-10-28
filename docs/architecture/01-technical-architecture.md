@@ -296,11 +296,15 @@ hh-jianpu/
 │       │   ├── hooks/       # 自定义 Hooks
 │       │   │   ├── useParser.ts
 │       │   │   └── usePlayer.ts
-│       │   ├── examples/    # 示例曲谱
-│       │   │   └── index.ts
+│       │   ├── services/    # 服务与公共资源加载
+│       │   │   └── scoreLibrary.ts
 │       │   ├── App.tsx
 │       │   ├── main.tsx
 │       │   └── index.css
+│       ├── resources/
+│       │   └── scores/      # 分类配置与 JSONC 公共曲谱
+│       │       ├── examples/
+│       │       └── bamboo/
 │       ├── index.html
 │       ├── package.json
 │       ├── tsconfig.json
@@ -383,3 +387,8 @@ hh-jianpu/
 - [ ] 移动端适配
 - [ ] 性能优化
 - [ ] 部署（Vercel / GitHub Pages）
+
+
+公共曲谱按分类目录自动发现，示例曲谱与竹笛入门共用数据格式、页面和加载入口；新增分类不修改业务代码。配置和维护步骤见 [维护公共曲谱库](../score-library.md)。
+
+播放音色通过工厂注册表注入 Player，默认网页钢琴和原有合成音共用调度层；后续扩充音色无需修改解析、布局或时间轴。采样共享和生命周期说明见 [播放音色](../playback-instruments.md)。

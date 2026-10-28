@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><title>播放音源实际音频验收</title>
+<style>body{font:16px system-ui;max-width:1000px;margin:32px auto;padding:0 16px}pre{white-space:pre-wrap}audio{display:block;margin:8px 0}section{border-top:1px solid #ddd;padding:16px 0}</style></head>
+<body><h1>播放音源实际音频验收</h1><p>开发验收页，不修改个人曲谱；使用真实 Player、Transport 与 Web Audio 离线渲染。构建入口不包含此页。</p>
+<button id="run">运行验收</button><pre id="result">等待运行</pre><div id="audio"></div>
+<script type="module">
+import * as Tone from 'tone';
+import { Player, parse } from '@hh-jianpu/core';
+import { PLAYBACK_INSTRUMENTS } from '../src/services/playbackInstruments.ts';
+const result=document.getElementById('result'), audio=document.getElementById('audio');
+function rms(buffer,start,end){let sum=0,count=0;for(let c=0;c<buffer.numberOfChannels;c++){const data=buffer.getChannelData(c);for(let i=Math.round(start*44100);i<Math.min(data.length,Math.round(end*44100));i++){sum+=data[i]**2;count++;}}return Math.sqrt(sum/Math.max(1,count));}
+function peak(buffer){let max=0;for(let c=0;c<buffer.numberOfChannels;c++)for(const value of buffer.getChannelData(c))max=Math.max(max,Math.abs(value));return max;}
+function wav(buffer){const channels=buffer.numberOfChannels,length=buffer.length;const bytes=new ArrayBuffer(44+length*channels*2),view=new DataView(bytes);const text=(offset,value)=>{for(let i=0;i<value.length;i++)view.setUint8(offset+i,value.charCodeAt(i));};text(0,'RIFF');view.setUint32(4,bytes.byteLength-8,true);text(8,'WAVE');text(12,'fmt ');view.setUint32(16,16,true);view.setUint16(20,1,true);view.setUint16(22,channels,true);view.setUint32(24,44100,true);view.setUint32(28,44100*channels*2,true);view.setUint16(32,channels*2,true);view.setUint16(34,16,true);text(36,'data');view.setUint32(40,length*channels*2,true);for(let i=0;i<length;i++)for(let c=0;c<channels;c++)view.setInt16(44+(i*channels+c)*2,Math.max(-1,Math.min(1,buffer.getChannelData(c)[i]))*32767,true);return new Blob([bytes],{type:'audio/wav'});}
+function attach(name,buffer){const section=document.createElement('section'),heading=document.createElement('h2'),player=document.createElement('audio'),link=document.createElement('a');heading.textContent=name;const url=URL.createObjectURL(wav(buffer));player.controls=true;player.src=url;link.href=url;link.download=name+'.wav';link.textContent='下载 '+name;section.append(heading,player,link);audio.append(section);}
+async function render(definition,source,seconds,{tempo=120,slowAt,loop,muteAt}={}){
+ const original=Tone.getContext(),context=new Tone.OfflineContext(2,seconds,44100),events=[];Tone.setContext(context);
+ const recording={...definition,load:async(tone,output)=>{const bank=await definition.load(tone,output);return{...bank,createVoice:()=>{const voice=bank.createVoice();return{...voice,noteOn:(note,time)=>{events.push({type:'on',...note,time});voice.noteOn(note,time);},noteOff:(id,time)=>{events.push({type:'off',id,time});voice.noteOff(id,time);}};}};}};
+ const player=new Player({instruments:[recording]});player.loadScore(parse(source).score);player.setMetronomeEnabled(false);player.setTempo(tempo);if(loop)player.setLoopRange({startMeasure:1,endMeasure:1});
+ try{await player.play();if(slowAt!==undefined)context.setTimeout(()=>player.setTempo(60),slowAt);if(muteAt!==undefined)context.setTimeout(()=>player.setVoiceMuted('upper',true),muteAt);const buffer=await context.render();return{buffer,events};}finally{player.dispose();Tone.setContext(original);}
+}
+document.getElementById('run').onclick=async()=>{
+ document.getElementById('run').disabled=true;audio.replaceChildren();const report=[];
+ try{
+ const piano=PLAYBACK_INSTRUMENTS.find(x=>x.id==='piano'),triangle=PLAYBACK_INSTRUMENTS.find(x=>x.id==='triangle');
+ const short=await render(piano,'1 0 0 0 |',3);report.push({case:'1 拍钢琴',gate:short.events.find(e=>e.type==='off')?.time,afterRelease:rms(short.buffer,0.8,1.2)});attach('钢琴-1拍',short.buffer);
+ const long=await render(piano,'1 - - - |',3);report.push({case:'4 拍钢琴',gate:long.events.find(e=>e.type==='off')?.time,early:rms(long.buffer,0.4,0.8),late:rms(long.buffer,1.5,1.9),afterRelease:rms(long.buffer,2.3,2.6)});attach('钢琴-4拍',long.buffer);
+ const slow=await render(piano,'1 - - - |',5,{slowAt:0.5});report.push({case:'第1拍后降速',gate:slow.events.find(e=>e.type==='off')?.time,sustaining:rms(slow.buffer,2.8,3.2),afterRelease:rms(slow.buffer,3.9,4.2)});attach('钢琴-长音中途降速',slow.buffer);
+ const repeated=await render(piano,'1 - - - |',6.3,{loop:true});report.push({case:'连续循环',onsets:repeated.events.filter(e=>e.type==='on').map(e=>({id:e.id,time:e.time})),lastRound:rms(repeated.buffer,5.4,5.8)});
+ const duet=await render(piano,'Q[upper] 1 - - - |\nQ[lower] 3 - - - |',3,{muteAt:0.75});report.push({case:'上声部静音',lowerSustaining:rms(duet.buffer,1.2,1.7),peak:peak(duet.buffer)});
+ const phrase='1, - 3, - | 5, - 1 - | 3 - 5 - | 1\' - 3\' - |';
+ for(const definition of [piano,triangle]){const compared=await render(definition,phrase,9);report.push({case:definition.id+' 相同旋律',rmsDb:20*Math.log10(rms(compared.buffer,0,8)),peak:peak(compared.buffer)});attach(definition.id==='piano'?'钢琴-同谱对比':'合成音-同谱对比',compared.buffer);}
+ const levels=[];for(const note of ['1,','1','1\'','1\'\'']){const rendered=await render(piano,note+' - - - |',2.5);levels.push({note,rms:rms(rendered.buffer,0.6,1.8)});}report.push({case:'各音区持续段',levels});
+ const passed=report[0].afterRelease<0.00001&&report[1].late>0.1&&report[1].afterRelease<0.00001&&Math.abs(report[1].gate-2)<0.03&&Math.abs(report[2].gate-3.5)<0.04&&report[2].afterRelease<0.00001&&report[3].onsets.length>=3&&report[4].lowerSustaining>0.1&&levels.every(x=>x.rms>0.1);
+ result.textContent=JSON.stringify({passed,report},null,2);
+ }catch(error){result.textContent='FAILED: '+error.stack;}finally{document.getElementById('run').disabled=false;}
+};
+</script></body></html>

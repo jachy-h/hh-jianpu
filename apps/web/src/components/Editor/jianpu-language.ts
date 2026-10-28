@@ -174,6 +174,9 @@ function tokenizeBody(stream: StringStream): string | null {
   const ch = stream.peek();
   if (ch == null) return null;
 
+  // 完整反复记号先于普通小节线匹配。
+  if (stream.match(/^(?::\|\|:|\|\|:|:\|\||\|\|)/)) return 'separator';
+
   // 音符 1-7
   if (ch >= '1' && ch <= '7') {
     stream.next();
@@ -206,6 +209,12 @@ function tokenizeBody(stream: StringStream): string | null {
 
   // 附点 .
   if (ch === '.') {
+    stream.next();
+    return 'modifier';
+  }
+
+  // 短顿音
+  if (ch === '!') {
     stream.next();
     return 'modifier';
   }

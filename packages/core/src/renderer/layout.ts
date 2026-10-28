@@ -19,8 +19,8 @@ import { calculateNoteBoundingBox } from './bounding-box.js';
 export interface LayoutConfig {
   /** 总宽度（px） */
   width: number;
-  /** 每行小节数 */
-  measuresPerLine: number;
+  /** 可选的每行小节数上限；省略时遵循源码换行，仅在宽度不足时拆行。 */
+  measuresPerLine?: number;
   /** 音符间距（px） */
   noteSpacing: number;
   /** 音符字号（px） */
@@ -42,7 +42,6 @@ export interface LayoutConfig {
 /** 默认布局配置 */
 export const DEFAULT_LAYOUT_CONFIG: LayoutConfig = {
   width: 800,
-  measuresPerLine: 4,
   noteSpacing: 40,
   noteFontSize: 18,
   lineHeight: 60,
@@ -63,14 +62,15 @@ export function createLayout(score: Score, config: Partial<LayoutConfig> = {}): 
   cfg.lineGap = Math.max(cfg.lineGap, cfg.noteFontSize * 1.6);
   cfg.lyricsOffset = config.lyricsOffset ?? cfg.noteFontSize * DEFAULT_LAYOUT_CONFIG.lyricsOffset / 18;
   const availableWidth = Math.max(cfg.noteFontSize * 2, cfg.width - cfg.marginLeft * 2);
-  const maxMeasures = Math.max(1, Math.floor(cfg.measuresPerLine));
+  const maxMeasures = cfg.measuresPerLine === undefined ? Infinity : Math.max(1, Math.floor(cfg.measuresPerLine));
   const baseWidth = availableWidth / maxMeasures;
   const padding = cfg.noteFontSize * 0.8;
   // 每个音符拥有独立的空间；长歌词组会扩展该音符的空间，避免与相邻歌词重叠。
   const metrics = score.measures.map((measure) => {
-    const spacing = calculateDynamicSpacing(measure.notes, cfg.noteFontSize);
+    const spacing = calculateDynamicSpacing(measure.notes.filter(note => note.type !== 'breath' || !note.barlineSide), cfg.noteFontSize);
     let syllableIndex = 0;
     const slots = measure.notes.map((note) => {
+      if (note.type === 'breath' && note.barlineSide) return 0;
       const box = calculateNoteBoundingBox(note, cfg.noteFontSize, 0, 0).horizontal;
       let lyricWidth = 0;
       if (note.type === 'note' && !note.isGrace) {
@@ -83,7 +83,9 @@ export function createLayout(score: Score, config: Partial<LayoutConfig> = {}): 
       }
       return Math.max(spacing, 2 * Math.max(-box.left, box.right), note.type === 'note' && note.accidental ? cfg.noteFontSize * 1.5 : 0, lyricWidth + cfg.noteFontSize * 0.4);
     });
-    return { measure, slots, width: Math.max(baseWidth, padding * 2 + slots.reduce((sum, slot) => sum + slot, 0)) };
+    const leftPadding = padding + (measure.repeatStart ? cfg.noteFontSize : 0);
+    const rightPadding = padding + (measure.repeatEnd ? cfg.noteFontSize : 0);
+    return { measure, slots, leftPadding, rightPadding, width: Math.max(baseWidth, leftPadding + rightPadding + slots.reduce((sum, slot) => sum + slot, 0)) };
   });
 
   const groups: (typeof metrics)[] = [];
@@ -107,9 +109,14 @@ export function createLayout(score: Score, config: Partial<LayoutConfig> = {}): 
     const lineY = cfg.marginTop + lineIndex * (cfg.lineHeight + cfg.lineGap);
     let currentX = cfg.marginLeft;
     const measures: MeasureLayout[] = [];
-    for (const { measure, slots, width } of lineGroup) {
-      const spare = Math.max(0, width - padding * 2 - slots.reduce((sum, slot) => sum + slot, 0));
-      let cursor = currentX + padding + spare / 2;
+    // 自动排版按内容决定能容纳的小节数，再均分余白，避免固定小节宽度挤掉源码分行。
+    const extraWidth = cfg.measuresPerLine === undefined
+      ? Math.max(0, availableWidth - lineGroup.reduce((sum, metric) => sum + metric.width, 0)) / lineGroup.length : 0;
+    for (const metric of lineGroup) {
+      const { measure, slots, leftPadding, rightPadding } = metric;
+      const width = metric.width + extraWidth;
+      const spare = Math.max(0, width - leftPadding - rightPadding - slots.reduce((sum, slot) => sum + slot, 0));
+      let cursor = currentX + leftPadding + spare / 2;
       const notes = measure.notes.map((note, index): NotePosition => {
         const slot = slots[index];
         const position: NotePosition = {
@@ -121,6 +128,10 @@ export function createLayout(score: Score, config: Partial<LayoutConfig> = {}): 
           beamGroup: note.type === 'note' || note.type === 'rest' ? note.beamGroup : undefined,
           slurGroup: note.type === 'note' ? note.slurGroup : undefined,
         };
+        if (note.type === 'breath' && note.barlineSide) {
+          position.x = note.barlineSide === 'start' ? currentX : currentX + width;
+          position.y = lineY + 16 - cfg.noteFontSize * 0.65;
+        }
         cursor += slot;
         allNotes.push(position);
         return position;

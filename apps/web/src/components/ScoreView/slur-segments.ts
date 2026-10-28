@@ -34,7 +34,7 @@ export function createSlurSegments(layout: ScoreLayout, fontSize: number): SlurS
       const symbolClearance = lineNotes.reduce((clearance, position) => {
         const note = position.note;
         if (note.type !== 'note') return clearance;
-        return Math.max(clearance, note.trillType ? 34 : 0, note.octave > 0 ? fontSize * 0.7 + (note.octave - 1) * 4 + 12 : 0);
+        return Math.max(clearance, note.trillType ? 34 : 0, note.articulation ? 40 : 0, note.octave > 0 ? fontSize * 0.7 + (note.octave - 1) * 4 + 12 : 0);
       }, 0);
       const y = first.y - Math.max(24, fontSize * 1.4, symbolClearance);
       segments.push({ group: first.slurGroup!, voiceId: first.voiceId, line: lineIndex, notes: lineNotes, path: `M ${startX},${y} Q ${(startX + endX) / 2},${y - fontSize} ${endX},${y}` });

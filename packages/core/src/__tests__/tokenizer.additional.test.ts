@@ -39,7 +39,7 @@ describe('Tokenizer — offset tracking', () => {
 describe('Tokenizer — edge cases', () => {
   it('should handle multiple consecutive barlines', () => {
     const ts = tokenize(`1 ||| 2 |`);
-    expect(ts.filter(t => t.type === 'BARLINE')).toHaveLength(4); // ||| = 3 bars, plus final |
+    expect(ts.filter(t => t.type === 'BARLINE').map(t => t.value)).toEqual(['||', '|', '|']); // 最长匹配结束线
   });
 
   it('should handle multiple consecutive ties', () => {

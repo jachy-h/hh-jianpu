@@ -8,6 +8,7 @@ vi.mock('@hh-jianpu/core', async (importOriginal) => {
     Player: class {
       status = 'idle';
       setTempo = vi.fn();
+      setInstrument = vi.fn();
       setNoteHighlightCallback = vi.fn();
       setStatusChangeCallback = vi.fn();
       setLoopRange = vi.fn();
@@ -51,6 +52,46 @@ afterEach(() => {
   vi.clearAllTimers();
   vi.useRealTimers();
   vi.unstubAllGlobals();
+});
+
+describe('播放音色偏好', () => {
+  it('默认使用钢琴，切换原音色时停止播放且不会改写曲谱', async () => {
+    const { useStore } = await setup();
+    const original = useStore.getState().source;
+    expect(useStore.getState().instrumentId).toBe('piano');
+    useStore.getState().setInstrument('triangle');
+    expect(useStore.getState().player.stop).toHaveBeenCalled();
+    expect(useStore.getState().player.setInstrument).toHaveBeenCalledWith('triangle');
+    expect(useStore.getState().source).toBe(original);
+    expect(storage.getItem('hh-jianpu-instrument')).toBe('triangle');
+    vi.resetModules();
+    const restored = await setup();
+    expect(restored.useStore.getState().instrumentId).toBe('triangle');
+  });
+
+  it('忽略未知偏好和未知音色，不改变当前播放', async () => {
+    storage.setItem('hh-jianpu-instrument', 'missing');
+    const { useStore } = await setup();
+    expect(useStore.getState().instrumentId).toBe('piano');
+    useStore.getState().setInstrument('missing');
+    expect(useStore.getState().player.setInstrument).not.toHaveBeenCalled();
+    expect(useStore.getState().player.stop).not.toHaveBeenCalled();
+  });
+
+  it('加载中切换后旧请求失败，不覆盖新音色的播放状态', async () => {
+    const { useStore } = await setup();
+    let rejectOld: ((error: Error) => void) | undefined;
+    vi.mocked(useStore.getState().player.play).mockImplementationOnce(() => new Promise<void>((_, reject) => { rejectOld = reject; }));
+    const first = useStore.getState().play();
+    expect(useStore.getState().isLoading).toBe(true);
+    useStore.getState().setInstrument('triangle');
+    await useStore.getState().play();
+    rejectOld!(new Error('old samples failed'));
+    await first;
+    expect(useStore.getState().instrumentId).toBe('triangle');
+    expect(useStore.getState().playbackError).toBeNull();
+    expect(useStore.getState().isLoading).toBe(false);
+  });
 });
 
 describe('文档保存与切换', () => {
@@ -206,6 +247,15 @@ describe('文档保存与切换', () => {
     await useStore.getState().play();
     expect(useStore.getState().playbackError).toBeNull();
   });
+
+  it('反复结构诊断会阻止单声部播放并显示修正提示', async () => {
+    const { useStore } = await setup();
+    useStore.getState().setSourceImmediate('||: 1 2 3 4 | 5 6 7 1 |');
+    await useStore.getState().play();
+    expect(useStore.getState().parseErrors.some(error => error.message.includes('反复'))).toBe(true);
+    expect(useStore.getState().player.play).not.toHaveBeenCalled();
+    expect(useStore.getState().playbackError).toContain('反复记号诊断');
+  });
 });
 
 
@@ -278,7 +328,7 @@ describe('双声部编辑与播放入口', () => {
     expect(library.findMyScore(id)?.source).toBe(duet);
     const backup = library.serializeMyScoresBackup();
     storage.removeItem(LIBRARY_KEY);
-    expect(library.importMyScoresBackup(backup).imported).toBe(1);
+    expect(library.importScoreFile(backup).imported).toBe(1);
     expect(library.findMyScore(id)?.source).toBe(duet);
     useStore.getState().setVoiceMuted('lower', true);
     expect(useStore.getState().player.setVoiceMuted).toHaveBeenCalledWith('lower', true);
@@ -298,5 +348,99 @@ describe('双声部编辑与播放入口', () => {
     await useStore.getState().play();
     expect(useStore.getState().player.play).not.toHaveBeenCalled();
     expect(useStore.getState().playbackError).toContain('双声部');
+  });
+});
+
+describe('公共曲谱模板加载', () => {
+  const lesson = { id: 'bamboo-test', name: '竹笛测试曲目', source: source('竹笛测试曲目') };
+
+  it('加载模板先保存个人原稿并解除绑定，首次编辑创建副本且不会回写原稿', async () => {
+    const { useStore, library } = await setup();
+    const a = library.createMyScore(source('A'), 'A');
+    useStore.getState().loadMyScore(a.id);
+    useStore.getState().setSource(source('A 最新编辑'));
+    useStore.getState().selectLoopMeasure(0);
+    useStore.setState({ countdownValue: 4, isMetronomeActive: true, currentNoteIndex: 2, activeNoteIndices: [2] });
+    expect(useStore.getState().loadTemplate(lesson)).toBe(true);
+    expect(library.findMyScore(a.id)?.source).toBe(source('A 最新编辑'));
+    expect(library.loadMyScores()).toHaveLength(1);
+    expect(useStore.getState()).toMatchObject({
+      source: lesson.source, currentScoreId: null, loopSelection: null,
+      countdownValue: 0, isMetronomeActive: false, currentNoteIndex: -1, activeNoteIndices: [],
+    });
+    expect(useStore.getState().player.stop).toHaveBeenCalled();
+    expect(useStore.getState().player.stopMetronomeWarmup).toHaveBeenCalled();
+    expect(JSON.parse(storage.getItem(DRAFT_KEY)!)).toMatchObject({ source: lesson.source, currentScoreId: null });
+    useStore.getState().setSource(source('我的竹笛副本', '5 6 7 1'));
+    await vi.advanceTimersByTimeAsync(1200);
+    expect(library.loadMyScores()).toHaveLength(2);
+    expect(useStore.getState().currentScoreId).not.toBe(a.id);
+    expect(library.findMyScore(a.id)?.source).toBe(source('A 最新编辑'));
+    expect(lesson.source).toBe(source('竹笛测试曲目'));
+  });
+
+  it('模板与副本刷新恢复、移调后仍与原个人曲谱隔离', async () => {
+    const { useStore, library } = await setup();
+    const a = library.createMyScore(source('A'), 'A');
+    useStore.getState().loadMyScore(a.id);
+    expect(useStore.getState().loadTemplate(lesson)).toBe(true);
+    vi.resetModules();
+    const restored = await setup();
+    expect(restored.useStore.getState().source).toBe(lesson.source);
+    expect(restored.useStore.getState().currentScoreId).toBeNull();
+    const { transposeScore, scoreToSource } = await import('@hh-jianpu/core');
+    const score = restored.useStore.getState().score!;
+    restored.useStore.getState().setSource(scoreToSource(transposeScore(score, 2)));
+    await vi.advanceTimersByTimeAsync(1200);
+    const copyId = restored.useStore.getState().currentScoreId;
+    expect(copyId).not.toBeNull();
+    expect(copyId).not.toBe(a.id);
+    vi.resetModules();
+    const copyRestored = await setup();
+    expect(copyRestored.useStore.getState().currentScoreId).toBe(copyId);
+    expect(copyRestored.library.findMyScore(a.id)?.source).toBe(source('A'));
+  });
+
+  it('个人原稿保存失败返回 false，保留源码和绑定，重试后才能加载模板', async () => {
+    const { useStore, library } = await setup();
+    const a = library.createMyScore(source('A'), 'A');
+    useStore.getState().loadMyScore(a.id);
+    useStore.getState().setSource(source('A 未保存修改'));
+    storage.failWritesFor = LIBRARY_KEY;
+    expect(useStore.getState().loadTemplate(lesson)).toBe(false);
+    expect(useStore.getState()).toMatchObject({ source: source('A 未保存修改'), currentScoreId: a.id, saveStatus: 'error' });
+    storage.failWritesFor = null;
+    expect(useStore.getState().loadTemplate(lesson)).toBe(true);
+    expect(library.findMyScore(a.id)?.source).toBe(source('A 未保存修改'));
+  });
+
+  it('模板恢复草稿写入失败也不切换当前文档', async () => {
+    const { useStore, library } = await setup();
+    const a = library.createMyScore(source('A'), 'A');
+    useStore.getState().loadMyScore(a.id);
+    const previousDraft = storage.getItem(DRAFT_KEY);
+    storage.failWritesFor = DRAFT_KEY;
+    expect(useStore.getState().loadTemplate(lesson)).toBe(false);
+    expect(useStore.getState()).toMatchObject({ source: source('A'), currentScoreId: a.id, saveStatus: 'error' });
+    expect(storage.getItem(DRAFT_KEY)).toBe(previousDraft);
+    expect(library.loadMyScores()).toHaveLength(1);
+  });
+
+  it('示例和静态竹笛曲谱复用安全模板入口，未知曲目返回 false', async () => {
+    const { useStore, library } = await setup();
+    const { getLibraryScore } = await import('../services/scoreLibrary');
+    const practice = getLibraryScore('bamboo', 'bamboo-practice-1')!;
+    expect(practice).toBeDefined();
+    expect(useStore.getState().loadLibraryScore('bamboo', 'missing')).toBe(false);
+    expect(useStore.getState().loadLibraryScore('examples', 'missing')).toBe(false);
+    expect(useStore.getState().loadLibraryScore('examples', 'toString')).toBe(false);
+    expect(useStore.getState().loadLibraryScore('bamboo', practice.id)).toBe(true);
+    expect(useStore.getState().source).toBe(practice.source);
+    expect(useStore.getState().parseErrors).toEqual([]);
+    expect(useStore.getState().currentScoreId).toBeNull();
+    expect(library.loadMyScores()).toHaveLength(0);
+    expect(useStore.getState().loadLibraryScore('examples', 'twinkle')).toBe(true);
+    expect(useStore.getState().currentScoreId).toBeNull();
+    expect(library.loadMyScores()).toHaveLength(0);
   });
 });

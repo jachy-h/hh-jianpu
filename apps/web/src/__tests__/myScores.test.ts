@@ -1,3 +1,4 @@
+import { parse as parseJsonc } from 'jsonc-parser';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { TestStorage } from './test-storage';
 import type { MyScore } from '../services/myScores';
@@ -60,24 +61,76 @@ describe('备份导入', () => {
     const service = await import('../services/myScores');
     const original = service.createMyScore('1 2 3 4', '原谱');
     const backup = service.serializeMyScoresBackup();
-    expect(service.importMyScoresBackup(backup)).toEqual({ imported: 0, skipped: 1 });
+    expect(service.importScoreFile(backup)).toEqual({ imported: 0, skipped: 1 });
     service.updateMyScore(original.id, { source: '5 6 7 1' });
-    expect(service.importMyScoresBackup(backup)).toEqual({ imported: 1, skipped: 0 });
+    expect(service.importScoreFile(backup)).toEqual({ imported: 1, skipped: 0 });
     expect(service.findMyScore(original.id)?.source).toBe('5 6 7 1');
     const copy = service.loadMyScores().find((item) => item.id !== original.id);
     expect(copy?.source).toBe('1 2 3 4');
     expect(copy?.title).toContain('导入副本');
     storage.clear();
-    expect(service.importMyScoresBackup(backup)).toEqual({ imported: 1, skipped: 0 });
+    expect(service.importScoreFile(backup)).toEqual({ imported: 1, skipped: 0 });
     expect(service.findMyScore(original.id)).toEqual(original);
   });
 
   it('拒绝未知版本，跳过非法条目，并向调用方报告写入失败', async () => {
     const service = await import('../services/myScores');
-    expect(() => service.importMyScoresBackup('{"format":"hh-jianpu-backup","version":2,"scores":[]}')).toThrow();
-    expect(service.importMyScoresBackup(JSON.stringify({ format: 'hh-jianpu-backup', version: 1, scores: [null, {}, score('a/b'), score('score-a')] }))).toEqual({ imported: 1, skipped: 3 });
+    expect(() => service.importScoreFile('{"format":"hh-jianpu-backup","version":2,"scores":[]}')).toThrow();
+    expect(service.importScoreFile(JSON.stringify({ format: 'hh-jianpu-backup', version: 1, scores: [null, {}, score('a/b'), score('score-a')] }))).toEqual({ imported: 1, skipped: 3 });
     storage.failWritesFor = 'hh-jianpu-my-scores';
-    expect(() => service.importMyScoresBackup(service.serializeMyScoresBackup([score('score-b')]))).toThrow('Storage quota exceeded');
+    expect(() => service.importScoreFile(service.serializeMyScoresBackup([score('score-b')]))).toThrow('Storage quota exceeded');
+  });
+});
+
+describe('JSON/JSONC 曲谱文件', () => {
+  it('导入曲谱库中的 JSONC 原文件，支持逐行 source、注释与尾随逗号', async () => {
+    const service = await import('../services/myScores');
+    const files = import.meta.glob<string>('../../resources/scores/bamboo/001-practice-1.jsonc', { query: '?raw', import: 'default', eager: true });
+    const text = Object.values(files)[0];
+    expect(service.importScoreFile(text)).toEqual({ imported: 1, skipped: 0 });
+    const practice = service.loadMyScores()[0];
+    expect(practice.title).toBe('练习(1)');
+    expect(practice.source).toContain('Q 1 - - - |v');
+    expect(service.importScoreFile(text)).toEqual({ imported: 0, skipped: 1 });
+  });
+
+  it('单首下载采用公共曲谱结构，可完整恢复 ID、标题、换行和时间戳', async () => {
+    const service = await import('../services/myScores');
+    const original = score('score-roundtrip', '---\n标题：原谱\n---\nQ 1 2 3 4 ||\n', 123);
+    const text = service.serializeScoreFile(original);
+    expect(text).toMatch(/^\/\//);
+    expect(parseJsonc(text)).toMatchObject({ id: original.id, name: original.title, source: original.source.split('\n') });
+    expect(service.importScoreFile(text)).toEqual({ imported: 1, skipped: 0 });
+    expect(service.findMyScore(original.id)).toEqual(original);
+    expect(service.importScoreFile(text)).toEqual({ imported: 0, skipped: 1 });
+    service.updateMyScore(original.id, { source: '5 6 7 1 ||' });
+    expect(service.importScoreFile(text)).toEqual({ imported: 1, skipped: 0 });
+    expect(service.findMyScore(original.id)?.source).toBe('5 6 7 1 ||');
+    expect(service.loadMyScores().some(item => item.title.endsWith('（导入副本）'))).toBe(true);
+    const empty = score('score-empty', '');
+    expect(service.importScoreFile(service.serializeScoreFile(empty)).imported).toBe(1);
+    expect(service.findMyScore(empty.id)).toEqual(empty);
+  });
+
+  it('兼容无时间戳和 ID 的单首 JSON、旧版单首存储格式及带注释备份', async () => {
+    const service = await import('../services/myScores');
+    expect(service.importScoreFile(JSON.stringify({ name: '普通 JSON', source: '1 2 3 4 ||' })).imported).toBe(1);
+    expect(service.importScoreFile(JSON.stringify(score('score-old'))).imported).toBe(1);
+    const backup = service.serializeMyScoresBackup();
+    storage.clear();
+    expect(service.importScoreFile(backup)).toEqual({ imported: 2, skipped: 0 });
+  });
+
+  it('正确解析字符串中的注释符号，拒绝损坏 JSONC 与非法字段且不改写已有曲谱', async () => {
+    const service = await import('../services/myScores');
+    const original = service.createMyScore('1 2 3 4 ||', '原谱');
+    const before = service.loadMyScores();
+    for (const text of ['{', '{}', '[]', '{"name":"x","source":[1]}', '{"id":"../x","name":"x","source":"1 2 3 4"}', '{"name":"x","source":"1", "createdAt":"bad"}', '{"name":"x","source":"1", "oops":}']) {
+      expect(() => service.importScoreFile(text)).toThrow();
+      expect(service.loadMyScores()).toEqual(before);
+    }
+    service.importScoreFile('/* 说明 */ {"name":"注释测试", "source":["// https://example.com", "Q 1 2 3 4 ||",],}');
+    expect(service.loadMyScores().find(item => item.id !== original.id)?.source).toBe('// https://example.com\nQ 1 2 3 4 ||');
   });
 });
 

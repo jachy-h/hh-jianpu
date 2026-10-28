@@ -32,7 +32,6 @@ const ScoreView: React.FC<ScoreViewProps> = ({
 }) => {
   // 响应式：根据预览容器宽度自动调整
   const [containerWidth, setContainerWidth] = useState(width || 800);
-  const [autoMeasuresPerLine, setAutoMeasuresPerLine] = useState(measuresPerLine || 4);
   const [followPlayback, setFollowPlayback] = useState(true);
   // 容器引用，用于滚动
   const containerRef = useRef<HTMLDivElement>(null);
@@ -40,33 +39,29 @@ const ScoreView: React.FC<ScoreViewProps> = ({
   const lineRefs = useRef<Map<number, SVGElement>>(new Map());
 
   useEffect(() => {
-    if (width !== undefined && measuresPerLine !== undefined) return;
+    if (width !== undefined) return;
     const container = containerRef.current;
     if (!container) return;
     const updateDimensions = () => {
       const availableWidth = container.clientWidth;
       setContainerWidth(Math.max(160, Math.min(availableWidth - 16, 1100)));
-      if (measuresPerLine === undefined) {
-        setAutoMeasuresPerLine(availableWidth < 560 ? 2 : availableWidth < 840 ? 3 : 4);
-      }
     };
     updateDimensions();
     const observer = new ResizeObserver(updateDimensions);
     observer.observe(container);
     return () => observer.disconnect();
-  }, [width, measuresPerLine]);
+  }, [width]);
 
   const finalWidth = width || containerWidth;
-  const finalMeasuresPerLine = measuresPerLine || autoMeasuresPerLine;
 
   const layout = useMemo(
     () => createLayout(score, {
       width: finalWidth,
-      measuresPerLine: finalMeasuresPerLine,
+      measuresPerLine,
       noteFontSize,
       lineHeight: Math.max(60, noteFontSize * 3.3),
     }),
-    [score, finalWidth, finalMeasuresPerLine, noteFontSize]
+    [score, finalWidth, measuresPerLine, noteFontSize]
   );
 
   const activeIndices = activeNoteIndices ?? (currentNoteIndex < 0 ? [] : [currentNoteIndex]);
@@ -180,6 +175,10 @@ const ScoreView: React.FC<ScoreViewProps> = ({
               <MeasureView
                 key={`${measureLayout.voiceId ?? 'upper'}-${measureLayout.measure.number}`}
                 layout={measureLayout}
+                joinedRepeatStart={Boolean([...line.measures, ...(line.secondaryMeasures ?? [])].some(previous =>
+                  previous.voiceId === measureLayout.voiceId && previous.measure.number === measureLayout.measure.number - 1 && previous.measure.combinedRepeat))}
+                joinedRepeatEnd={Boolean(measureLayout.measure.combinedRepeat && [...line.measures, ...(line.secondaryMeasures ?? [])].some(next =>
+                  next.voiceId === measureLayout.voiceId && next.measure.number === measureLayout.measure.number + 1 && next.measure.repeatStart))}
                 currentNoteIndex={voiceIndex(measureLayout.voiceId)}
                 noteFontSize={noteFontSize}
                 onNoteClick={onNoteClick}
