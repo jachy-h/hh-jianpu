@@ -140,6 +140,8 @@ export interface Measure {
   notes: NoteElement[];
   /** 可选的歌词 */
   lyrics?: MeasureLyrics;
+  /** 多段歌词，第一段与 lyrics 相同；空段保留段号。 */
+  lyricLines?: MeasureLyrics[];
   /** 小节在源文本中的字节范围（不含两侧 | 线），供编辑器错误标注使用 */
   sourceRange?: { from: number; to: number };
   /** 小节起始行号（从 1 开始），用于编辑器与预览区域滚动同步 */

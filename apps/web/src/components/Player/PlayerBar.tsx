@@ -185,16 +185,16 @@ const PlayerBar: React.FC<PlayerBarProps> = ({
             </button>
           ))}
         </div>
-        <div className="flex items-center gap-1 text-xs text-played">
+        <div className={`flex flex-wrap items-center gap-2 rounded-md px-2 py-1 text-xs ${loopSelection ? 'border border-blue-200 bg-blue-50 font-semibold text-highlight' : 'text-played'}`} role="status">
           <span>
             {loopSelection
               ? loopSelection.endMeasure === null
-                ? `循环起点：第 ${loopSelection.startMeasure} 小节（再选终点）`
-                : `循环：第 ${loopSelection.startMeasure}–${loopSelection.endMeasure} 小节（按书写顺序）`
+                ? `已选循环起点：第 ${loopSelection.startMeasure} 小节，请再点击终点小节`
+                : `已设置循环：第 ${loopSelection.startMeasure}–${loopSelection.endMeasure} 小节（按书写顺序）`
               : '点击小节设置循环段'}
           </span>
           {loopSelection && (
-            <button onClick={onClearLoopSelection} className="text-gray-400 hover:text-error" title="清除选段">清除</button>
+            <button type="button" onClick={onClearLoopSelection} className="rounded border border-red-200 bg-red-50 px-2 py-1 font-semibold text-error hover:bg-red-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-red-500" title="清除循环">清除循环</button>
           )}
         </div>
       </div>

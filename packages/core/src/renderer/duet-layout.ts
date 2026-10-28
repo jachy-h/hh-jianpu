@@ -7,7 +7,7 @@ interface TimedNote {
   readonly position: NotePosition;
   readonly beat: number;
   readonly offset: number;
-  readonly lyric?: LyricsSyllable;
+  readonly lyrics: (LyricsSyllable | undefined)[];
 }
 
 /** 合并上下声部起拍点，按两行符号的共同最小间距生成整组联谱。 */
@@ -29,12 +29,14 @@ export function createDuetLayout(score: Score, cfg: LayoutConfig): ScoreLayout {
       let syllableIndex = 0;
       const notes: TimedNote[] = measure.notes.map(note => {
         const duration = durationInBeats(note);
-        const lyric = note.type === 'note' && !note.isGrace ? measure.lyrics?.syllables[syllableIndex++] : undefined;
+        const lyrics = note.type === 'note' && !note.isGrace
+          ? (measure.lyricLines ?? (measure.lyrics ? [measure.lyrics] : [])).map(row => row.syllables[syllableIndex]) : [];
+        if (note.type === 'note' && !note.isGrace) syllableIndex++;
         const position: NotePosition = { index: indices[voiceIndex]++, x: 0, y: 0, note,
           measureNumber: measure.number, voiceId: voice.id, startBeat: measureBeat + beat, durationBeats: duration,
           beamGroup: note.type === 'note' || note.type === 'rest' ? note.beamGroup : undefined,
           slurGroup: note.type === 'note' ? note.slurGroup : undefined };
-        const result = { position, beat, offset: 0, lyric };
+        const result = { position, beat, offset: 0, lyrics };
         beat += duration;
         return result;
       });
@@ -63,8 +65,8 @@ export function createDuetLayout(score: Score, cfg: LayoutConfig): ScoreLayout {
       let right = font * 0.4;
       for (const row of rows) for (const entry of row.notes.filter(note => note.beat === beat && !isAnchored(note))) {
         const box = calculateNoteBoundingBox(entry.position.note, font, entry.offset, 0).horizontal;
-        const lyricWidth = entry.lyric && !entry.lyric.isPlaceholder
-          ? Array.from(entry.lyric.text).reduce((sum, char) => sum + (char.codePointAt(0)! > 255 ? 1 : 0.65), 0) * font * cfg.lyricsFontSizeRatio : 0;
+        const lyricWidth = Math.max(0, ...entry.lyrics.map(lyric => lyric && !lyric.isPlaceholder
+          ? Array.from(lyric.text).reduce((sum, char) => sum + (char.codePointAt(0)! > 255 ? 1 : 0.65), 0) * font * cfg.lyricsFontSizeRatio : 0));
         left = Math.max(left, -box.left, lyricWidth / 2 - entry.offset, entry.position.note.type === 'note' && entry.position.note.accidental ? font * 1.3 - entry.offset : 0);
         right = Math.max(right, box.right, lyricWidth / 2 + entry.offset);
       }
@@ -101,14 +103,16 @@ export function createDuetLayout(score: Score, cfg: LayoutConfig): ScoreLayout {
       let top = font * 1.7;
       let bottom = font * 1.5;
       let hasLyrics = false;
+      let lyricRows = 1;
       for (const metric of lineGroup) for (const entry of metric.rows[voiceIndex].notes) {
         const box = calculateNoteBoundingBox(entry.position.note, font, 0, 0).vertical;
         top = Math.max(top, -box.top + (entry.position.slurGroup !== undefined ? font * 1.6 : font * 0.5));
         bottom = Math.max(bottom, box.bottom + font * 0.5);
-        hasLyrics ||= Boolean(entry.lyric && !entry.lyric.isPlaceholder);
+        hasLyrics ||= entry.lyrics.some(lyric => lyric && !lyric.isPlaceholder);
+        lyricRows = Math.max(lyricRows, entry.lyrics.length);
       }
       const lyricY = top + bottom + font * cfg.lyricsFontSizeRatio;
-      return { top, lyricY, height: lyricY + (hasLyrics ? font * 0.6 : 0) };
+      return { top, lyricY, height: lyricY + (hasLyrics ? font * 0.6 : 0) + (lyricRows - 1) * font * cfg.lyricsFontSizeRatio * 1.6 };
     });
     const rowY = [y, y + geometry[0].height + gap];
     const measures: MeasureLayout[][] = [[], []];
@@ -130,8 +134,8 @@ export function createDuetLayout(score: Score, cfg: LayoutConfig): ScoreLayout {
           allNotes.push(position);
           return position;
         });
-        const lyrics = row.notes.flatMap((entry, index) => entry.lyric ? [{ ...entry.lyric, x: notes[index].x,
-          y: rowY[voiceIndex] + geo.lyricY, noteIndex: notes[index].index }] : []);
+        const lyrics = row.notes.flatMap((entry, index) => entry.lyrics.flatMap((lyric, verse) => lyric ? [{ ...lyric, x: notes[index].x,
+          y: rowY[voiceIndex] + geo.lyricY + verse * font * cfg.lyricsFontSizeRatio * 1.6, noteIndex: notes[index].index }] : []));
         measures[voiceIndex].push({ measure: row.measure, voiceId: voices[voiceIndex].id, x, y: rowY[voiceIndex],
           width: measureWidth, height: geo.height, notes, lyrics });
       });

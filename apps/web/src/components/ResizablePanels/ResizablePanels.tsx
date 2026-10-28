@@ -1,3 +1,4 @@
+import ButtonTip from '../ui/ButtonTip';
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 
 interface ResizablePanelsProps {
@@ -15,10 +16,16 @@ export const ResizablePanels: React.FC<ResizablePanelsProps> = ({
   minRightWidth = 300,
   defaultLeftWidth = 50, // 默认 50%
 }) => {
+  const [isCollapsed, setIsCollapsed] = useState(false);
   const [leftWidth, setLeftWidth] = useState(defaultLeftWidth);
   const [isDragging, setIsDragging] = useState(false);
   const [mobilePanel, setMobilePanel] = useState<'editor' | 'preview'>('editor');
   const containerRef = useRef<HTMLDivElement>(null);
+
+  const handleToggleEditor = useCallback(() => {
+    setIsDragging(false);
+    setIsCollapsed(value => !value);
+  }, []);
 
   const handleMouseDown = useCallback(() => {
     setIsDragging(true);
@@ -73,7 +80,7 @@ export const ResizablePanels: React.FC<ResizablePanelsProps> = ({
   }, [isDragging, handleMouseMove, handleMouseUp]);
 
   return (
-    <div ref={containerRef} className="h-full min-h-0 flex flex-col md:flex-row">
+    <div ref={containerRef} className="h-full min-h-0 flex flex-col md:flex-row relative">
       <div className="flex shrink-0 gap-1 border-b border-barline bg-paper p-2 md:hidden" role="tablist" aria-label="编辑与预览">
         {(['editor', 'preview'] as const).map((panel) => (
           <button
@@ -90,11 +97,20 @@ export const ResizablePanels: React.FC<ResizablePanelsProps> = ({
           </button>
         ))}
       </div>
-      {/* 左侧面板 */}
+      <div className="absolute left-2 top-2 z-20 hidden md:block">
+        <ButtonTip type="button" variant="secondary" size="sm"
+          tipContent={isCollapsed ? '展开编辑区' : '折叠编辑区'}
+          aria-label={isCollapsed ? '展开编辑区' : '折叠编辑区'}
+          aria-expanded={!isCollapsed} aria-controls="panel-editor"
+          onClick={handleToggleEditor}>
+          {isCollapsed ? '› 编辑' : '‹ 折叠'}
+        </ButtonTip>
+      </div>
+      {/* 左侧面板保持挂载，展开时保留编辑状态与滚动位置。 */}
       <div
         id="panel-editor"
         aria-labelledby="panel-tab-editor"
-        className={`${mobilePanel === 'editor' ? 'block' : 'hidden'} w-full flex-1 md:flex-none md:block md:w-[var(--panel-width)] border-r border-barline min-h-0`}
+        className={`${mobilePanel === 'editor' ? 'block' : 'hidden'} w-full flex-1 md:flex-none ${isCollapsed ? 'md:hidden' : 'md:block'} md:w-[var(--panel-width)] border-r border-barline min-h-0 md:pt-11`}
         style={{ '--panel-width': `${leftWidth}%` } as React.CSSProperties}
       >
         {left}
@@ -103,7 +119,7 @@ export const ResizablePanels: React.FC<ResizablePanelsProps> = ({
       {/* 分隔线（可拖动） */}
       <div
         className={`
-          hidden md:flex w-1 bg-barline hover:bg-blue-400 cursor-col-resize 
+          hidden ${isCollapsed ? '' : 'md:flex'} shrink-0 w-1 bg-barline hover:bg-blue-400 cursor-col-resize
           transition-colors duration-150 relative group
           ${isDragging ? 'bg-blue-500' : ''}
         `}
@@ -119,8 +135,8 @@ export const ResizablePanels: React.FC<ResizablePanelsProps> = ({
       <div
         id="panel-preview"
         aria-labelledby="panel-tab-preview"
-        className={`${mobilePanel === 'preview' ? 'block' : 'hidden'} w-full flex-1 md:flex-none md:block md:w-[var(--panel-width)] overflow-auto p-2 sm:p-4 min-h-0`}
-        style={{ '--panel-width': `${100 - leftWidth}%` } as React.CSSProperties}
+        className={`${mobilePanel === 'preview' ? 'block' : 'hidden'} w-full flex-1 md:block md:w-auto min-w-0 overflow-auto p-2 sm:p-4 min-h-0 ${isCollapsed ? 'md:pt-12' : ''}`}
+
       >
         {right}
       </div>

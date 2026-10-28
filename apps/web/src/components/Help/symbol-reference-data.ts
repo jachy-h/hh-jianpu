@@ -107,6 +107,7 @@ export const SYMBOL_GROUPS: readonly SymbolGroup[] = [
     { symbol: 'Q', name: '旋律行', description: '写在行首，后面留空格；单声部可省略。', example: 'Q 1 2 3 4 |', input: 'Q' },
     { symbol: 'P', name: '旋律行（兼容写法）', description: '与 Q 相同，推荐新谱使用 Q。', example: 'P 1 2 3 4 |', input: 'P' },
     { symbol: 'C', name: '歌词行', description: '写在行首，后面留空格，一字对一个音。', example: 'C 我 的 歌 声', input: 'C' },
+    { symbol: 'C2', name: '多段歌词', description: '第二段歌词独立从曲首对齐；C3、C4 等以此类推，最多 99 段。', example: 'C2 明 月 照 我', input: 'C2' },
     { symbol: '(多字)', name: '一音多字', description: '歌词中用括号包住同一个音要唱的字。', example: 'C (我们) 的 歌 声', input: '()', tip: '括号用 Shift + 9 和 Shift + 0；括号内切换中文输入歌词。' },
     { symbol: '_', name: '歌词占位', description: '跳过一个无歌词的发声音符，休止和延长不用占位。', example: 'C 星 _ 光', input: '_' },
     { symbol: 'Q[upper]', name: '上声部旋律', description: '上声部默认叫“旋律”。', example: 'Q[upper] 1 2 3 4 |', input: 'Q[upper]' },

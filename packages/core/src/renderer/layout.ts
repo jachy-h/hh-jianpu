@@ -74,11 +74,12 @@ export function createLayout(score: Score, config: Partial<LayoutConfig> = {}): 
       const box = calculateNoteBoundingBox(note, cfg.noteFontSize, 0, 0).horizontal;
       let lyricWidth = 0;
       if (note.type === 'note' && !note.isGrace) {
-        const syllable = measure.lyrics?.syllables[syllableIndex++];
-        if (syllable && !syllable.isPlaceholder) {
+        const syllables = (measure.lyricLines ?? (measure.lyrics ? [measure.lyrics] : [])).map(row => row.syllables[syllableIndex]);
+        syllableIndex++;
+        for (const syllable of syllables) if (syllable && !syllable.isPlaceholder) {
           // CJK 全角字占一格，ASCII 使用保守的 0.65 格估计。
           const units = Array.from(syllable.text).reduce((sum, char) => sum + (char.codePointAt(0)! > 255 ? 1 : 0.65), 0);
-          lyricWidth = units * cfg.noteFontSize * cfg.lyricsFontSizeRatio;
+          lyricWidth = Math.max(lyricWidth, units * cfg.noteFontSize * cfg.lyricsFontSizeRatio);
         }
       }
       return Math.max(spacing, 2 * Math.max(-box.left, box.right), note.type === 'note' && note.accidental ? cfg.noteFontSize * 1.5 : 0, lyricWidth + cfg.noteFontSize * 0.4);
@@ -105,8 +106,10 @@ export function createLayout(score: Score, config: Partial<LayoutConfig> = {}): 
   const lines: LineLayout[] = [];
   const allNotes: NotePosition[] = [];
   let layoutWidth = cfg.width;
-  for (const [lineIndex, lineGroup] of groups.entries()) {
-    const lineY = cfg.marginTop + lineIndex * (cfg.lineHeight + cfg.lineGap);
+  let lineY = cfg.marginTop;
+  for (const lineGroup of groups) {
+    const rowCount = Math.max(1, ...lineGroup.map(({ measure }) => measure.lyricLines?.length ?? 1));
+    const lineHeight = cfg.lineHeight + (rowCount - 1) * cfg.noteFontSize * cfg.lyricsFontSizeRatio * 1.6;
     let currentX = cfg.marginLeft;
     const measures: MeasureLayout[] = [];
     // 自动排版按内容决定能容纳的小节数，再均分余白，避免固定小节宽度挤掉源码分行。
@@ -140,11 +143,12 @@ export function createLayout(score: Score, config: Partial<LayoutConfig> = {}): 
       currentX += width;
     }
     layoutWidth = Math.max(layoutWidth, currentX + cfg.marginLeft);
-    lines.push({ measures, y: lineY, height: cfg.lineHeight });
+    lines.push({ measures, y: lineY, height: lineHeight });
+    lineY += lineHeight + Math.max(cfg.lineGap, cfg.lyricsOffset + cfg.noteFontSize * 0.6);
   }
   return {
     width: layoutWidth,
-    height: lines.length > 0 ? lines[lines.length - 1].y + cfg.lineHeight + cfg.lineGap : cfg.marginTop,
+    height: lineY,
     lines,
     allNotes,
   };
@@ -165,36 +169,16 @@ function calculateLyricsPositions(
   lineY: number,
   config: LayoutConfig
 ): LyricsPosition[] | undefined {
-  if (!measure.lyrics || measure.lyrics.syllables.length === 0) {
-    return undefined;
-  }
-
-  const positions: LyricsPosition[] = [];
-  let syllableIndex = 0;
-
-  // 遍历音符位置，为每个有效音符分配歌词
-  for (let i = 0; i < notePositions.length; i++) {
-    const notePos = notePositions[i];
-    const note = notePos.note;
-
-    // 只为非倚音的音符分配歌词
-    if (note.type === 'note' && !note.isGrace) {
-      if (syllableIndex < measure.lyrics.syllables.length) {
-        const syllable = measure.lyrics.syllables[syllableIndex];
-        
-        positions.push({
-          text: syllable.text,
-          x: notePos.x,
-          y: lineY + config.lineHeight + config.lyricsOffset,
-          isPlaceholder: syllable.isPlaceholder,
-          isGroup: syllable.isGroup,
-          noteIndex: notePos.index,
-        });
-        
-        syllableIndex++;
-      }
-    }
-  }
-
-  return positions.length > 0 ? positions : undefined;
+  const rows = measure.lyricLines ?? (measure.lyrics ? [measure.lyrics] : []);
+  const positions = rows.flatMap((row, rowIndex) => {
+    let syllableIndex = 0;
+    return notePositions.flatMap(notePos => {
+      if (notePos.note.type !== 'note' || notePos.note.isGrace) return [];
+      const syllable = row.syllables[syllableIndex++];
+      return syllable ? [{ ...syllable, x: notePos.x,
+        y: lineY + config.lineHeight + config.lyricsOffset + rowIndex * config.noteFontSize * config.lyricsFontSizeRatio * 1.6,
+        noteIndex: notePos.index }] : [];
+    });
+  });
+  return positions.length ? positions : undefined;
 }

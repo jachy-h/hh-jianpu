@@ -40,6 +40,8 @@ export interface Token {
   offset: number;
   /** 此 token 前是否有空格/制表符（用于连音组分隔判断） */
   hasSpaceBefore?: boolean;
+  /** 歌词段号，从 1 开始。 */
+  lyricVerse?: number;
 }
 
 /** 元信息关键字映射 - 用于识别元信息行 */
@@ -217,12 +219,12 @@ export function tokenize(source: string): Token[] {
       lineContent = bodyLine.slice(contentOffset);
     }
 
-    const lyricsMarker = bodyLine.match(/^[ \t]*C(?:\[([^\]]*)\])?(?=\s|$)/);
+    const lyricsMarker = bodyLine.match(/^[ \t]*C([1-9]\d?)?(?:\[([^\]]*)\])?(?=\s|$)/);
     if (lyricsMarker) {
       const markerOffset = bodyLine.indexOf('C');
       const lyricsStart = lyricsMarker[0].length;
       const lyricsText = bodyLine.slice(lyricsStart).trim();
-      tokens.push({ type: 'LYRICS_MARKER', value: lyricsMarker[1] ?? 'C', line,
+      tokens.push({ type: 'LYRICS_MARKER', value: lyricsMarker[2] ?? 'C', lyricVerse: Number(lyricsMarker[1] ?? 1), line,
         column: markerOffset + 1, offset: pos + markerOffset });
       if (lyricsText) {
         const textOffset = bodyLine.indexOf(lyricsText, lyricsStart);

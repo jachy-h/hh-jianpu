@@ -1,7 +1,8 @@
-import React, { useState, useCallback, useEffect, useRef } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '../store/useStore';
 import { SCORE_CATEGORIES } from '../services/scoreLibrary';
+import { ScoreImportModal } from '../components/ScoreImport/ScoreImportModal';
 import TopBar from '../components/Layout/TopBar';
 import ButtonTip from '../components/ui/ButtonTip';
 import type { MyScore } from '../services/myScores';
@@ -33,7 +34,7 @@ const MyScoresPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [libraryTab, setLibraryTab] = useState(SCORE_CATEGORIES[0]?.id ?? '');
   const [backupMessage, setBackupMessage] = useState<string | null>(null);
-  const importInputRef = useRef<HTMLInputElement>(null);
+  const [isImportOpen, setIsImportOpen] = useState(false);
   const visibleScores = myScores.filter((score) => score.title.toLocaleLowerCase().includes(searchQuery.trim().toLocaleLowerCase()));
 
   // ---- 存储位置 ----
@@ -180,17 +181,10 @@ const MyScoresPage: React.FC = () => {
     setBackupMessage('全部曲谱已下载为 JSONC，已包含当前编辑内容');
   };
 
-  const handleImportScore = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    event.target.value = '';
-    if (!file) return;
-    try {
-      const result = importScoreFile(await file.text());
-      refreshMyScores();
-      setBackupMessage(`导入 ${result.imported} 首，跳过 ${result.skipped} 首`);
-    } catch (error) {
-      setBackupMessage(error instanceof Error ? error.message : '曲谱导入失败');
-    }
+  const handleImportScore = async (file: File) => {
+    const result = importScoreFile(await file.text());
+    refreshMyScores();
+    setBackupMessage(`导入 ${result.imported} 首，跳过 ${result.skipped} 首`);
   };
 
   // ---- 更改存储位置 ----
@@ -346,14 +340,13 @@ const MyScoresPage: React.FC = () => {
                 </button>
                 <ButtonTip
                   tipContent="导入 JSON 或 JSONC 曲谱文件，兼容公共曲谱和已有备份"
-                  onClick={() => importInputRef.current?.click()}
+                  onClick={() => setIsImportOpen(true)}
                   variant="nude"
                   size="sm"
                   className="text-blue-500 hover:text-blue-600 whitespace-nowrap"
                 >
                   导入曲谱
                 </ButtonTip>
-                <input ref={importInputRef} type="file" accept=".json,.jsonc,application/json" onChange={handleImportScore} aria-label="选择曲谱文件" className="hidden" />
               </div>
               <div className="flex items-center gap-2">
                 <span
@@ -605,6 +598,7 @@ const MyScoresPage: React.FC = () => {
         </div>
       )}
 
+      {isImportOpen && <ScoreImportModal onClose={() => setIsImportOpen(false)} onImport={handleImportScore} />}
     </div>
   );
 };

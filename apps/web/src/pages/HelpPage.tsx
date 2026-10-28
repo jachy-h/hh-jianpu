@@ -193,7 +193,8 @@ const HelpPage: React.FC = () => {
                     <p>旋律行以 Q 开头，歌词行以 C 开头。一字对一个音，空格方便阅读。</p>
                     <Example>{'Q 1 2 3 4 |\nC 我 的 歌 声'}</Example>
                     <p>一个音唱多个字，用括号：<code>C (我们) 的 歌 声</code>。某个音不唱词，用 <code>_</code> 占位。</p>
-                    <p>休止符、延长线、换气和倚音不用配歌词。多行歌词会从曲首依次分配，不会在每行旋律下重新开始；多出的词不显示，词少了则后面的音不配词。</p>
+                    <p>同一旋律配多段歌词时，用 <code>C</code> 写第一段、<code>C2</code> 写第二段、<code>C3</code> 写第三段（最多 99 段）。各段从曲首独立对齐，显示在旋律下方；双声部可用 <code>C2[upper]</code> 和 <code>C2[lower]</code>。</p>
+                    <p>休止符、延长线、换气和倚音不用配歌词。同一段号的多行歌词会从曲首依次分配，不会在每行旋律下重新开始；多出的词不显示，词少了则后面的音不配词。</p>
                   </Fold>
                   <Fold title="改标题、调号、拍号和速度">
                     <p>把下面这段放在曲谱最前面，修改冒号后的内容。开头和结尾的三条短横线都要保留。</p>
@@ -262,7 +263,7 @@ const HelpPage: React.FC = () => {
                 <ol className="list-decimal space-y-3 pl-5 text-sm leading-7 text-stone-600">
                   <li><strong className="font-medium text-ink">留一首：</strong>在首页个人曲谱中点击“下载”。</li>
                   <li><strong className="font-medium text-ink">备份全部：</strong>点击“下载全部曲谱”，保存好下载的文件。</li>
-                  <li><strong className="font-medium text-ink">换设备：</strong>把备份文件传到新设备，在首页点击“导入曲谱”。</li>
+                  <li><strong className="font-medium text-ink">换设备：</strong>把备份文件传到新设备，在首页点击“导入曲谱”，在弹窗中选择文件或直接拖入文件。</li>
                 </ol>
                 <p className="my-4 text-xs leading-6 text-stone-500">下载的是可再次编辑的 JSONC 曲谱文件；导入支持 JSON、JSONC 和曲谱备份包。</p>
                 <Fold title="本地文件夹备份与保存失败">
@@ -288,7 +289,7 @@ const HelpPage: React.FC = () => {
                 </Fold>
                 <Fold title="歌词没有对上音符？">
                   <p>歌词从第一个发声音符开始依次对应。没有词的音符用 <code>_</code> 占位，休止符和延长线不用占位。</p>
-                  <p>换一行写歌词不会重新起算。一个音对应多个字时，把这些字放在括号中。</p>
+                  <p>同一段号换行不会重新起算；另起一段请用 C2、C3。一个音对应多个字时，把这些字放在括号中。</p>
                 </Fold>
                 <Fold title="怎么控制曲谱换行？">
                   <p>在谱文的小节之间按回车，预览会尽量按你的换行显示。屏幕放不下时会自动在小节之间换行；单个小节过宽时可以横向滚动。</p>

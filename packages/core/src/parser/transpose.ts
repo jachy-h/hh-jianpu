@@ -147,7 +147,7 @@ export function scoreToSource(score: Score): string {
     for (const [id, measures] of [['upper', score.measures], ['lower', score.secondaryVoice.measures]] as const) {
       const voiceSource = scoreToSource({ metadata: score.metadata, measures });
       const body = voiceSource.slice(voiceSource.indexOf('\n---\n') + 5).trim();
-      lines.push(body.replace(/^([QC]) /gm, `$1[${id}] `));
+      lines.push(body.replace(/^([QC]\d*) /gm, `$1[${id}] `));
     }
     return lines.join('\n');
   }
@@ -210,8 +210,20 @@ export function scoreToSource(score: Score): string {
 
   // Lyrics are associated with notes rather than measures; serialize them as
   // one sequence so that their existing alignment survives a parse round trip.
-  const lyrics = score.measures.flatMap((measure) => measure.lyrics?.syllables ?? []);
-  if (lyrics.length > 0) lines.push(`C ${serializeLyrics(lyrics)}`);
+  const verseCount = Math.max(1, ...score.measures.map(measure => measure.lyricLines?.length ?? 1));
+  for (let verse = 0; verse < verseCount; verse++) {
+    const rows = score.measures.map(measure => measure.lyricLines?.[verse] ?? (verse === 0 ? measure.lyrics : undefined));
+    const lastRow = rows.reduce((last, row, index) => row?.syllables.length ? index : last, -1);
+    const lyrics = score.measures.flatMap((measure, measureIndex) => {
+      if (measureIndex > lastRow) return [];
+      const row = measure.lyricLines?.[verse] ?? (verse === 0 ? measure.lyrics : undefined);
+      const count = measureIndex === lastRow ? row?.syllables.length ?? 0
+        : measure.notes.filter(note => note.type === 'note' && !note.isGrace).length;
+      return Array.from({ length: count }, (_, index) => row?.syllables[index]
+        ?? { text: '', isPlaceholder: true, isGroup: false });
+    });
+    if (lyrics.length) lines.push(`C${verse === 0 ? '' : verse + 1} ${serializeLyrics(lyrics)}`);
+  }
 
   return lines.join('\n');
 }

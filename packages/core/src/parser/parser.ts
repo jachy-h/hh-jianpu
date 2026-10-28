@@ -158,45 +158,29 @@ function associateLyricsToMeasures(
 ): ParseError[] {
   const errors: ParseError[] = [];
   
-  // 提取所有歌词文本行
-  const lyricsLines: Array<{ syllables: LyricsSyllable[]; line: number }> = [];
+  // 同一段号的 C 行继续拼接，不同段号从曲首独立配词。
+  const verses = new Map<number, LyricsSyllable[]>();
   for (let i = 0; i < lyricsTokens.length; i++) {
-    if (lyricsTokens[i].type === 'LYRICS_MARKER') {
-      const nextToken = lyricsTokens[i + 1];
-      if (nextToken && nextToken.type === 'LYRICS_TEXT') {
-        const syllables = parseLyrics(nextToken.value);
-        lyricsLines.push({ syllables, line: nextToken.line });
-      }
-    }
+    const marker = lyricsTokens[i];
+    if (marker.type !== 'LYRICS_MARKER') continue;
+    const text = lyricsTokens[i + 1];
+    if (text?.type !== 'LYRICS_TEXT') continue;
+    const verse = marker.lyricVerse ?? 1;
+    verses.set(verse, [...(verses.get(verse) ?? []), ...parseLyrics(text.value)]);
   }
-  
-  if (lyricsLines.length === 0) {
-    return errors;
-  }
-  
-  // 将所有歌词合并为一个数组
-  const allSyllables: LyricsSyllable[] = [];
-  lyricsLines.forEach(({ syllables }) => allSyllables.push(...syllables));
-  
-  // 关联歌词到小节
-  let syllableIndex = 0;
+  const verseCount = Math.max(1, ...verses.keys());
+  const cursors = Array<number>(verseCount).fill(0);
   for (const measure of measures) {
-    const measureSyllables: LyricsSyllable[] = [];
-    
-    for (const note of measure.notes) {
-      if (note.type === 'note' && !note.isGrace) {
-        if (syllableIndex < allSyllables.length) {
-          measureSyllables.push(allSyllables[syllableIndex]);
-          syllableIndex++;
-        }
-      }
-    }
-    
-    if (measureSyllables.length > 0) {
-      measure.lyrics = { syllables: measureSyllables };
-    }
+    const count = measure.notes.filter(note => note.type === 'note' && !note.isGrace).length;
+    const rows = Array.from({ length: verseCount }, (_, index) => {
+      const syllables = (verses.get(index + 1) ?? []).slice(cursors[index], cursors[index] + count);
+      cursors[index] += count;
+      return { syllables };
+    });
+    if (rows[0].syllables.length) measure.lyrics = rows[0];
+    if (verseCount > 1) measure.lyricLines = rows;
   }
-  
+
   return errors;
 }
 

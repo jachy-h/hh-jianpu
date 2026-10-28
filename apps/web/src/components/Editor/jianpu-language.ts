@@ -92,7 +92,7 @@ const jianpuLanguage = StreamLanguage.define<JianpuState>({
     if (state.lineKind === 'lyrics') {
       // 消费 C 标记
       if (!state.prefixConsumed) {
-        if (stream.match(/^C(?:\[[^\]]*\])?/)) {
+        if (stream.match(/^C(?:[1-9]\d?)?(?:\[[^\]]*\])?/)) {
           state.prefixConsumed = true;
           return 'keyword'; // 对应 tags.keyword
         }
@@ -141,7 +141,7 @@ const jianpuLanguage = StreamLanguage.define<JianpuState>({
 // ============================================================
 function classifyBodyLine(line: string): 'lyrics' | 'melody' | 'body' {
   const trimmed = line.trimStart();
-  if (/^C(?:\[[^\]]*\])?(?:\s|$)/.test(trimmed)) return 'lyrics';
+  if (/^C(?:[1-9]\d?)?(?:\[[^\]]*\])?(?:\s|$)/.test(trimmed)) return 'lyrics';
   if (/^[QP](?:\[[^\]]*\])?(?:\s|$)/.test(trimmed)) return 'melody';
   return 'body';
 }
