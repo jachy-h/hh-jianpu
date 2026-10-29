@@ -1,9 +1,9 @@
 # 维护公共曲谱库
 
-所有公共曲谱统一放在 `apps/web/resources/scores/`。示例曲谱、竹笛入门及后续分类共用 JSONC 格式、加载逻辑和页面组件，不再维护单独的 TypeScript 曲谱列表。
+所有公共曲谱统一放在 `packages/score-library/resources/scores/`。示例曲谱、竹笛入门及后续分类共用 JSONC 格式、加载逻辑和页面组件，不再维护单独的 TypeScript 曲谱列表。
 
 ```text
-apps/web/resources/scores/
+packages/score-library/resources/scores/
 ├── examples/
 │   ├── category.jsonc
 │   ├── 001-duetDemo.jsonc
@@ -42,7 +42,7 @@ apps/web/resources/scores/
 
 ## 新增或开放分类
 
-1. 在 `apps/web/resources/scores/` 下新建一级目录，例如 `flute/`。
+1. 在 `packages/score-library/resources/scores/` 下新建一级目录，例如 `flute/`。
 2. 添加 `category.jsonc`，再放入曲谱文件。
 
 ```jsonc
@@ -62,11 +62,11 @@ apps/web/resources/scores/
 
 ## 加载与校验
 
-`apps/web/src/services/scoreLibrary.ts` 统一扫描、解析、校验、排序并提供查询。页面通过 Store 的 `loadLibraryScore(categoryId, scoreId)` 加载，再复用公共模板保存隔离流程：先保存旧稿，打开公共曲谱，首次编辑创建个人副本。
+`@hh-jianpu/score-library` 在构建时统一扫描、解析 JSONC、校验和排序，生成静态 ESM 数据并提供查询；Web 的 `services/scoreLibrary.ts` 仅作公共导出的门面。H5 从同一个包读取资源，仅提供播放入口。页面通过 Store 的 `loadLibraryScore(categoryId, scoreId)` 加载，再复用公共模板保存隔离流程：先保存旧稿，打开公共曲谱，首次编辑创建个人副本。
 
 首次启动优先打开示例分类中的 `twinkle`（小星星）；移除或隐藏该资源后回退到首个已开放曲目，没有可用曲目时使用空谱。
 
-开发时添加文件会触发 Vite 更新；已部署的网站需要重新构建和部署。运行 `pnpm test` 检查所有分类和曲谱，配置错误与重复 ID 会指出文件名；`pnpm build:web` 验证打包。打开新增曲目检查谱面、播放及移调。
+通过根目录 `pnpm dev` 或 `pnpm dev:minitool` 开发时，资源变化会触发共享包重建与页面更新；已部署的网站需要重新构建和部署。先运行 `pnpm build:shared` 校验所有启用资源的解析与播放事件，再运行 `pnpm test` 检查分类与曲谱行为，配置错误与重复 ID 会指出文件名；`pnpm build:web` 验证打包。打开新增曲目检查谱面、播放及移调。
 
 迁移时保留原曲谱 ID 和谱文。旧独立 Markdown 中的东北民谣以 `dongbei-original` 保存，列表名标注 G♯ 调，用以区分原示例列表中的 G 调版本。
 

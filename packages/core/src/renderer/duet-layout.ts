@@ -85,7 +85,7 @@ export function createDuetLayout(score: Score, cfg: LayoutConfig): ScoreLayout {
   let group: typeof metrics = [];
   let groupWidth = 0;
   for (const metric of metrics) {
-    if (group.length && (metric.rows.some(row => row.measure.lineBreakBefore) || group.length >= maxMeasures || groupWidth + metric.width > available + 0.01)) {
+    if (group.length && ((cfg.respectSourceLineBreaks && metric.rows.some(row => row.measure.lineBreakBefore)) || group.length >= maxMeasures || groupWidth + metric.width > available + 0.01)) {
       groups.push(group); group = []; groupWidth = 0;
     }
     group.push(metric); groupWidth += metric.width;

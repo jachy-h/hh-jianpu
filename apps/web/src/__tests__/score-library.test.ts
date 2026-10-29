@@ -7,7 +7,7 @@ const loadTemplates = (files: Record<string, string>) => loadScoreLibrary({
   ...Object.fromEntries(Object.entries(files).map(([path, text]) => [`test/${path}`, text])),
   'test/category.jsonc': category('test'),
 })[0].scores;
-const allCategories = loadScoreLibrary(import.meta.glob<string>('../../resources/scores/*/*.jsonc', { query: '?raw', import: 'default', eager: true }));
+import { ALL_SCORE_CATEGORIES as allCategories } from '@hh-jianpu/score-library';
 const bambooLessons = SCORE_CATEGORIES.find(item => item.id === 'bamboo')!.scores;
 
 const template = (id: string): string => JSON.stringify({ id, name: id, source: '1 2 3 4 ||' });

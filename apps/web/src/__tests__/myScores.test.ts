@@ -85,7 +85,7 @@ describe('备份导入', () => {
 describe('JSON/JSONC 曲谱文件', () => {
   it('导入曲谱库中的 JSONC 原文件，支持逐行 source、注释与尾随逗号', async () => {
     const service = await import('../services/myScores');
-    const files = import.meta.glob<string>('../../resources/scores/bamboo/001-practice-1.jsonc', { query: '?raw', import: 'default', eager: true });
+    const files = import.meta.glob<string>('../../../../packages/score-library/resources/scores/bamboo/001-practice-1.jsonc', { query: '?raw', import: 'default', eager: true });
     const text = Object.values(files)[0];
     expect(service.importScoreFile(text)).toEqual({ imported: 1, skipped: 0 });
     const practice = service.loadMyScores()[0];

@@ -12,15 +12,13 @@
     }
   },
   "scripts": {
-    "build": "tsc",
+    "build": "node -e \"require('fs').rmSync('dist', {recursive:true, force:true})\" && tsc --build --force",
     "dev": "tsc --watch",
     "test": "vitest run",
     "lint": "eslint src/",
     "test:watch": "vitest"
   },
-  "dependencies": {
-    "tone": "^15.0.4"
-  },
+  "dependencies": {},
   "devDependencies": {
     "tsx": "^4.21.0",
     "typescript": "^5.4.0",

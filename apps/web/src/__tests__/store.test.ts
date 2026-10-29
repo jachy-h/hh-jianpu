@@ -1,10 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { TestStorage } from './test-storage';
 
-vi.mock('@hh-jianpu/core', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@hh-jianpu/core')>();
+vi.mock('../adapters/audio/synth', () => {
   return {
-    ...actual,
     Player: class {
       status = 'idle';
       setTempo = vi.fn();
@@ -55,42 +53,30 @@ afterEach(() => {
 });
 
 describe('播放音色偏好', () => {
-  it('默认使用钢琴，切换原音色时停止播放且不会改写曲谱', async () => {
+  it('默认使用原声音色，钢琴保留在列表中但禁用', async () => {
+    const { useStore } = await setup();
+    const { PLAYBACK_INSTRUMENTS } = await import('../services/playbackInstruments');
+    expect(useStore.getState().instrumentId).toBe('triangle');
+    expect(PLAYBACK_INSTRUMENTS.find(instrument => instrument.id === 'piano')?.disabled).toBe(true);
+  });
+
+  it.each(['piano', 'missing'])('偏好 %s 回退到原声，拒绝选择且不打断播放', async (id) => {
+    storage.setItem('hh-jianpu-instrument', id);
     const { useStore } = await setup();
     const original = useStore.getState().source;
-    expect(useStore.getState().instrumentId).toBe('piano');
-    useStore.getState().setInstrument('triangle');
-    expect(useStore.getState().player.stop).toHaveBeenCalled();
-    expect(useStore.getState().player.setInstrument).toHaveBeenCalledWith('triangle');
-    expect(useStore.getState().source).toBe(original);
-    expect(storage.getItem('hh-jianpu-instrument')).toBe('triangle');
-    vi.resetModules();
-    const restored = await setup();
-    expect(restored.useStore.getState().instrumentId).toBe('triangle');
-  });
-
-  it('忽略未知偏好和未知音色，不改变当前播放', async () => {
-    storage.setItem('hh-jianpu-instrument', 'missing');
-    const { useStore } = await setup();
-    expect(useStore.getState().instrumentId).toBe('piano');
-    useStore.getState().setInstrument('missing');
+    expect(useStore.getState().instrumentId).toBe('triangle');
+    await useStore.getState().play();
+    useStore.getState().setInstrument(id);
+    expect(useStore.getState().instrumentId).toBe('triangle');
     expect(useStore.getState().player.setInstrument).not.toHaveBeenCalled();
     expect(useStore.getState().player.stop).not.toHaveBeenCalled();
+    expect(useStore.getState().source).toBe(original);
   });
 
-  it('加载中切换后旧请求失败，不覆盖新音色的播放状态', async () => {
+  it('恢复已保存的原声偏好', async () => {
+    storage.setItem('hh-jianpu-instrument', 'triangle');
     const { useStore } = await setup();
-    let rejectOld: ((error: Error) => void) | undefined;
-    vi.mocked(useStore.getState().player.play).mockImplementationOnce(() => new Promise<void>((_, reject) => { rejectOld = reject; }));
-    const first = useStore.getState().play();
-    expect(useStore.getState().isLoading).toBe(true);
-    useStore.getState().setInstrument('triangle');
-    await useStore.getState().play();
-    rejectOld!(new Error('old samples failed'));
-    await first;
     expect(useStore.getState().instrumentId).toBe('triangle');
-    expect(useStore.getState().playbackError).toBeNull();
-    expect(useStore.getState().isLoading).toBe(false);
   });
 });
 

@@ -1,5 +1,6 @@
 import { create } from 'zustand';
-import { parse, Player } from '@hh-jianpu/core';
+import { parse } from '@hh-jianpu/core';
+import { Player } from '../adapters/audio/synth';
 import type { Score, ParseError, PlaybackStatus } from '@hh-jianpu/core';
 import { DEFAULT_SCORE_SOURCE, getLibraryScore } from '../services/scoreLibrary';
 import type { ScoreTemplate } from '../services/scoreLibrary';
@@ -373,7 +374,7 @@ export const useStore = create<AppState>((set, get) => {
     playbackError: null,
     instrumentId: initialInstrumentId,
     setInstrument: (id) => {
-      if (!PLAYBACK_INSTRUMENTS.some(instrument => instrument.id === id) || id === get().instrumentId) return;
+      if (!PLAYBACK_INSTRUMENTS.some(instrument => instrument.id === id && !instrument.disabled) || id === get().instrumentId) return;
       get().stop();
       player.setInstrument(id);
       set({ instrumentId: id });

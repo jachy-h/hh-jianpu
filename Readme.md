@@ -36,11 +36,18 @@ pnpm install
 
 ### 启动开发服务器
 
+在仓库根目录执行：
+
 ```bash
-pnpm dev
+pnpm dev           # Web：http://127.0.0.1:5173
+pnpm dev:minitool  # H5：http://127.0.0.1:5174
 ```
 
-访问 http://localhost:5173
+需要同时开发两端时，使用 `pnpm dev:all`，只启动一组共享模块监听。也可用 `pnpm dev:web` 单独启动 Web。
+
+启动会先输出三阶段共享模块构建进度，再启动 Vite；项目不锁定 pnpm 版本，直接使用本机已安装的 pnpm，不在启动时自动切换版本或安装依赖。首次使用或依赖变化后先执行 `pnpm install`。终端保持运行，按 `Ctrl+C` 停止本次服务和监听。
+
+默认端口被占用时，先停止原有服务，或指定 `pnpm dev --port 5183` / `pnpm dev:minitool --port 5184`；不会静默切换端口。
 
 ### 生产构建
 

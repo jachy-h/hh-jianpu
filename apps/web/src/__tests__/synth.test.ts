@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { Player } from '../player/synth.js';
-import { parse } from '../parser/index.js';
-import type { InstrumentBank, InstrumentDefinition } from '../player/instruments.js';
+import { Player } from '../adapters/audio/synth.js';
+import { parse } from '@hh-jianpu/core';
+import type { InstrumentBank, InstrumentDefinition } from '../adapters/audio/instruments.js';
 
 const audio = vi.hoisted(() => {
   const events: { callback: (time: number) => void; time: string }[] = [];
@@ -44,6 +44,20 @@ const makePlayer = () => {
 describe('Player lifecycle and musical timing', () => {
   beforeEach(() => { vi.useFakeTimers(); vi.clearAllMocks(); audio.events.length = 0; audio.draw.length = 0; });
   afterEach(() => { vi.useRealTimers(); });
+
+  it('does not let a second instance cancel the active Web transport', async () => {
+    const first = makePlayer(); const second = makePlayer();
+    first.setLoopRange({ startMeasure: 1, endMeasure: 1 });
+    await first.play();
+    const count = audio.events.length;
+    await expect(second.play()).rejects.toThrow('另一个播放器');
+    second.dispose();
+    expect(audio.events).toHaveLength(count);
+    expect(audio.transport.loop).toBe(true);
+    expect(audio.transport.stop).not.toHaveBeenCalled();
+    first.dispose();
+    expect(audio.transport.stop).toHaveBeenCalledOnce();
+  });
 
   it('sends noteOff at the full prolongation tick and follows a changed tempo instead of fixing seconds at onset', async () => {
     const voice = { noteOn: vi.fn(), noteOff: vi.fn(), releaseAll: vi.fn(), dispose: vi.fn() };

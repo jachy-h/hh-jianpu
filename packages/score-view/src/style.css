@@ -1,0 +1,37 @@
+.score-frame {
+  position:relative;
+  height:100%;
+  min-height:0
+}
+
+.score-view {
+  height:100%;
+  overflow:auto;
+  -webkit-overflow-scrolling:touch;
+  overscroll-behavior:contain
+}
+
+.score-svg {
+  display:block;
+  margin:0 auto
+}
+
+.score-follow {
+  position:absolute;
+  right:12px;
+  top:12px;
+  z-index:10;
+  border:1px solid #d6d3d1;
+  border-radius:24px;
+  background:#fafaf9;
+  color:#1c1917;
+  padding:8px 14px;
+  font-size:12px;
+  cursor:pointer
+}
+
+.score-frame .cursor-pointer {
+  cursor:pointer
+}
+
+

@@ -1,8 +1,8 @@
 export { getScoreVoices, durationInBeats } from './music.js';
 export { parse } from './parser/index.js';
 export { createLayout } from './renderer/index.js';
-export { Player, TRIANGLE_INSTRUMENT, createSampleInstrument } from './player/index.js';
-export type { PlayerOptions, InstrumentDefinition, InstrumentBank, InstrumentNote, PlaybackInstrument, SampleDefinition, SampleInstrumentOptions } from './player/index.js';
+export { Player } from './player/index.js';
+export type { PlayerOptions, InstrumentBank, InstrumentNote, PlaybackInstrument } from './player/index.js';
 export {
   transposeScore,
   scoreToSource,
@@ -16,3 +16,5 @@ export {
   KEY_SEMITONE_OFFSET,
 } from './types/index.js';
 export type * from './types/index.js';
+export type { PlaybackRuntime, BeatTransport, InstrumentInfo, MeasureLoopRange, ScheduledNote } from './player/index.js';
+export { scheduleNotes, selectMeasureSegment, activeNoteIndices, sustainingNotes } from './player/index.js';

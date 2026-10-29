@@ -24,7 +24,9 @@
     "react-dom": "^18.3.0",
     "react-router-dom": "^7.13.1",
     "tone": "^15.0.4",
-    "zustand": "^4.5.0"
+    "zustand": "^4.5.0",
+    "@hh-jianpu/score-view": "workspace:*",
+    "@hh-jianpu/score-library": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^25.3.1",

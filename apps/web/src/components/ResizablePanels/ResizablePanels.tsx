@@ -1,6 +1,30 @@
 import ButtonTip from '../ui/ButtonTip';
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 
+const PANEL_STATE_STORAGE_KEY = 'hh-jianpu:editor-panel-state';
+
+type PanelState = 'collapsed' | 'expanded';
+
+const getInitialPanelState = (): PanelState => {
+  if (typeof window === 'undefined') return 'collapsed';
+
+  try {
+    return window.sessionStorage.getItem(PANEL_STATE_STORAGE_KEY) === 'expanded'
+      ? 'expanded'
+      : 'collapsed';
+  } catch {
+    return 'collapsed';
+  }
+};
+
+const savePanelState = (state: PanelState) => {
+  try {
+    window.sessionStorage.setItem(PANEL_STATE_STORAGE_KEY, state);
+  } catch {
+    // 布局偏好不可用时仍允许正常切换面板。
+  }
+};
+
 interface ResizablePanelsProps {
   left: React.ReactNode;
   right: React.ReactNode;
@@ -16,15 +40,28 @@ export const ResizablePanels: React.FC<ResizablePanelsProps> = ({
   minRightWidth = 300,
   defaultLeftWidth = 50, // 默认 50%
 }) => {
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [panelState, setPanelState] = useState<PanelState>(getInitialPanelState);
+  const isCollapsed = panelState === 'collapsed';
   const [leftWidth, setLeftWidth] = useState(defaultLeftWidth);
   const [isDragging, setIsDragging] = useState(false);
-  const [mobilePanel, setMobilePanel] = useState<'editor' | 'preview'>('editor');
+  const [mobilePanel, setMobilePanel] = useState<'editor' | 'preview'>(() =>
+    getInitialPanelState() === 'collapsed' ? 'preview' : 'editor'
+  );
   const containerRef = useRef<HTMLDivElement>(null);
 
   const handleToggleEditor = useCallback(() => {
     setIsDragging(false);
-    setIsCollapsed(value => !value);
+    const nextState = panelState === 'collapsed' ? 'expanded' : 'collapsed';
+    setPanelState(nextState);
+    setMobilePanel(nextState === 'collapsed' ? 'preview' : 'editor');
+    savePanelState(nextState);
+  }, [panelState]);
+
+  const handleMobilePanelChange = useCallback((panel: 'editor' | 'preview') => {
+    setMobilePanel(panel);
+    const nextState = panel === 'preview' ? 'collapsed' : 'expanded';
+    setPanelState(nextState);
+    savePanelState(nextState);
   }, []);
 
   const handleMouseDown = useCallback(() => {
@@ -90,7 +127,7 @@ export const ResizablePanels: React.FC<ResizablePanelsProps> = ({
             id={`panel-tab-${panel}`}
             aria-selected={mobilePanel === panel}
             aria-controls={`panel-${panel}`}
-            onClick={() => setMobilePanel(panel)}
+            onClick={() => handleMobilePanelChange(panel)}
             className={`flex-1 rounded-md px-4 py-2 text-sm transition-colors ${mobilePanel === panel ? 'bg-ink text-paper shadow-sm' : 'text-played hover:bg-stone-100'}`}
           >
             {panel === 'editor' ? '编辑简谱' : '曲谱预览'}

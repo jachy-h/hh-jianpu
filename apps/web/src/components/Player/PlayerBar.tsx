@@ -140,7 +140,7 @@ const PlayerBar: React.FC<PlayerBarProps> = ({
           <select aria-label="播放音色" value={instrumentId}
             onChange={(event) => onInstrumentChange?.(event.target.value)}
             className="rounded bg-gray-100 px-1 py-0.5 text-ink">
-            {PLAYBACK_INSTRUMENTS.map(instrument => <option key={instrument.id} value={instrument.id}>{instrument.label}</option>)}
+            {PLAYBACK_INSTRUMENTS.map(instrument => <option key={instrument.id} value={instrument.id} disabled={instrument.disabled}>{instrument.label}{instrument.disabled ? '（暂不可用）' : ''}</option>)}
           </select>
         </label>
 

@@ -1,5 +1,3 @@
-import type * as Tone from 'tone';
-
 /** 每次发声独立标识；同音重奏和不同声部不会共用释放状态。 */
 export interface InstrumentNote {
   readonly id: string;
@@ -22,11 +20,4 @@ export interface PlaybackInstrument {
 export interface InstrumentBank {
   createVoice(): PlaybackInstrument;
   dispose(): void;
-}
-
-/** 工厂接收统一输出，不直接连接系统扬声器。 */
-export interface InstrumentDefinition {
-  readonly id: string;
-  readonly label: string;
-  readonly load: (tone: typeof Tone, output: Tone.ToneAudioNode) => Promise<InstrumentBank>;
 }

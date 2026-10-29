@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as Tone from 'tone';
-import { createSampleInstrument } from '../player/instruments.js';
-import { createPlaybackOutput, limitOutputSample } from '../player/audio-output.js';
+import { createSampleInstrument } from '../adapters/audio/instruments.js';
+import { createPlaybackOutput, limitOutputSample } from '../adapters/audio/audio-output.js';
 
 const audio = vi.hoisted(() => ({
   loads: [] as { onload: () => void; onerror: (error: Error) => void }[],

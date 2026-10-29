@@ -1,5 +1,9 @@
 # 技术架构设计 — hh-jianpu
 
+## v0.8.0 多应用架构
+
+当前共享包、播放运行时与 API 迁移以 [共享模块与平台适配](v0.8.0-shared-modules.md) 为准。Web 和 H5 单向引用共享 core、score-view 与 score-library；Tone 仅属于 Web。下文旧版本章节保留演进背景。
+
 ## v0.7.0 实现约束
 
 - Parser 输出 AST 和源码位置，Renderer 计算布局，Player 以拍数调度；Web UI 渲染 SVG 并处理交互。

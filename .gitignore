@@ -7,3 +7,7 @@ dist/
 *.tsbuildinfo
 .worktrees/
 screenshots/
+artifacts/
+apps/minitool/audio-probe-dist/
+apps/minitool/build/
+packages/score-library/src/resources.generated.ts

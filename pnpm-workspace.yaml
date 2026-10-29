@@ -3,3 +3,5 @@ packages:
   - 'apps/*'
 allowBuilds:
   esbuild: true
+# 开发启动只报告依赖状态，安装由 pnpm install 显式执行。
+verifyDepsBeforeRun: warn

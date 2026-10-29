@@ -1,6 +1,8 @@
-# 播放音色（v0.7.4）
+# 播放音色（v0.8.0 架构）
 
-网页默认使用教学钢琴，播放条可切换「原声（合成音）」。音色选择独立保存在当前浏览器，不写入曲谱；切换时停止当前播放及倒计时，下次从曲首或选段起点开始。
+共享音乐编排与平台音频已分离，迁移及运行时契约见 [共享模块与平台适配](architecture/v0.8.0-shared-modules.md)。下述教学钢琴属于 Web；H5 首版使用原生合成音。
+
+网页默认使用「原声（合成音）」。教学钢琴暂时停用，仍显示在音色列表中但不可选择；已有钢琴偏好自动回退到原声，不加载钢琴采样。以下钢琴说明保留用于后续恢复和音频验收。
 
 钢琴使用离线制作的起音＋循环持续段，延长音持续到谱面规定的结束拍点，再进入释放段，不重复敲击。它是适合简谱练习的持续钢琴音色，不采用真实钢琴一直自然衰减的效果。
 首次使用按需加载约 2.6 MB 的同域 WAV；加载中可以停止或切换，失败/30 秒超时后可重试。切换释放解码缓冲，切回时可利用 HTTP 缓存。
@@ -26,14 +28,14 @@ Parser → Scheduler（音高、起止拍点、奏法）
 
 ## 开闭原则与代码位置
 
-- `player/instrument.ts` 定义 `InstrumentNote`、`PlaybackInstrument`、`InstrumentBank` 和 `InstrumentDefinition`。
+- `packages/core/src/player/instrument.ts`（平台无关发声契约）及 Web `adapters/audio/instrument.ts`（Tone 工厂） 定义 `InstrumentNote`、`PlaybackInstrument`、`InstrumentBank` 和 `InstrumentDefinition`。
 - `noteOn(note, time)` 开始指定 ID，`noteOff(id, time)` 结束该 ID；音源不解释乐谱拍数、不自行读取 BPM。
 - `triangle-instrument.ts` 与 `sample-instrument.ts` 各自实现合成/采样，两者均接收 Player 注入的输出节点，不能直接连接扬声器。
 - `audio-output.ts` 提供所有旋律声部和节拍器共用的混音输出；普通电平透明，仅对接近满刻度的峰值平滑收敛。
 - Web 的 `services/playbackInstruments.ts` 是音色组合入口，注册表同时驱动 UI 和偏好校验；采样路径来自 Web 的 BASE_URL。
 - 新增音色只需实现工厂或配置采样与循环点，然后注册；不修改 Parser、Renderer、Player 的音乐时间逻辑。
 
-无参数 `new Player()` 继续使用原合成音，保持 core 调用方式兼容。扩展的音源工厂接口采用新的起止事件契约。
+Web 内部音频门面的无参数 `new Player()` 继续使用原合成音；core 的 `Player` 现需注入 runtime 和音色描述，属于显式 API 迁移。扩展的音源工厂接口采用新的起止事件契约。
 
 ## 钢琴素材制作与响度
 

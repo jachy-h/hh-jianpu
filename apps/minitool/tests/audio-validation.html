@@ -1,0 +1,17 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><title>原生音频验收</title></head><body><h1>原生音频持续/变速验收</h1><button id="run">运行离线音频验收</button><pre id="result">等待运行</pre><script type="module">
+import { createNativeRuntime } from '../src/adapters/audio/runtime.ts';
+const output=document.getElementById('result');
+function rms(buffer,from,to){const data=buffer.getChannelData(0);let sum=0,count=0;for(let i=Math.floor(from*buffer.sampleRate);i<Math.min(data.length,Math.floor(to*buffer.sampleRate));i++){sum+=data[i]*data[i];count++;}return Math.sqrt(sum/Math.max(1,count));}
+document.getElementById('run').addEventListener('click',async()=>{
+ output.textContent='正在渲染';
+ try {
+  async function render(slow=false){const context=new OfflineAudioContext(1,44100*5,44100),runtime=createNativeRuntime(context),bank=await runtime.loadInstrument('triangle'),voice=bank.createVoice();voice.noteOn({id:'long',frequency:261.626},0);voice.noteOff('long',2);let change;
+   if(slow) change=context.suspend(.5).then(()=>{runtime.transport.bpm=60;return context.resume();});
+   const buffer=await context.startRendering();if(change)await change;runtime.dispose();return buffer;}
+  const normal=await render(),slow=await render(true);
+  const metrics={normalEarly:rms(normal,.5,.8),normalLate:rms(normal,1.7,1.9),normalSilent:rms(normal,2.2,2.5),slowLate:rms(slow,3,3.3),slowSilent:rms(slow,3.7,4)};
+  const pass=metrics.normalEarly>.04&&Math.abs(metrics.normalEarly-metrics.normalLate)<.005&&metrics.normalSilent<.001&&metrics.slowLate>.04&&metrics.slowSilent<.001;
+  output.textContent=(pass?'PASS':'FAIL')+'\n'+JSON.stringify(metrics,null,2)+'\n普通长音2秒释放；第1拍减半BPM后延长至约3.5秒。';
+ }catch(error){output.textContent='FAIL '+error.stack;}
+});
+</script></body></html>

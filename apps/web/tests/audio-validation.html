@@ -5,7 +5,8 @@
 <button id="run">运行验收</button><pre id="result">等待运行</pre><div id="audio"></div>
 <script type="module">
 import * as Tone from 'tone';
-import { Player, parse } from '@hh-jianpu/core';
+import { parse } from '@hh-jianpu/core';
+import { Player } from '../src/adapters/audio/synth.ts';
 import { PLAYBACK_INSTRUMENTS } from '../src/services/playbackInstruments.ts';
 const result=document.getElementById('result'), audio=document.getElementById('audio');
 function rms(buffer,start,end){let sum=0,count=0;for(let c=0;c<buffer.numberOfChannels;c++){const data=buffer.getChannelData(c);for(let i=Math.round(start*44100);i<Math.min(data.length,Math.round(end*44100));i++){sum+=data[i]**2;count++;}}return Math.sqrt(sum/Math.max(1,count));}

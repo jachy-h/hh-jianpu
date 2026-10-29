@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- 曲谱页默认显示预览，并在当前浏览器会话中记住编辑区折叠或展开状态；再次进入时恢复上次选择。
+
 ## [0.7.6] - 2026-10-28
 
 ### Changed

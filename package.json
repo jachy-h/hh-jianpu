@@ -4,13 +4,22 @@
   "private": true,
   "description": "A web-based dynamic numbered musical notation (jianpu) editor with AI-powered image recognition",
   "scripts": {
-    "dev": "pnpm --filter @hh-jianpu/web dev",
-    "build": "pnpm --filter @hh-jianpu/core build && pnpm --filter @hh-jianpu/web build",
+    "dev": "node scripts/dev.mjs web",
+    "build": "pnpm build:shared && pnpm --filter @hh-jianpu/web build && pnpm --filter @hh-jianpu/minitool build",
     "build:core": "pnpm --filter @hh-jianpu/core build",
-    "build:web": "pnpm --filter @hh-jianpu/web build",
+    "build:web": "pnpm build:shared && pnpm --filter @hh-jianpu/web build",
     "lint": "pnpm -r lint",
     "test": "pnpm -r test",
-    "release": "./scripts/release.sh"
+    "release": "./scripts/release.sh",
+    "build:shared": "node scripts/build-shared.mjs",
+    "dev:minitool": "node scripts/dev.mjs minitool",
+    "build:minitool": "pnpm build:shared && pnpm --filter @hh-jianpu/minitool build",
+    "probe:minitool": "pnpm --filter @hh-jianpu/minitool exec vite build --mode probe",
+    "check:boundaries": "node scripts/check-boundaries.mjs",
+    "audit:minitool": "node scripts/audit-minitool.mjs",
+    "package:minitool": "pnpm build:minitool && node scripts/package-minitool.mjs",
+    "dev:web": "node scripts/dev.mjs web",
+    "dev:all": "node scripts/dev.mjs all"
   },
   "keywords": [
     "jianpu",
@@ -26,6 +35,7 @@
     "eslint-plugin-react-refresh": "^0.4.26",
     "globals": "^15.15.0",
     "tsx": "^4.21.0",
-    "typescript-eslint": "^8.72.0"
+    "typescript-eslint": "^8.72.0",
+    "acorn": "^8.15.0"
   }
 }

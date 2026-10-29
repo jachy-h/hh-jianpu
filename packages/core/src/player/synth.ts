@@ -1,15 +1,17 @@
 // ============================================================
-// Synth — 音频合成封装（基于 Tone.js）
+// Player — 共享播放编排，平台副作用通过 Runtime 注入
 // ============================================================
-// 注意：此模块在运行时动态引入 Tone.js，避免 SSR 问题
+// Parser/Scheduler/状态计算不依赖任何应用或音频库。
 
 import type { Score, PlaybackStatus, VoiceId } from '../types/index.js';
 import { scheduleNotes, selectMeasureSegment, type MeasureLoopRange, type ScheduledNote } from './scheduler.js';
-import { createPlaybackOutput } from './audio-output.js';
-import { TRIANGLE_INSTRUMENT, type InstrumentBank, type InstrumentDefinition, type PlaybackInstrument } from './instruments.js';
+import type { PlaybackRuntime, InstrumentInfo } from './contracts.js';
+import { activeNoteIndices, sustainingNotes } from './session.js';
+import type { InstrumentBank, PlaybackInstrument } from './instrument.js';
 
 export interface PlayerOptions {
-  readonly instruments?: readonly InstrumentDefinition[];
+  readonly instruments: readonly InstrumentInfo[];
+  readonly runtime: () => Promise<PlaybackRuntime>;
   readonly instrumentId?: string;
 }
 
@@ -23,7 +25,7 @@ export type BeatCallback = (beat: number, beatsPerMeasure: number) => void;
  *
  * 职责：
  * 1. 将 Score 调度为时间事件
- * 2. 使用 Tone.js 合成音频
+ * 2. 通过注入的时钟与音源执行发声命令
  * 3. 触发高亮回调同步 UI
  */
 export class Player {
@@ -31,37 +33,34 @@ export class Player {
   private activePlaybackNotes: ScheduledNote[] = [];
   private playbackDelayBeats = 0;
   private _score: Score | null = null;  // 保存曲谱，播放时按当前 tempo 重新计算时序
-  private readonly instrumentDefinitions: Map<string, InstrumentDefinition>;
+  private readonly instrumentDefinitions: Map<string, InstrumentInfo>;
   private readonly voices = new Map<VoiceId, PlaybackInstrument>();
   private readonly soundingNotes = new Map<ScheduledNote, { id: string; voice: PlaybackInstrument }>();
   private noteSequence = 0;
-  private output: ReturnType<typeof createPlaybackOutput> | null = null;
   private loopEndHandler: ((time: number) => void) | null = null;
   private instrumentBank: InstrumentBank | null = null;
   private instrumentGeneration = 0;
   private instrumentLoad: { generation: number; promise: Promise<void> } | null = null;
   private _instrumentId: string;
   private mutedVoices = new Set<VoiceId>();
-  private metronomeSynth: import('tone').Synth | null = null; // Tone.Synth（节拍器点击声，非鼓声）
-  private tone: typeof import('tone') | null = null;  // Tone module
+  private runtime: PlaybackRuntime | null = null;
   private isInitialized = false;
   private initialization: Promise<void> | null = null;
   private audioGeneration = 0;
   private playbackGeneration = 0;
-  private animationFrame: number | null = null;
   private _tempo: number = 120;
   private _status: PlaybackStatus = 'idle';
   private _metronomeEnabled: boolean = true; // 默认启用节拍器
   private _loopRange: MeasureLoopRange | null = null;
-  private warmupTimeoutId: ReturnType<typeof setTimeout> | null = null;
+  private warmupTimeoutId: (() => void) | null = null;
   private warmupGeneration = 0;
 
   private onNoteHighlight: NoteHighlightCallback | null = null;
   private onStatusChange: StatusChangeCallback | null = null;
   private onBeat: BeatCallback | null = null;
 
-  constructor(options: PlayerOptions = {}) {
-    this.instrumentDefinitions = new Map((options.instruments ?? [TRIANGLE_INSTRUMENT]).map(definition => [definition.id, definition]));
+  constructor(private readonly options: PlayerOptions) {
+    this.instrumentDefinitions = new Map(options.instruments.map(definition => [definition.id, definition]));
     this._instrumentId = options.instrumentId ?? this.instrumentDefinitions.keys().next().value ?? '';
     if (!this.instrumentDefinitions.has(this._instrumentId)) throw new Error('未知播放音色');
   }
@@ -83,12 +82,12 @@ export class Player {
     if (this.instrumentBank) return;
     const generation = this.instrumentGeneration;
     if (this.instrumentLoad?.generation === generation) return this.instrumentLoad.promise;
-    const promise = this.instrumentDefinitions.get(this._instrumentId)!.load(this.tone!, this.output!.input).then(bank => {
+    const promise = this.runtime!.loadInstrument(this._instrumentId).then(bank => {
       if (generation !== this.instrumentGeneration) bank.dispose();
       else this.instrumentBank = bank;
-    }).finally(() => {
-      if (this.instrumentLoad?.generation === generation) this.instrumentLoad = null;
     });
+    const clear = () => { if (this.instrumentLoad?.generation === generation) this.instrumentLoad = null; };
+    void promise.then(clear, clear);
     this.instrumentLoad = { generation, promise };
     return promise;
   }
@@ -122,7 +121,7 @@ export class Player {
   }
 
   private clearLoopHandler(): void {
-    if (this.loopEndHandler && this.tone) this.tone.getTransport().off('loopEnd', this.loopEndHandler);
+    if (this.loopEndHandler && this.runtime) this.runtime.transport.offLoop(this.loopEndHandler);
     this.loopEndHandler = null;
   }
 
@@ -135,9 +134,9 @@ export class Player {
   }
 
   /**
-   * 初始化 Tone.js（懒加载，首次播放时调用）
+   * 初始化平台适配器（懒加载，首次播放时调用）
    */
-  private async initTone(): Promise<void> {
+  private async initRuntime(): Promise<void> {
     if (this.isInitialized) return;
 
     if (this.initialization) return this.initialization;
@@ -151,23 +150,10 @@ export class Player {
 
   private async initializeAudio(): Promise<void> {
     const generation = this.audioGeneration;
-    const Tone = await import('tone');
-    if (generation !== this.audioGeneration) return;
-    this.tone = Tone;
-    this.output = createPlaybackOutput(Tone);
-
-    // 节拍器合成器：短促的 click 音效，非鼓声
-    // 使用三角波 + 极短包络，模拟木块/哒声
-    this.metronomeSynth = new Tone.Synth({
-      oscillator: { type: 'triangle' },
-      envelope: {
-        attack: 0.001,
-        decay: 0.04,
-        sustain: 0,
-        release: 0.04,
-      },
-    }).connect(this.output.input);
-    this.metronomeSynth.volume.value = -8;
+    const runtime = await this.options.runtime();
+    if (generation !== this.audioGeneration) { runtime.dispose(); return; }
+    this.runtime = runtime;
+    runtime.onInterrupt?.(() => this.stop());
 
     this.isInitialized = true;
   }
@@ -224,10 +210,10 @@ export class Player {
     onBeat?: (remainingBeats: number) => void
   ): Promise<void> {
     const generation = ++this.warmupGeneration;
-    await this.initTone();
+    await this.initRuntime();
     if (generation !== this.warmupGeneration) return;
-    const Tone = this.tone!;
-    await Tone.start();
+    const runtime = this.runtime!;
+    await runtime.start();
     if (generation !== this.warmupGeneration) return;
     await this.prepareInstrument();
     if (generation !== this.warmupGeneration) return;
@@ -238,8 +224,8 @@ export class Player {
       if (currentBeat <= 0) {
         return;
       }
-      if (this.metronomeSynth) {
-        this.metronomeSynth.triggerAttackRelease('C5', '32n', Tone.now());
+      if (this.runtime) {
+        this.runtime.click(523.25, runtime.now(), true);
       }
       this.onBeat?.(currentBeat, 4);
       onBeat?.(currentBeat);
@@ -250,7 +236,7 @@ export class Player {
     tick();
     const scheduleNextBeat = (): void => {
       const secondsPerBeat = 60 / this._tempo;
-      this.warmupTimeoutId = setTimeout(() => {
+      this.warmupTimeoutId = this.runtime!.delay(() => {
         this.warmupTimeoutId = null;
         if (generation !== this.warmupGeneration) return;
         if (currentBeat <= 0) {
@@ -259,7 +245,7 @@ export class Player {
         }
         tick();
         scheduleNextBeat();
-      }, secondsPerBeat * 1000);
+      }, secondsPerBeat);
     };
     scheduleNextBeat();
   }
@@ -271,7 +257,7 @@ export class Player {
     // 清除节拍器预热的计时器，防止多次点击时并发执行
     this.warmupGeneration++;
     if (this.warmupTimeoutId !== null) {
-      clearTimeout(this.warmupTimeoutId);
+      this.warmupTimeoutId();
       this.warmupTimeoutId = null;
     }
   }
@@ -291,29 +277,25 @@ export class Player {
    */
   async play(delayBeats: number = 0): Promise<void> {
     const generation = this._status === 'paused' ? this.playbackGeneration : ++this.playbackGeneration;
-    await this.initTone();
+    await this.initRuntime();
     if (generation !== this.playbackGeneration) return;
-    const Tone = this.tone!;
+    const runtime = this.runtime!;
 
     // 确保 AudioContext 已激活（需要用户交互后才能播放）
-    await Tone.start();
+    await runtime.start();
     if (generation !== this.playbackGeneration) return;
     await this.prepareInstrument();
     if (generation !== this.playbackGeneration) return;
 
     // 如果是从暂停状态恢复，直接继续播放
     if (this._status === 'paused') {
-      const transport = Tone.getTransport();
-      const beat = Number(transport.ticks) / transport.PPQ - this.playbackDelayBeats;
+      const transport = runtime.transport;
+      const beat = transport.beat - this.playbackDelayBeats;
       // 暂停已释放音源，恢复时补回仍应持续的音，不重新起算时间轴。
-      for (const event of this.activePlaybackNotes) {
-        const endBeat = event.startBeat + (event.soundingDurationBeats ?? event.durationBeats);
-        if (event.frequency !== null && event.startBeat < beat && endBeat > beat
-          && (!this._score?.secondaryVoice || !this.mutedVoices.has(event.voiceId ?? 'upper'))) {
-          this.startNote(event, Tone.now(), true);
-        }
+      for (const event of sustainingNotes(this.activePlaybackNotes, beat)) {
+        if (!this._score?.secondaryVoice || !this.mutedVoices.has(event.voiceId ?? 'upper')) this.startNote(event, runtime.now(), true);
       }
-      Tone.getTransport().start();
+      runtime.transport.start();
       this.setStatus('playing');
       return;
     }
@@ -325,12 +307,11 @@ export class Player {
 
     // 清除之前的调度
     this.clearLoopHandler();
-    Tone.getTransport().cancel();
-    Tone.getTransport().bpm.value = this._tempo;
+    runtime.transport.cancel();
+    runtime.transport.bpm = this._tempo;
 
-    const transport = Tone.getTransport();
-    const beatToTransportTime = (beats: number): string =>
-      `${Math.max(0, Math.round(beats * transport.PPQ))}i`;
+    const transport = runtime.transport;
+    const beatToTransportTime = (beats: number): number => Math.max(0, beats);
 
     const range = this._loopRange;
     const segment = range ? selectMeasureSegment(this.scheduledNotes, range) : null;
@@ -373,23 +354,15 @@ export class Player {
         if (generation !== this.playbackGeneration) return;
         for (const event of this.soundingNotes.keys()) this.endNote(event, time);
       };
-      transport.on('loopEnd', this.loopEndHandler);
+      transport.onLoop(this.loopEndHandler);
     }
 
     // 同一拍点只产生一次 UI 更新；使用每个声部最近的记谱事件，包含延音线和休止。
     const boundaries = [...new Set(selectedNotes.flatMap(event => [event.startBeat, event.startBeat + event.durationBeats]))].sort((a, b) => a - b);
     for (const beat of boundaries) {
-      const active = new Map<VoiceId, ScheduledNote>();
-      for (const event of selectedNotes) {
-        if (event.startBeat <= beat + 0.0001 && event.startBeat + event.durationBeats > beat + 0.0001) {
-          const id = event.voiceId ?? 'upper';
-          const previous = active.get(id);
-          if (!previous || event.startBeat >= previous.startBeat) active.set(id, event);
-        }
-      }
-      const indices = [...active.values()].map(event => event.index);
+      const indices = activeNoteIndices(selectedNotes, beat);
       transport.schedule((time: number) => {
-        Tone.getDraw().schedule(() => {
+        runtime.draw.schedule(() => {
           if (generation === this.playbackGeneration && this._status === 'playing') {
             this.onNoteHighlight?.(indices[0] ?? -1, indices);
           }
@@ -403,7 +376,7 @@ export class Player {
       if (!range) {
         const endBeat = delayBeats + lastNote.startBeat + lastNote.durationBeats;
         transport.schedule((time: number) => {
-          Tone.getDraw().schedule(() => {
+          runtime.draw.schedule(() => {
             if (generation === this.playbackGeneration) this.stop();
           }, time);
         }, beatToTransportTime(endBeat));
@@ -412,7 +385,7 @@ export class Player {
 
     // === 节拍器调度（与音符共用同一 Transport，不互相干扰） ===
     // 节拍器从延迟后开始，重音从第1拍重新计算
-    if (this._metronomeEnabled && this._score && this.metronomeSynth) {
+    if (this._metronomeEnabled && this._score && this.runtime) {
       const beatsPerMeasure = this._score.metadata.timeSignature.beats;
       const totalDurationBeats = range ? loopDurationBeats : lastNote ? lastNote.startBeat + lastNote.durationBeats : 0;
 
@@ -424,16 +397,9 @@ export class Player {
         const capturedBeat = currentBeat + 1; // 转为 1-based
 
         const callback = (time: number) => {
-          // 强拍：较高频率 + 较大音量；弱拍：较低频率 + 较小音量
-          if (isDownbeat) {
-            this.metronomeSynth!.volume.value = -4;
-            this.metronomeSynth?.triggerAttackRelease(1500, '64n', time);
-          } else {
-            this.metronomeSynth!.volume.value = -12;
-            this.metronomeSynth?.triggerAttackRelease(1000, '64n', time);
-          }
+          runtime.click(isDownbeat ? 1500 : 1000, time, isDownbeat);
           // UI 回调：在主线程触发
-          Tone.getDraw().schedule(() => {
+          runtime.draw.schedule(() => {
             if (generation === this.playbackGeneration && this._status === 'playing') {
               this.onBeat?.(capturedBeat, beatsPerMeasure);
             }
@@ -454,9 +420,9 @@ export class Player {
    * 暂停
    */
   pause(): void {
-    if (!this.tone) return;
+    if (!this.runtime) return;
     this.releaseVoices();
-    this.tone.getTransport().pause();
+    this.runtime.transport.pause();
     this.setStatus('paused');
   }
 
@@ -469,14 +435,14 @@ export class Player {
     this.clearLoopHandler();
     this.stopMetronomeWarmup();
     this.releaseVoices();
-    if (!this.tone) {
+    if (!this.runtime) {
       this.setStatus('idle');
       this.onNoteHighlight?.(-1);
       return;
     }
-    this.tone.getTransport().stop();
-    this.tone.getTransport().loop = false;
-    this.tone.getTransport().cancel();
+    this.runtime.transport.stop();
+    this.runtime.transport.loop = false;
+    this.runtime.transport.cancel();
     this.setStatus('idle');
     this.onNoteHighlight?.(-1);
   }
@@ -486,8 +452,8 @@ export class Player {
    */
   setTempo(bpm: number): void {
     this._tempo = bpm;
-    if (this.tone) {
-      this.tone.getTransport().bpm.value = bpm;
+    if (this.runtime) {
+      this.runtime.transport.bpm = bpm;
     }
   }
 
@@ -526,12 +492,8 @@ export class Player {
     this.instrumentGeneration++;
     this.instrumentLoad = null;
     this.disposeInstrument();
-    if (this.metronomeSynth) {
-      this.metronomeSynth.dispose();
-      this.metronomeSynth = null;
-    }
-    this.output?.dispose();
-    this.output = null;
+    this.runtime?.dispose();
+    this.runtime = null;
     this.isInitialized = false;
   }
 }

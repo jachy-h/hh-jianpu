@@ -21,6 +21,8 @@ export interface LayoutConfig {
   width: number;
   /** 可选的每行小节数上限；省略时遵循源码换行，仅在宽度不足时拆行。 */
   measuresPerLine?: number;
+  /** 是否遵循源码中的显式换行，默认 true。 */
+  respectSourceLineBreaks: boolean;
   /** 音符间距（px） */
   noteSpacing: number;
   /** 音符字号（px） */
@@ -42,6 +44,7 @@ export interface LayoutConfig {
 /** 默认布局配置 */
 export const DEFAULT_LAYOUT_CONFIG: LayoutConfig = {
   width: 800,
+  respectSourceLineBreaks: true,
   noteSpacing: 40,
   noteFontSize: 18,
   lineHeight: 60,
@@ -93,7 +96,7 @@ export function createLayout(score: Score, config: Partial<LayoutConfig> = {}): 
   let group: typeof metrics = [];
   let groupWidth = 0;
   for (const metric of metrics) {
-    if (group.length > 0 && (metric.measure.lineBreakBefore || group.length >= maxMeasures || groupWidth + metric.width > availableWidth + 0.01)) {
+    if (group.length > 0 && ((cfg.respectSourceLineBreaks && metric.measure.lineBreakBefore) || group.length >= maxMeasures || groupWidth + metric.width > availableWidth + 0.01)) {
       groups.push(group);
       group = [];
       groupWidth = 0;
