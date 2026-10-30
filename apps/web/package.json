@@ -1,6 +1,6 @@
 {
   "name": "@hh-jianpu/web",
-  "version": "0.8.8",
+  "version": "0.8.9",
   "private": true,
   "type": "module",
   "scripts": {
@@ -26,7 +26,8 @@
     "tone": "^15.0.4",
     "zustand": "^4.5.0",
     "@hh-jianpu/score-view": "workspace:*",
-    "@hh-jianpu/score-library": "workspace:*"
+    "@hh-jianpu/score-library": "workspace:*",
+    "@hh-jianpu/beat-visualizer": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^25.3.1",

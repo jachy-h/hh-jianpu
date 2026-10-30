@@ -303,6 +303,7 @@ const HelpPage: React.FC = () => {
                 <SymbolReference scrollContainerRef={mainRef} />
               </section>
             </div>
+            <a href="#/lab/beat-visualizer" className="mt-8 inline-block underline">节拍可视化实验室 →</a>
             <footer className="mt-12 border-t border-barline pt-5 text-xs leading-6 text-stone-500">使用帮助 {HELP_PAGE_VERSION} · 更新于 {HELP_PAGE_UPDATED_DATE}</footer>
           </div>
         </main>

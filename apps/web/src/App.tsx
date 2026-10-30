@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
+const BeatVisualizerLabPage = lazy(() => import('./pages/BeatVisualizerLabPage'));
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import MyScoresPage from './pages/MyScoresPage';
 import EditorPage from './pages/EditorPage';
@@ -14,6 +15,8 @@ const App: React.FC = () => {
         {/* 编辑器：新建 or 打开指定曲谱 */}
         <Route path="/edit" element={<EditorPage />} />
         <Route path="/edit/:id" element={<EditorPage />} />
+
+        <Route path="/lab/beat-visualizer" element={<Suspense fallback={<div>加载中…</div>}><BeatVisualizerLabPage /></Suspense>} />
 
         {/* 帮助页 */}
         <Route path="/help" element={<HelpPage />} />

@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.9] - 2026-10-30
+
+### Added
+- 新增独立节拍可视化模块及调试页面，支持均拍弹跳、指挥图式与节拍动画。
+- Web 节拍猫新增节拍球面板，支持展示、关闭和切换动画模式。
+
 ## [0.8.8] - 2026-10-30
 
 ### Added

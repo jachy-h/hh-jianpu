@@ -40,7 +40,7 @@ try {
   console.log(`[dev] 准备 ${targets.join(' + ')}，先构建共享模块…`);
   // 不删除正在被另一个开发服务消费的 dist；三阶段构建输出明确进度。
   buildShared();
-  for (const name of ['core', 'score-library', 'score-view']) {
+  for (const name of ['core', 'score-library', 'score-view', 'beat-visualizer']) {
     const directory = resolve(workspace, 'packages', name);
     start([resolve(directory, 'node_modules/typescript/bin/tsc'), '--watch', '--preserveWatchOutput'], directory);
   }

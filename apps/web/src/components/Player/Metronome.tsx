@@ -1,7 +1,9 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import type { PlaybackStatus } from '@hh-jianpu/core';
 import { useStore } from '../../store/useStore';
 import { MetronomeCat } from '@hh-jianpu/score-view';
+import { BeatVisualizer } from '@hh-jianpu/beat-visualizer';
+import type { BeatSource, Meter } from '@hh-jianpu/beat-visualizer';
 import './metronome-cat.css';
 
 interface MetronomeProps {
@@ -12,6 +14,25 @@ interface MetronomeProps {
 
 const Metronome: React.FC<MetronomeProps> = ({ tempo, status, onTempoChange }) => {
   const player = useStore((s) => s.player);
+  const signature = useStore((s) => s.score?.metadata.timeSignature);
+  const [showBall, setShowBall] = useState(false);
+  const [ballMode, setBallMode] = useState<'conducting' | 'bounce'>('bounce');
+  const beats = signature?.beats;
+  const supported = signature?.beatValue === 4 && (beats === 2 || beats === 3 || beats === 4);
+  const meter = useMemo<Meter>(() => ({ beatsPerBar: supported ? beats : 4, beatUnit: 4 }), [supported, beats]);
+  const source = useMemo<BeatSource>(() => {
+    let previous = 0;
+    let revision = 0;
+    return {
+      read: () => {
+        const positionBeats = player.playbackBeat;
+        if (positionBeats + 0.001 < previous) revision++;
+        previous = positionBeats;
+        return { positionBeats, bpm: Math.max(1, tempo), status: status === 'playing' ? 'playing' : status === 'paused' ? 'paused' : 'stopped', revision };
+      },
+      subscribe: () => () => {},
+    };
+  }, [player, status, tempo]);
   const stop = useStore((s) => s.stop);
   const countdownValue = useStore((s) => s.countdownValue);
   const isMetronomeActive = useStore((s) => s.isMetronomeActive);
@@ -91,6 +112,15 @@ const Metronome: React.FC<MetronomeProps> = ({ tempo, status, onTempoChange }) =
         setPosition(clampPosition(rect.left + offset[0], rect.top + offset[1]));
       }}
       onClickCapture={event => { if (suppressClick.current) { event.preventDefault(); event.stopPropagation(); suppressClick.current = false; } }}>
+      <div className="beat-ball-popover">
+        {showBall ? <div className="beat-ball-panel">
+          <button type="button" className="beat-ball-mode beat-ball-control" aria-label={ballMode === 'conducting' ? '切换到均拍弹跳模式' : '切换到指挥模式'} title={ballMode === 'conducting' ? '切换到均拍弹跳模式' : '切换到指挥模式'} onClick={() => setBallMode(value => value === 'conducting' ? 'bounce' : 'conducting')}>
+            {ballMode === 'conducting' ? <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 18 Q7 3 12 18 Q17 3 21 18"/><circle cx="12" cy="18" r="2"/></svg> : <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20 L4 12 L20 12 L12 4 L12 20"/><circle cx="12" cy="20" r="2"/></svg>}
+          </button>
+          <button type="button" className="beat-ball-close beat-ball-control" aria-label="关闭节拍球" onClick={() => setShowBall(false)}>×</button>
+          {supported ? <BeatVisualizer meter={meter} source={source} mode={ballMode} label="节拍球" /> : <div className="beat-ball-unsupported">节拍球暂支持 2/4、3/4、4/4</div>}
+        </div> : <button type="button" className="beat-ball-open" onClick={() => setShowBall(true)}>展开节拍球</button>}
+      </div>
       <div
         className={`flex items-center gap-2 px-3 py-2 bg-white/90 backdrop-blur rounded-xl shadow-lg border transition-all ${
           isPlaying || isMetronomeActive ? 'border-highlight shadow-highlight/20' : 'border-barline'

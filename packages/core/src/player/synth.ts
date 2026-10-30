@@ -464,6 +464,11 @@ export class Player {
     return this._status;
   }
 
+  /** 播放时间轴上的连续四分音符位置，从当前播放区间起算。 */
+  get playbackBeat(): number {
+    return Math.max(0, (this.runtime?.transport.beat ?? 0) - this.playbackDelayBeats);
+  }
+
   get tempo(): number {
     return this._tempo;
   }

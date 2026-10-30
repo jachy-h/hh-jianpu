@@ -27,3 +27,17 @@
 .cat-metronome.enabled .cat-toggle-mark { background:#007f70; }
 .cat-metronome.enabled .cat-metronome-label { color:#007f70; }
 @media (prefers-reduced-motion:reduce) { .cat-typing .cat-paw,.cat-typing .cat-face,.cat-typing .cat-tail { animation:none; } }
+.beat-ball-popover { position:absolute; bottom:100%; left:56px; transform:translateX(-50%); padding-bottom:32px; }
+.beat-ball-popover:has(.beat-ball-panel) { left:auto; right:0; transform:none; padding-bottom:8px; }
+.beat-ball-open { padding:7px 12px; border:1px solid #ded8ce; border-radius:10px; background:#fff; color:#51483e; box-shadow:0 4px 16px #0002; white-space:nowrap; opacity:0; transform:translateY(6px); pointer-events:none; transition:opacity .2s, transform .2s; }
+.fixed:has(.cat-metronome:hover) .beat-ball-open, .fixed:focus-within .beat-ball-open, .beat-ball-popover:hover .beat-ball-open { opacity:1; transform:translateY(0); pointer-events:auto; }
+.beat-ball-panel { position:relative; width:min(240px, calc(100vw - 24px)); border-radius:14px; box-shadow:0 6px 24px #0003; }
+.beat-ball-control { position:absolute; z-index:1; top:-9px; width:28px; height:28px; display:flex; align-items:center; justify-content:center; border:1px solid #e4ded3; border-radius:50%; background:#fff; color:#51483e; box-shadow:0 2px 8px #0002; opacity:0; pointer-events:none; transition:opacity .18s; }
+.beat-ball-panel:hover .beat-ball-control, .beat-ball-panel:focus-within .beat-ball-control { opacity:1; pointer-events:auto; }
+.beat-ball-mode { left:-9px; }
+.beat-ball-mode svg { width:16px; height:16px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+.beat-ball-close { right:-9px; font-size:20px; line-height:1; }
+.beat-ball-control:focus-visible { outline:2px solid #2563eb; outline-offset:2px; }
+.beat-ball-unsupported { padding:32px 16px; background:#f8f4e9; font-size:13px; }
+@media (hover:none) { .beat-ball-open { opacity:1; transform:none; pointer-events:auto; } .beat-ball-control { opacity:1; pointer-events:auto; } }
+@media (prefers-reduced-motion:reduce) { .beat-ball-open, .beat-ball-control { transition:none; } }
