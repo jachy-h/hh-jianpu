@@ -4,6 +4,8 @@ import { createLayout, getScoreVoices } from '@hh-jianpu/core';
 import type { Score } from '@hh-jianpu/core';
 import { createSlurSegments } from './slur-segments.js';
 import MeasureView from './MeasureView.js';
+import { isPlaybackJump, playbackScrollTop } from './playback-scroll.js';
+import { createFollowResumeTimer } from './follow-resume.js';
 
 interface ScoreViewProps {
   score: Score;
@@ -12,6 +14,12 @@ interface ScoreViewProps {
   width?: number;
   measuresPerLine?: number;
   respectSourceLineBreaks?: boolean;
+  /** 紧凑播放视图：省略重复标题和扩展说明，只保留调号与拍号。 */
+  compactHeader?: boolean;
+  /** 显式播放状态，区分暂停时仍保留的音符高亮。 */
+  isPlaying?: boolean;
+  /** 手动浏览后闲置多久恢复跟随；省略或 0 表示不自动恢复。 */
+  followResumeDelayMs?: number;
   noteFontSize?: number;
   onNoteClick?: (index: number) => void;
   onMeasureClick?: (measureNumber: number, voiceId?: 'upper' | 'lower') => void;
@@ -27,6 +35,9 @@ const ScoreView: React.FC<ScoreViewProps> = ({
   width,
   measuresPerLine,
   respectSourceLineBreaks,
+  compactHeader = false,
+  isPlaying = false,
+  followResumeDelayMs,
   noteFontSize = 18,
   onNoteClick,
   onMeasureClick,
@@ -38,8 +49,43 @@ const ScoreView: React.FC<ScoreViewProps> = ({
   const [followPlayback, setFollowPlayback] = useState(true);
   // 容器引用，用于滚动
   const containerRef = useRef<HTMLDivElement>(null);
-  // 存储每行的引用，用于滚动到指定行
-  const lineRefs = useRef<Map<number, SVGElement>>(new Map());
+  const [viewportHeight, setViewportHeight] = useState(0);
+  const touchStart = useRef<{ x: number; y: number } | null>(null);
+  const interactionHeld = useRef(false);
+  const previousScroll = useRef<{ layout: ReturnType<typeof createLayout>; line: number; measure: number; height: number } | null>(null);
+
+  useEffect(() => {
+    if (!followResumeDelayMs || !Number.isFinite(followResumeDelayMs) || followResumeDelayMs < 0) return;
+    const idle = createFollowResumeTimer(followResumeDelayMs, () => setFollowPlayback(true));
+    idle.hold(interactionHeld.current);
+    idle.enable(isPlaying && !followPlayback);
+    const activity = () => idle.activity();
+    const hold = () => { interactionHeld.current = true; idle.hold(true); };
+    const release = () => { interactionHeld.current = false; idle.hold(false); };
+    const activities = ['wheel', 'pointermove', 'touchmove', 'keydown', 'scroll'];
+    const holds = ['pointerdown', 'touchstart'];
+    const releases = ['pointerup', 'pointercancel', 'touchend', 'touchcancel', 'blur'];
+    activities.forEach(name => window.addEventListener(name, activity, { capture: true, passive: true }));
+    holds.forEach(name => window.addEventListener(name, hold, { capture: true, passive: true }));
+    releases.forEach(name => window.addEventListener(name, release, { capture: true, passive: true }));
+    return () => {
+      idle.dispose();
+      activities.forEach(name => window.removeEventListener(name, activity, true));
+      holds.forEach(name => window.removeEventListener(name, hold, true));
+      releases.forEach(name => window.removeEventListener(name, release, true));
+    };
+  }, [isPlaying, followPlayback, followResumeDelayMs]);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    const updateHeight = () => setViewportHeight(container.clientHeight);
+    updateHeight();
+    window.addEventListener('resize', updateHeight);
+    const observer = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(updateHeight) : null;
+    observer?.observe(container);
+    return () => { observer?.disconnect(); window.removeEventListener('resize', updateHeight); };
+  }, []);
 
   useEffect(() => {
     if (width !== undefined) return;
@@ -68,8 +114,9 @@ const ScoreView: React.FC<ScoreViewProps> = ({
       respectSourceLineBreaks,
       noteFontSize,
       lineHeight: Math.max(60, noteFontSize * 3.3),
+      ...(compactHeader ? { marginTop: 48 } : {}),
     }),
-    [score, finalWidth, measuresPerLine, respectSourceLineBreaks, noteFontSize]
+    [score, finalWidth, measuresPerLine, respectSourceLineBreaks, noteFontSize, compactHeader]
   );
 
   const activeIndices = activeNoteIndices ?? (currentNoteIndex < 0 ? [] : [currentNoteIndex]);
@@ -85,26 +132,33 @@ const ScoreView: React.FC<ScoreViewProps> = ({
     if (currentNoteIndex < 0) setFollowPlayback(true);
   }, [currentNoteIndex]);
 
-  // 源码定位以及演奏跟随共用行坐标；手动浏览后暂停自动跟随。
+  const playbackMeasure = latestActive?.measureNumber ?? layout.allNotes[currentNoteIndex]?.measureNumber;
+
+  // 每次换行主动将播放行放到视口上方三分之一处；手动浏览后暂停跟随。
   useEffect(() => {
     const container = containerRef.current;
-    if (!container || (currentNoteIndex >= 0 && !followPlayback)) return;
-    const activeMeasure = currentNoteIndex >= 0 && followPlayback
-      ? layout.allNotes[currentNoteIndex]?.measureNumber
-      : scrollToMeasure;
+    const isPlayback = currentNoteIndex >= 0;
+    if (!container || (isPlayback && !followPlayback)) { previousScroll.current = null; return; }
+    const activeMeasure = isPlayback ? playbackMeasure : scrollToMeasure;
+    if (!isPlayback) previousScroll.current = null;
     if (activeMeasure === undefined) return;
-    const line = layout.lines.find((item) => item.measures.some((measure) => measure.measure.number === activeMeasure));
+    const lineIndex = layout.lines.findIndex((item) => item.measures.some((measure) => measure.measure.number === activeMeasure));
+    const line = layout.lines[lineIndex];
     if (!line) return;
-    const element = lineRefs.current.get(line.y);
-    if (!element) return;
-    const containerRect = container.getBoundingClientRect();
-    const lineRect = element.getBoundingClientRect();
-    const isPlayback = currentNoteIndex >= 0 && followPlayback;
-    if (isPlayback && lineRect.top >= containerRect.top + 16 && lineRect.bottom <= containerRect.bottom - 16) return;
-    const top = lineRect.top - containerRect.top + container.scrollTop - 20;
-    if (typeof container.scrollTo === 'function') container.scrollTo({ top, behavior: 'smooth' });
+    const previous = previousScroll.current;
+    const jump = isPlayback && previous !== null && isPlaybackJump(previous.measure, activeMeasure, previous.line, lineIndex);
+    if (isPlayback) {
+      previousScroll.current = { layout, line: lineIndex, measure: activeMeasure, height: viewportHeight };
+      if (!jump && previous?.layout === layout && previous.line === lineIndex && previous.height === viewportHeight) return;
+    }
+    const top = isPlayback
+      ? playbackScrollTop(line.y, container.clientHeight, container.scrollHeight)
+      : Math.max(0, line.y - 20);
+    const reducedMotion = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const behavior = jump || reducedMotion ? 'auto' : 'smooth';
+    if (typeof container.scrollTo === 'function') container.scrollTo({ top, behavior });
     else container.scrollTop = top;
-  }, [scrollToMeasure, layout, currentNoteIndex, followPlayback]);
+  }, [scrollToMeasure, layout, currentNoteIndex, playbackMeasure, followPlayback, viewportHeight]);
 
   return (
     <div className="score-frame">
@@ -113,7 +167,17 @@ const ScoreView: React.FC<ScoreViewProps> = ({
           恢复播放跟随
         </button>
       )}
-      <div ref={containerRef} className="score-view" onWheel={() => setFollowPlayback(false)} onTouchStart={() => setFollowPlayback(false)} onKeyDown={(event) => {
+      <div ref={containerRef} className="score-view" onWheel={() => setFollowPlayback(false)} onTouchStart={(event) => {
+        const touch = event.touches[0];
+        touchStart.current = touch ? { x: touch.clientX, y: touch.clientY } : null;
+      }} onTouchMove={(event) => {
+        const touch = event.touches[0];
+        const start = touchStart.current;
+        if (touch && start && Math.hypot(touch.clientX - start.x, touch.clientY - start.y) > 8) {
+          setFollowPlayback(false);
+          touchStart.current = null;
+        }
+      }} onTouchEnd={() => { touchStart.current = null; }} onTouchCancel={() => { touchStart.current = null; }} onKeyDown={(event) => {
         if (['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End', ' '].includes(event.key)) setFollowPlayback(false);
       }} tabIndex={0} aria-label="曲谱预览">
       <svg
@@ -123,7 +187,7 @@ const ScoreView: React.FC<ScoreViewProps> = ({
         className="score-svg"
       >
         {/* 标题 */}
-        {score.metadata.title && (
+        {!compactHeader && score.metadata.title && (
           <text
             x={layout.width / 2}
             y={40}
@@ -139,27 +203,22 @@ const ScoreView: React.FC<ScoreViewProps> = ({
         {/* 元信息行（基础信息） */}
         <text
           x={layout.width / 2}
-          y={65}
+          y={compactHeader ? 20 : 65}
           textAnchor="middle"
           fontSize={13}
           fill="#94A3B8"
           fontFamily="'JetBrains Mono', monospace"
         >
-          1={score.metadata.key}  {score.metadata.timeSignature.beats}/{score.metadata.timeSignature.beatValue}  ♩={score.metadata.tempo}
+          1={score.metadata.key}  {score.metadata.timeSignature.beats}/{score.metadata.timeSignature.beatValue}{!compactHeader && `  ♩=${score.metadata.tempo}`}
         </text>
 
         {/* 扩展元信息行（作曲、作词等） */}
-        {renderExtendedMetadata(score, layout.width)}
+        {!compactHeader && renderExtendedMetadata(score, layout.width)}
 
         {/* 小节 */}
         {layout.lines.map((line, lineIdx) => (
           <g
             key={lineIdx}
-            ref={(el) => {
-              if (el) {
-                lineRefs.current.set(line.y, el);
-              }
-            }}
           >
             {/* 行首小节线 */}
             <line

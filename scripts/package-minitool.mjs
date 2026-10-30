@@ -11,7 +11,9 @@ const inventory = probe ? 'apps/minitool/build/probe-dependencies.json' : 'apps/
 const result = auditMinitool(directory, inventory);
 if (result.errors.length) throw new Error(result.errors.join('\n'));
 fs.mkdirSync('artifacts', { recursive: true });
-const name = `hh-jianpu-${probe ? 'audio-probe' : 'minitool'}-v0.8.0`;
+const version = JSON.parse(fs.readFileSync('apps/minitool/package.json', 'utf8')).version;
+if (!/^\d+\.\d+\.\d+$/.test(version)) throw new Error('Invalid minitool package version');
+const name = `hh-jianpu-${probe ? 'audio-probe' : 'minitool'}-v${version}`;
 const zip = path.resolve(`artifacts/${name}.zip`);
 execFileSync('python3', ['-c', `import pathlib,sys,zipfile
 root=pathlib.Path(sys.argv[1]); out=pathlib.Path(sys.argv[2])
@@ -30,8 +32,13 @@ try {
   execFileSync('python3', ['-c', 'import zipfile,sys;zipfile.ZipFile(sys.argv[1]).extractall(sys.argv[2])', zip, extracted]);
   const final = auditMinitool(extracted, inventory);
   if (final.errors.length || final.files.join('\n') !== result.files.join('\n')) throw new Error('ZIP round-trip validation failed');
+  for (const file of result.files) {
+    if (!fs.readFileSync(path.join(directory, file)).equals(fs.readFileSync(path.join(extracted, file)))) {
+      throw new Error(`ZIP content mismatch: ${file}`);
+    }
+  }
 } finally { fs.rmSync(extracted, { recursive: true, force: true }); }
 const hash = createHash('sha256').update(fs.readFileSync(zip)).digest('hex');
 const notes = [...result.warnings, ...(bytes > 2 * 1024 ** 2 ? ['ZIP exceeds recommended 2 MiB'] : [])];
-fs.writeFileSync(`artifacts/${name}-validation.md`, `# v0.8.0 ${probe ? '音频实验' : 'H5 小工具'}校验摘要\n\n- ZIP：${path.basename(zip)}\n- 文件：${result.files.join(', ')}\n- 压缩体积：${bytes} bytes\n- 解压文本：${result.textBytes} bytes\n- SHA-256：${hash}\n- 静态门禁：通过（ES2017 经典脚本、文件类型、入口、资源路径、禁用调用、依赖清单、Base64、ZIP 回读/CRC）\n- 提示：${notes.join('; ') || '无静态风险提示'}\n- 平台模拟器、Android 真机扫码、iOS 真机扫码：待用户验证同一 ZIP\n- Chrome 61 JS/CSS 兼容性、真机性能：未实测\n- 普通浏览器调试结果不能替代小工具容器验收。\n`);
+fs.writeFileSync(`artifacts/${name}-validation.md`, `# v${version} ${probe ? '音频实验' : 'H5 小工具'}校验摘要\n\n- ZIP：${path.basename(zip)}\n- 文件：${result.files.join(', ')}\n- 压缩体积：${bytes} bytes\n- 解压文本：${result.textBytes} bytes\n- SHA-256：${hash}\n- 静态门禁：通过（ES2017 经典脚本、文件类型、入口、资源路径、禁用调用、依赖清单、Base64、ZIP 回读/CRC/逐文件字节比对）\n- 提示：${notes.join('; ') || '无静态风险提示'}\n- 平台模拟器、Android 真机扫码、iOS 真机扫码：待用户验证同一 ZIP\n- Chrome 61 JS/CSS 兼容性、真机性能：未实测\n- 普通浏览器调试结果不能替代小工具容器验收。\n`);
 console.log(`${zip}\n${bytes} bytes\nSHA-256 ${hash}`);

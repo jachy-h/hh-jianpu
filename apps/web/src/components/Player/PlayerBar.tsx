@@ -24,6 +24,8 @@ interface PlayerBarProps {
   isMetronomeActive?: boolean;
   countdownValue?: number;
   noteFontSize: number;
+  respectSourceLineBreaks: boolean;
+  onRespectSourceLineBreaksChange: (value: boolean) => void;
   collapsed?: boolean;
   pinned?: boolean;
   onNoteFontSizeChange: (size: number) => void;
@@ -50,6 +52,8 @@ const PlayerBar: React.FC<PlayerBarProps> = ({
   isMetronomeActive = false,
   countdownValue = 0,
   noteFontSize,
+  respectSourceLineBreaks,
+  onRespectSourceLineBreaksChange,
   collapsed = false,
   pinned = true,
   onNoteFontSizeChange,
@@ -171,6 +175,10 @@ const PlayerBar: React.FC<PlayerBarProps> = ({
           <select aria-label="练习速度倍率" value={practiceSpeed} onChange={(event) => onPracticeSpeedChange?.(Number(event.target.value))} className="rounded bg-gray-100 px-1 py-0.5 text-ink">
             {[0.5, 0.75, 1, 1.25, 1.5, 2].map((speed) => <option key={speed} value={speed}>{speed}×</option>)}
           </select>
+        </label>
+        <label className="flex items-center gap-1 text-xs text-played whitespace-nowrap">
+          <input type="checkbox" checked={respectSourceLineBreaks} onChange={event => onRespectSourceLineBreaksChange(event.target.checked)} />
+          按源码换行
         </label>
         <div className="flex items-center gap-1">
           {FONT_SIZES.map(({ label, value }) => (

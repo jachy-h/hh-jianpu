@@ -1,0 +1,29 @@
+.metronome-cat-art { position:absolute; left:50%; bottom:12px; width:88px; max-width:100%; height:70px; transform:translateX(-50%); pointer-events:auto; overflow:visible; }
+.cat-metronome-label { position:relative; display:flex; align-items:center; justify-content:center; min-height:16px; white-space:nowrap; font-size:10px; }
+.cat-toggle-mark { width:4px; height:4px; border-radius:50%; background:var(--quiet); margin-left:5px; }
+.cat-metronome.enabled .cat-toggle-mark { background:var(--focus); }
+.cat-metronome.enabled .cat-metronome-label { color:var(--focus); }
+.cat-metronome:not(.enabled) .metronome-cat-art { opacity:.4; }
+.cat-shadow { fill:rgba(39,40,45,.07); }
+.cat-body,.cat-tail { fill:#202126; }
+.cat-ear { fill:none; stroke:#786977; stroke-width:1.5; }
+.cat-eye,.cat-muzzle,.cat-paw,.cat-chest { fill:#fff; }
+.cat-nose { fill:#be77cd; }
+.cat-laptop { fill:#bc8bd7; }
+.cat-keyboard { fill:#d6b8e7; }
+.cat-laptop-logo { fill:#f4e6fa; }
+.cat-led { fill:#f4e6fa; }
+.cat-led.downbeat { fill:#007f70; }
+.cat-typing.tap-left .cat-paw-left,.cat-typing.tap-right .cat-paw-right { animation-name:cat-key-tap; animation-duration:inherit; animation-timing-function:ease-out; }
+.cat-typing .cat-face { animation:cat-head-nod ease-out; animation-duration:inherit; }
+.cat-typing .cat-tail { transform-origin:32px 72px; animation:cat-tail-tick ease-out; animation-duration:inherit; }
+@keyframes cat-key-tap { 0%,100% { transform:translateY(0); } 35% { transform:translateY(6px); } }
+@keyframes cat-head-nod { 0%,100% { transform:translateY(0); } 35% { transform:translateY(1.5px); } }
+@keyframes cat-tail-tick { 0%,100% { transform:rotate(0deg); } 40% { transform:rotate(-7deg); } }
+.cat-metronome { position:relative; width:88px; height:38px; padding:18px 0 0; border:0; background:transparent; color:#78716c; cursor:grab; touch-action:none; }
+.cat-metronome:active { cursor:grabbing; }
+.cat-metronome:focus-visible { outline:2px solid #2563eb; outline-offset:3px; }
+.cat-toggle-mark { background:#aaa; }
+.cat-metronome.enabled .cat-toggle-mark { background:#007f70; }
+.cat-metronome.enabled .cat-metronome-label { color:#007f70; }
+@media (prefers-reduced-motion:reduce) { .cat-typing .cat-paw,.cat-typing .cat-face,.cat-typing .cat-tail { animation:none; } }

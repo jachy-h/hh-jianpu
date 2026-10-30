@@ -4,11 +4,15 @@ interface WindowInfo {
   readonly windowWidth: number; readonly windowHeight: number; readonly safeArea?: Rect;
   readonly menuButtons?: { readonly back?: Rect | null; readonly me?: Rect | null; readonly share?: Rect | null };
 }
+export interface FollowResult { readonly follow_status: -1 | 0 | 1 | 2; }
 export interface MiniToolBridge {
   getLaunchOptions?: () => Promise<LaunchOptions>;
+  postNote?: (options: { title: string; content: string; mediaInfo: { image_resources: { url: string }[] } }) => Promise<unknown>;
   getStorage?: (options: { key: string }) => Promise<{ data: string | null }>;
   setStorage?: (options: { key: string; data: string }) => Promise<unknown>;
   getWindowInfo?: () => Promise<WindowInfo>;
+  followAuthor?: () => Promise<FollowResult>;
+  getFollowStatus?: () => Promise<FollowResult>;
 }
 declare global { interface Window { xhs?: { launchOptions?: LaunchOptions; miniTool?: MiniToolBridge }; } }
 
