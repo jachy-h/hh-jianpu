@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.8] - 2026-10-30
+
+### Added
+- 新增排版设置弹窗，支持自然排版与按小节列、拍点对齐，并可控制按源码换行。
+
+### Changed
+- 谱面按节奏弹性分配间距，短行避免过度拉伸；自动拆行优先避免孤立小节。
+- 曲谱预览利用可用宽度并将谱面整体居中，保留短行的左对齐。
+
 ## [0.8.6] - 2026-10-30
 
 ### Changed

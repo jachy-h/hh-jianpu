@@ -1,6 +1,7 @@
 import type { Measure, MeasureLayout, NotePosition, Score, ScoreLayout, LineLayout, LyricsSyllable } from '../types/index.js';
 import { durationInBeats, getScoreVoices } from '../music.js';
 import { calculateNoteBoundingBox } from './bounding-box.js';
+import { groupMeasures } from './line-groups.js';
 import type { LayoutConfig } from './layout.js';
 
 interface TimedNote {
@@ -81,24 +82,24 @@ export function createDuetLayout(score: Score, cfg: LayoutConfig): ScoreLayout {
     return { rows, centers, duration, minimumWidth, width };
   });
 
-  const groups: (typeof metrics)[] = [];
-  let group: typeof metrics = [];
-  let groupWidth = 0;
-  for (const metric of metrics) {
-    if (group.length && ((cfg.respectSourceLineBreaks && metric.rows.some(row => row.measure.lineBreakBefore)) || group.length >= maxMeasures || groupWidth + metric.width > available + 0.01)) {
-      groups.push(group); group = []; groupWidth = 0;
-    }
-    group.push(metric); groupWidth += metric.width;
-  }
-  if (group.length) groups.push(group);
+  const groups = groupMeasures(metrics, available, maxMeasures, metric => metric.width,
+    metric => cfg.respectSourceLineBreaks && metric.rows.some(row => Boolean(row.measure.lineBreakBefore)));
 
   const allNotes: NotePosition[] = [];
   const lines: LineLayout[] = [];
   let y = cfg.marginTop;
   let width = cfg.width;
-  for (const lineGroup of groups) {
-    const extraWidth = cfg.measuresPerLine === undefined
+  const rowExtras: number[] = [];
+  for (const [lineIndex, lineGroup] of groups.entries()) {
+    let extraWidth = cfg.measuresPerLine === undefined
       ? Math.max(0, available - lineGroup.reduce((sum, metric) => sum + metric.width, 0)) / lineGroup.length : 0;
+    extraWidth = Math.min(extraWidth, font * 2 * Math.max(1, ...lineGroup.map(metric => metric.centers.size)));
+    if (lineIndex === groups.length - 1 || lineGroup.length === 1) {
+      const sorted = [...rowExtras].sort((a, b) => a - b);
+      const reference = sorted.length ? sorted[Math.floor(sorted.length / 2)] : 0;
+      if (lineGroup.reduce((sum, metric) => sum + metric.width + reference, 0) < available * 0.75) extraWidth = Math.min(extraWidth, reference);
+    }
+    rowExtras.push(extraWidth);
     const geometry = voices.map((_, voiceIndex) => {
       let top = font * 1.7;
       let bottom = font * 1.5;
@@ -122,9 +123,9 @@ export function createDuetLayout(score: Score, cfg: LayoutConfig): ScoreLayout {
       metric.rows.forEach((row, voiceIndex) => {
         const geo = geometry[voiceIndex];
         const notes = row.notes.map(entry => {
-          const extra = measureWidth - metric.minimumWidth;
           const position = { ...entry.position,
-            x: x + (metric.centers.get(entry.beat) ?? padding) + entry.offset + extra * (metric.duration ? entry.beat / metric.duration : 0),
+            x: x + (metric.centers.get(entry.beat) ?? padding) + entry.offset
+              + extraWidth * (metric.duration > 0 ? Math.min(1, Math.max(0, entry.beat / metric.duration)) : 0),
             y: rowY[voiceIndex] + geo.top };
           const note = position.note;
           if (note.type === 'breath' && note.barlineSide) {

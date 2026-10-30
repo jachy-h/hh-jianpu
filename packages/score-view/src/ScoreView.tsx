@@ -14,6 +14,7 @@ interface ScoreViewProps {
   width?: number;
   measuresPerLine?: number;
   respectSourceLineBreaks?: boolean;
+  layoutMode?: 'natural' | 'aligned';
   /** 紧凑播放视图：省略重复标题和扩展说明，只保留调号与拍号。 */
   compactHeader?: boolean;
   /** 显式播放状态，区分暂停时仍保留的音符高亮。 */
@@ -35,6 +36,7 @@ const ScoreView: React.FC<ScoreViewProps> = ({
   width,
   measuresPerLine,
   respectSourceLineBreaks,
+  layoutMode,
   compactHeader = false,
   isPlaying = false,
   followResumeDelayMs,
@@ -93,7 +95,7 @@ const ScoreView: React.FC<ScoreViewProps> = ({
     if (!container) return;
     const updateDimensions = () => {
       const availableWidth = container.clientWidth;
-      setContainerWidth(Math.max(160, Math.min(availableWidth - 16, 1100)));
+      setContainerWidth(Math.max(160, availableWidth - 16));
     };
     updateDimensions();
     if (typeof ResizeObserver !== 'undefined') {
@@ -112,12 +114,22 @@ const ScoreView: React.FC<ScoreViewProps> = ({
       width: finalWidth,
       measuresPerLine,
       respectSourceLineBreaks,
+      layoutMode,
       noteFontSize,
       lineHeight: Math.max(60, noteFontSize * 3.3),
       ...(compactHeader ? { marginTop: 48 } : {}),
     }),
-    [score, finalWidth, measuresPerLine, respectSourceLineBreaks, noteFontSize, compactHeader]
+    [score, finalWidth, measuresPerLine, respectSourceLineBreaks, layoutMode, noteFontSize, compactHeader]
   );
+
+  // 以最长谱行为基准整体居中，保留各行共同的左起点。
+  const scoreOffset = useMemo(() => {
+    const measures = layout.lines.flatMap(line => [...line.measures, ...(line.secondaryMeasures ?? [])]);
+    if (!measures.length) return 0;
+    const left = Math.min(...measures.map(measure => measure.x));
+    const right = Math.max(...measures.map(measure => measure.x + measure.width));
+    return Math.max(0, (layout.width - (right - left)) / 2 - left);
+  }, [layout]);
 
   const activeIndices = activeNoteIndices ?? (currentNoteIndex < 0 ? [] : [currentNoteIndex]);
   const voiceIndex = (voiceId?: 'upper' | 'lower'): number => score.secondaryVoice
@@ -215,11 +227,18 @@ const ScoreView: React.FC<ScoreViewProps> = ({
         {/* 扩展元信息行（作曲、作词等） */}
         {!compactHeader && renderExtendedMetadata(score, layout.width)}
 
+        <g transform={`translate(${scoreOffset}, 0)`}>
         {/* 小节 */}
         {layout.lines.map((line, lineIdx) => (
           <g
             key={lineIdx}
           >
+            {currentNoteIndex >= 0 && playbackMeasure !== undefined && line.measures.some(item => item.measure.number === playbackMeasure) && (
+              <rect x={Math.max(0, (line.measures[0]?.x ?? 0) - 12)} y={line.y - 6}
+                width={Math.max(0, layout.width - scoreOffset - Math.max(0, (line.measures[0]?.x ?? 0) - 12) - 12)}
+                height={Math.max(line.height, ...[...line.measures, ...(line.secondaryMeasures ?? [])].flatMap(measure =>
+                  (measure.lyrics ?? []).filter(lyric => !lyric.isPlaceholder).map(lyric => lyric.y - line.y + noteFontSize * 0.5))) + 12} rx={8} fill="#2563EB" opacity={0.07} pointerEvents="none" />
+            )}
             {/* 行首小节线 */}
             <line
               x1={line.measures[0]?.x ?? 0}
@@ -265,6 +284,7 @@ const ScoreView: React.FC<ScoreViewProps> = ({
           const hasPlayed = segment.notes.some((note) => current >= 0 && note.index < current);
           return <path key={`slur-${segment.voiceId}-${segment.group}-${segment.line}`} d={segment.path} fill="none" stroke={hasActive ? '#2563EB' : hasPlayed ? '#94A3B8' : '#1C1917'} strokeWidth={1.5} opacity={0.8} />;
         })}
+        </g>
       </svg>
       </div>
     </div>

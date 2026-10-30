@@ -11,6 +11,9 @@ import type {
   LyricsPosition,
   Measure,
 } from '../types/index.js';
+import { alignScoreLayout } from './aligned-layout.js';
+import { groupMeasures } from './line-groups.js';
+import { durationInBeats } from '../music.js';
 import { createDuetLayout } from './duet-layout.js';
 import { calculateDynamicSpacing } from './dynamic-spacing.js';
 import { calculateNoteBoundingBox } from './bounding-box.js';
@@ -23,6 +26,8 @@ export interface LayoutConfig {
   measuresPerLine?: number;
   /** 是否遵循源码中的显式换行，默认 true。 */
   respectSourceLineBreaks: boolean;
+  /** 排版模式：自然间距或按小节列和拍点对齐。 */
+  layoutMode: 'natural' | 'aligned';
   /** 音符间距（px） */
   noteSpacing: number;
   /** 音符字号（px） */
@@ -44,6 +49,7 @@ export interface LayoutConfig {
 /** 默认布局配置 */
 export const DEFAULT_LAYOUT_CONFIG: LayoutConfig = {
   width: 800,
+  layoutMode: 'natural',
   respectSourceLineBreaks: true,
   noteSpacing: 40,
   noteFontSize: 18,
@@ -60,7 +66,10 @@ export const DEFAULT_LAYOUT_CONFIG: LayoutConfig = {
  */
 export function createLayout(score: Score, config: Partial<LayoutConfig> = {}): ScoreLayout {
   const cfg = { ...DEFAULT_LAYOUT_CONFIG, ...config };
-  if (score.secondaryVoice) return createDuetLayout(score, cfg);
+  if (score.secondaryVoice) {
+    const layout = createDuetLayout(score, cfg);
+    return cfg.layoutMode === 'aligned' ? alignScoreLayout(layout, cfg.noteFontSize, Math.max(cfg.marginLeft, cfg.noteFontSize * 2.2), Math.max(cfg.lineGap, cfg.noteFontSize * 2)) : layout;
+  }
   cfg.lineHeight = Math.max(cfg.lineHeight, cfg.noteFontSize * 3.3);
   cfg.lineGap = Math.max(cfg.lineGap, cfg.noteFontSize * 1.6);
   cfg.lyricsOffset = config.lyricsOffset ?? cfg.noteFontSize * DEFAULT_LAYOUT_CONFIG.lyricsOffset / 18;
@@ -89,40 +98,44 @@ export function createLayout(score: Score, config: Partial<LayoutConfig> = {}): 
     });
     const leftPadding = padding + (measure.repeatStart ? cfg.noteFontSize : 0);
     const rightPadding = padding + (measure.repeatEnd ? cfg.noteFontSize : 0);
-    return { measure, slots, leftPadding, rightPadding, width: Math.max(baseWidth, leftPadding + rightPadding + slots.reduce((sum, slot) => sum + slot, 0)) };
+    const weights = measure.notes.map((note, index) => slots[index] === 0 ? 0 : Math.sqrt(Math.max(0.25, durationInBeats(note))) * cfg.noteFontSize * 1.8);
+    return { measure, slots, weights, leftPadding, rightPadding, width: Math.max(baseWidth, leftPadding + rightPadding + slots.reduce((sum, slot) => sum + slot, 0)) };
   });
 
-  const groups: (typeof metrics)[] = [];
-  let group: typeof metrics = [];
-  let groupWidth = 0;
-  for (const metric of metrics) {
-    if (group.length > 0 && ((cfg.respectSourceLineBreaks && metric.measure.lineBreakBefore) || group.length >= maxMeasures || groupWidth + metric.width > availableWidth + 0.01)) {
-      groups.push(group);
-      group = [];
-      groupWidth = 0;
-    }
-    group.push(metric);
-    groupWidth += metric.width;
-  }
-  if (group.length > 0) groups.push(group);
+  const groups = groupMeasures(metrics, availableWidth, maxMeasures, metric => metric.width,
+    metric => cfg.respectSourceLineBreaks && Boolean(metric.measure.lineBreakBefore));
 
   const lines: LineLayout[] = [];
   const allNotes: NotePosition[] = [];
   let layoutWidth = cfg.width;
   let lineY = cfg.marginTop;
-  for (const lineGroup of groups) {
+  const scales: number[] = [];
+  for (const [lineIndex, lineGroup] of groups.entries()) {
     const rowCount = Math.max(1, ...lineGroup.map(({ measure }) => measure.lyricLines?.length ?? 1));
     const lineHeight = cfg.lineHeight + (rowCount - 1) * cfg.noteFontSize * cfg.lyricsFontSizeRatio * 1.6;
     let currentX = cfg.marginLeft;
     const measures: MeasureLayout[] = [];
-    // 自动排版按内容决定能容纳的小节数，再均分余白，避免固定小节宽度挤掉源码分行。
-    const extraWidth = cfg.measuresPerLine === undefined
-      ? Math.max(0, availableWidth - lineGroup.reduce((sum, metric) => sum + metric.width, 0)) / lineGroup.length : 0;
+    const rowWidth = (scale: number): number => lineGroup.reduce((sum, metric) => sum + Math.max(metric.width,
+      metric.leftPadding + metric.rightPadding + metric.slots.reduce((total, slot, i) => total + Math.max(slot, metric.weights[i] * scale), 0)), 0);
+    let low = 0;
+    let high = 1;
+    while (rowWidth(high) < availableWidth && high < 1024) high *= 2;
+    for (let i = 0; i < 40; i++) {
+      const mid = (low + high) / 2;
+      if (rowWidth(mid) <= availableWidth) low = mid; else high = mid;
+    }
+    let scale = Math.min(low, 1.5);
+    if (lineIndex === groups.length - 1 || lineGroup.length === 1) {
+      const sorted = [...scales].sort((a, b) => a - b);
+      const reference = sorted.length ? sorted[Math.floor(sorted.length / 2)] : 1;
+      if (rowWidth(reference) < availableWidth * 0.75) scale = Math.min(scale, reference);
+    }
+    scales.push(scale);
     for (const metric of lineGroup) {
-      const { measure, slots, leftPadding, rightPadding } = metric;
-      const width = metric.width + extraWidth;
-      const spare = Math.max(0, width - leftPadding - rightPadding - slots.reduce((sum, slot) => sum + slot, 0));
-      let cursor = currentX + leftPadding + spare / 2;
+      const { measure, leftPadding, rightPadding } = metric;
+      const slots = metric.slots.map((slot, i) => Math.max(slot, metric.weights[i] * scale));
+      const width = Math.max(metric.width, leftPadding + rightPadding + slots.reduce((sum, slot) => sum + slot, 0));
+      let cursor = currentX + leftPadding;
       const notes = measure.notes.map((note, index): NotePosition => {
         const slot = slots[index];
         const position: NotePosition = {
@@ -149,12 +162,8 @@ export function createLayout(score: Score, config: Partial<LayoutConfig> = {}): 
     lines.push({ measures, y: lineY, height: lineHeight });
     lineY += lineHeight + Math.max(cfg.lineGap, cfg.lyricsOffset + cfg.noteFontSize * 0.6);
   }
-  return {
-    width: layoutWidth,
-    height: lineY,
-    lines,
-    allNotes,
-  };
+  const layout = { width: layoutWidth, height: lineY, lines, allNotes };
+  return cfg.layoutMode === 'aligned' ? alignScoreLayout(layout, cfg.noteFontSize, cfg.marginLeft, Math.max(cfg.lineGap, cfg.lyricsOffset + cfg.noteFontSize * 0.6)) : layout;
 }
 
 /**

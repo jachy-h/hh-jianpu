@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import type { PlaybackStatus } from "@hh-jianpu/core";
 import { PLAYBACK_INSTRUMENTS, DEFAULT_INSTRUMENT_ID } from '../../services/playbackInstruments';
 
@@ -25,6 +25,8 @@ interface PlayerBarProps {
   countdownValue?: number;
   noteFontSize: number;
   respectSourceLineBreaks: boolean;
+  layoutMode: 'natural' | 'aligned';
+  onLayoutModeChange: (mode: 'natural' | 'aligned') => void;
   onRespectSourceLineBreaksChange: (value: boolean) => void;
   collapsed?: boolean;
   pinned?: boolean;
@@ -53,6 +55,8 @@ const PlayerBar: React.FC<PlayerBarProps> = ({
   countdownValue = 0,
   noteFontSize,
   respectSourceLineBreaks,
+  layoutMode,
+  onLayoutModeChange,
   onRespectSourceLineBreaksChange,
   collapsed = false,
   pinned = true,
@@ -65,6 +69,13 @@ const PlayerBar: React.FC<PlayerBarProps> = ({
   onClearLoopSelection,
 }) => {
   const [isPinned, setIsPinned] = useState(pinned);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (settingsOpen) dialog?.showModal();
+    return () => dialog?.close();
+  }, [settingsOpen]);
   const isCollapsed = collapsed && !isPinned;
 
   const handlePlayClick = () => {
@@ -176,10 +187,29 @@ const PlayerBar: React.FC<PlayerBarProps> = ({
             {[0.5, 0.75, 1, 1.25, 1.5, 2].map((speed) => <option key={speed} value={speed}>{speed}×</option>)}
           </select>
         </label>
-        <label className="flex items-center gap-1 text-xs text-played whitespace-nowrap">
-          <input type="checkbox" checked={respectSourceLineBreaks} onChange={event => onRespectSourceLineBreaksChange(event.target.checked)} />
-          按源码换行
-        </label>
+        <button type="button" title="排版设置" aria-label="排版设置" onClick={() => setSettingsOpen(true)}
+          className="grid h-9 w-9 place-items-center rounded-lg text-played hover:bg-gray-100 hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-highlight">
+          <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-1.8 3.12-.08-.02a1.7 1.7 0 0 0-1.8.64l-.05.07h-3.6l-.03-.08a1.7 1.7 0 0 0-1.53-1.02 1.7 1.7 0 0 0-1.53 1.02l-.04.08H5.76l-.05-.07a1.7 1.7 0 0 0-1.8-.64l-.08.02-1.8-3.12.06-.06A1.7 1.7 0 0 0 2.43 15l-.08-.03v-3.6l.08-.04a1.7 1.7 0 0 0 .34-1.87l-.06-.06 1.8-3.12.08.02a1.7 1.7 0 0 0 1.8-.64l.05-.07h3.6l.04.08a1.7 1.7 0 0 0 3.06 0l.03-.08h3.6l.05.07a1.7 1.7 0 0 0 1.8.64l.08-.02 1.8 3.12-.06.06a1.7 1.7 0 0 0 .34 1.87l.08.04v3.6Z" transform="translate(1 -1) scale(.92)"/></svg>
+        </button>
+        {settingsOpen && <dialog ref={dialogRef} aria-labelledby="layout-settings-title" onCancel={event => { event.preventDefault(); setSettingsOpen(false); }}
+          className="w-[calc(100%_-_2rem)] max-w-md rounded-2xl border border-barline bg-paper p-0 text-ink shadow-2xl backdrop:bg-black/40">
+          <div className="flex items-start justify-between border-b border-barline px-6 py-5">
+            <div><h2 id="layout-settings-title" className="text-lg font-semibold">排版设置</h2><p className="mt-1 text-sm text-played">调整曲谱的排列方式</p></div>
+            <button type="button" aria-label="关闭设置" onClick={() => setSettingsOpen(false)} className="rounded px-2 py-1 text-played hover:bg-stone-100">✕</button>
+          </div>
+          <div className="space-y-5 px-6 py-5">
+            <fieldset><legend className="mb-3 text-sm font-semibold">排版模式</legend>
+              <div className="grid gap-2">
+                {([{ value: 'natural', label: '自然排版', description: '根据内容和节奏灵活分配空间' }, { value: 'aligned', label: '小节对齐', description: '各行对应小节和相同拍点对齐' }] as const).map(option =>
+                  <label key={option.value} className={`flex cursor-pointer items-start gap-3 rounded-xl border px-4 py-3 ${layoutMode === option.value ? 'border-blue-300 bg-blue-50' : 'border-barline hover:bg-stone-50'}`}>
+                    <input type="radio" name="layout-mode" value={option.value} checked={layoutMode === option.value} onChange={() => onLayoutModeChange(option.value)} className="mt-1 accent-blue-600" />
+                    <span><span className="block text-sm font-medium">{option.label}</span><span className="mt-1 block text-xs text-played">{option.description}</span></span>
+                  </label>)}
+              </div>
+            </fieldset>
+            <label className="flex cursor-pointer items-center justify-between gap-4 border-t border-barline pt-4"><span><span className="block text-sm font-medium">按源码换行</span><span className="mt-1 block text-xs text-played">保留谱文中指定的换行位置</span></span><input type="checkbox" checked={respectSourceLineBreaks} onChange={event => onRespectSourceLineBreaksChange(event.target.checked)} className="h-4 w-4 accent-blue-600" /></label>
+          </div>
+        </dialog>}
         <div className="flex items-center gap-1">
           {FONT_SIZES.map(({ label, value }) => (
             <button

@@ -93,6 +93,7 @@ const EditorPage: React.FC = () => {
   const [isControlPinned] = useState(true);
   const [scrollToMeasure, setScrollToMeasure] = useState<number | undefined>(undefined);
   const [respectSourceLineBreaks, setRespectSourceLineBreaks] = useState(true);
+  const [layoutMode, setLayoutMode] = useState<'natural' | 'aligned'>('natural');
   const [sourceRangeToLocate, setSourceRangeToLocate] = useState<{ from: number; to: number } | null>(null);
   const [filesystemSync, setFilesystemSync] = useState<FilesystemSyncState>(getFilesystemSyncState());
   const playButtonRef = useRef<HTMLButtonElement>(null);
@@ -209,7 +210,7 @@ const EditorPage: React.FC = () => {
                   )}
                   {/* 曲谱预览 */}
                   <div className="flex-1 overflow-auto">
-                    <ScoreView score={score} currentNoteIndex={currentNoteIndex} activeNoteIndices={activeNoteIndices} noteFontSize={noteFontSize} scrollToMeasure={scrollToMeasure} loopSelection={loopSelection} onMeasureClick={handlePreviewMeasureClick} isPlaying={playbackStatus === 'playing'} followResumeDelayMs={2000} respectSourceLineBreaks={respectSourceLineBreaks} />
+                    <ScoreView score={score} currentNoteIndex={currentNoteIndex} activeNoteIndices={activeNoteIndices} noteFontSize={noteFontSize} scrollToMeasure={scrollToMeasure} loopSelection={loopSelection} onMeasureClick={handlePreviewMeasureClick} isPlaying={playbackStatus === 'playing'} followResumeDelayMs={2000} respectSourceLineBreaks={respectSourceLineBreaks} layoutMode={layoutMode} />
                   </div>
                 </div>
               ) : (
@@ -251,6 +252,8 @@ const EditorPage: React.FC = () => {
           countdownValue={countdownValue}
           noteFontSize={noteFontSize}
           respectSourceLineBreaks={respectSourceLineBreaks}
+          layoutMode={layoutMode}
+          onLayoutModeChange={setLayoutMode}
           onRespectSourceLineBreaksChange={setRespectSourceLineBreaks}
           collapsed={isEditorFocused}
           pinned={isControlPinned}
