@@ -2,7 +2,7 @@
 // Scheduler — 将 Score 转化为时间事件序列
 // ============================================================
 
-import { getScoreVoices } from '../music.js';
+import { durationInBeats, getScoreVoices } from '../music.js';
 import type { Score, Measure, NoteElement, Note, VoiceId } from '../types/index.js';
 
 /** 音符调度事件 */
@@ -136,37 +136,6 @@ export function noteToFrequency(note: Note, keyOffset: number): number {
   // C4 = MIDI 60, A4 = MIDI 69
   const midi = 60 + keyOffset + semitone + octaveOffset + accidentalOffset;
   return 440 * Math.pow(2, (midi - 69) / 12);
-}
-
-/**
- * 计算音符的持续时间（以拍为单位）
- * 注意：倚音不占用独立的节拍时间
- */
-function durationInBeats(note: NoteElement): number {
-  // 换气符号不占用时间
-  if (note.type === 'breath') {
-    return 0;
-  }
-
-  // 倚音不占用独立时间（从主音符中借用）
-  if (note.type === 'note' && note.isGrace) {
-    return 0;
-  }
-
-  const baseDuration = note.duration.base;
-  // base: 1=全音符(4拍), 2=二分(2拍), 4=四分(1拍), 8=八分(0.5拍), 16=十六分(0.25拍)
-  let beats = 4 / baseDuration;
-
-  // 附点：增加一半时值
-  if (note.duration.dots > 0) {
-    let dotValue = beats / 2;
-    for (let d = 0; d < note.duration.dots; d++) {
-      beats += dotValue;
-      dotValue /= 2;
-    }
-  }
-
-  return beats;
 }
 
 /**

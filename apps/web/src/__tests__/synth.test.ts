@@ -45,6 +45,51 @@ describe('Player lifecycle and musical timing', () => {
   beforeEach(() => { vi.useFakeTimers(); vi.clearAllMocks(); audio.events.length = 0; audio.draw.length = 0; });
   afterEach(() => { vi.useRealTimers(); });
 
+  it('reports continuous written positions through pause, repeat and selection loops', async () => {
+    const player = new Player();
+    player.loadScore(parse('Q ||: 1 2 | 3 4 :|| 5 6 |').score!);
+    player.setMetronomeEnabled(false);
+    audio.transport.ticks = 0;
+    await player.play();
+    audio.transport.ticks = 192 * 4.5;
+    expect(player.getPlaybackPosition()).toMatchObject({ measureNumber: 1, writtenBeat: 0.5, occurrence: 2 });
+    player.pause();
+    expect(player.getPlaybackPosition()).toMatchObject({ measureNumber: 1, writtenBeat: 0.5 });
+    player.setTempo(60);
+    await player.play();
+    expect(player.getPlaybackPosition()).toMatchObject({ measureNumber: 1, writtenBeat: 0.5 });
+    player.stop();
+    expect(player.getPlaybackPosition()).toBeNull();
+    player.setLoopRange({ startMeasure: 2, endMeasure: 3 });
+    audio.transport.ticks = 0;
+    await player.play();
+    audio.transport.ticks = 192 * 1.5;
+    expect(player.getPlaybackPosition()).toMatchObject({ measureNumber: 2, writtenBeat: 3.5 });
+    audio.transport.ticks = 0;
+    expect(player.getPlaybackPosition()).toMatchObject({ measureNumber: 2, writtenBeat: 2 });
+    player.dispose();
+  });
+
+  it('hides the position during playback delay and clears it when loading another score', async () => {
+    const player = makePlayer();
+    player.setMetronomeEnabled(false);
+    audio.transport.ticks = 0;
+    expect(player.getPlaybackPosition()).toBeNull();
+    await player.play(2);
+    audio.transport.ticks = 192;
+    expect(player.getPlaybackPosition()).toBeNull();
+    audio.transport.ticks = 192 * 2.5;
+    const position = player.getPlaybackPosition();
+    expect(position).toMatchObject({ measureNumber: 1, writtenBeat: 0.5 });
+    player.loadScore(parse('Q 5 6 7 1 |').score!);
+    expect(player.getPlaybackPosition()).toBeNull();
+    audio.transport.ticks = 0;
+    await player.play();
+    expect(player.getPlaybackPosition()?.session).not.toBe(position?.session);
+    player.dispose();
+    expect(player.getPlaybackPosition()).toBeNull();
+  });
+
   it('does not let a second instance cancel the active Web transport', async () => {
     const first = makePlayer(); const second = makePlayer();
     first.setLoopRange({ startMeasure: 1, endMeasure: 1 });

@@ -18,3 +18,7 @@ export {
 export type * from './types/index.js';
 export type { PlaybackRuntime, BeatTransport, InstrumentInfo, MeasureLoopRange, ScheduledNote } from './player/index.js';
 export { scheduleNotes, selectMeasureSegment, activeNoteIndices, sustainingNotes } from './player/index.js';
+
+export { resolveTimeCursor } from './renderer/time-cursor.js';
+export type { TimeCursor } from './renderer/time-cursor.js';
+export type { PlaybackPosition } from './player/position.js';

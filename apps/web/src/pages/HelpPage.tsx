@@ -243,6 +243,7 @@ const HelpPage: React.FC = () => {
                     ['反复练一段', '在预览中先点起点小节 A，再点终点小节 B。两端小节都会循环播放；清除选段后恢复全曲。'],
                     ['暂停或重来', '暂停后可接着播放，停止后回到开头。光标不在编辑器内时，也可按空格播放或暂停。'],
                     ['看得更清楚', '在播放条调整字号。手动滚动后，点击“恢复播放跟随”继续自动跟谱。'],
+                    ['按时值排版', '在播放条的排版设置中选择“时值排版”，音符起点的间距会反映时值；播放时竖线连续跟随拍点，曲谱较宽时可横向滚动。'],
                   ].map(([title, text]) => (
                     <div key={title} className="grid gap-1 py-4 sm:grid-cols-[7rem_1fr] sm:gap-4"><dt className="font-medium">{title}</dt><dd className="leading-7 text-stone-600">{text}</dd></div>
                   ))}

@@ -7,3 +7,13 @@ export function playbackScrollTop(lineY: number, viewportHeight: number, scrollH
 export function isPlaybackJump(previousMeasure: number, measure: number, previousLine: number, line: number): boolean {
   return measure < previousMeasure || measure > previousMeasure + 1 || Math.abs(line - previousLine) > 1;
 }
+
+/** 布局或视口变化时，行号不变也要重新定位。 */
+export function shouldRepositionCursor(
+  previous: { layout: object; line: number; height: number } | null,
+  layout: object,
+  line: number,
+  height: number,
+): boolean {
+  return !previous || previous.layout !== layout || previous.line !== line || previous.height !== height;
+}

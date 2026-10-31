@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { existsSync, rmSync, copyFileSync } from 'node:fs';
+import { existsSync, rmSync, copyFileSync, cpSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -16,7 +16,10 @@ export function buildShared({ clean = false } = {}) {
     if (clean) rmSync(resolve(directory, 'dist'), { recursive: true, force: true });
     if (name === 'score-library') run(['--import', 'tsx', 'scripts/generate.mjs'], directory);
     run(name === 'core' ? [tsc, '--build', '--force'] : [tsc, '-p', 'tsconfig.json'], directory);
-    if (name === 'score-view') copyFileSync(resolve(directory, 'src/style.css'), resolve(directory, 'dist/style.css'));
+    if (name === 'score-view') {
+      copyFileSync(resolve(directory, 'src/style.css'), resolve(directory, 'dist/style.css'));
+      cpSync(resolve(directory, 'src/assets'), resolve(directory, 'dist/assets'), { recursive: true });
+    }
   }
   run(['scripts/validate-library.mjs']);
 }

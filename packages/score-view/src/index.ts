@@ -3,3 +3,6 @@ export { default as MeasureView } from './MeasureView.js';
 export { default as NoteView } from './NoteView.js';
 export { createSlurSegments } from './slur-segments.js';
 export { MetronomeCat } from './MetronomeCat.js';
+
+export { RunningCat } from './RunningCat.js';
+export type { RunningCatProps } from './RunningCat.js';

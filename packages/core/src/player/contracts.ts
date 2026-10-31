@@ -6,6 +6,8 @@ export interface InstrumentInfo { readonly id: string; readonly label: string; }
 /** 以四分音符拍为单位的可变速时钟；回调收到音频时间（秒）。 */
 export interface BeatTransport {
   beat: number;
+  /** 与音频实际播放时刻对应的拍点；未实现时使用 beat。 */
+  readonly presentationBeat?: number;
   bpm: number;
   loop: boolean;
   schedule(callback: (time: number) => void, beat: number): void;

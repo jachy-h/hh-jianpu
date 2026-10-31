@@ -35,3 +35,21 @@
 }
 
 
+
+/* 四张等尺寸帧共享同一爪子锚点，播放线的位置由音频时钟控制。 */
+.running-cat__frame {
+  opacity: 0;
+  animation: running-cat-frame 0.64s steps(1, end) infinite;
+}
+.running-cat__frame--0 { animation-delay: 0s }
+.running-cat__frame--1 { animation-delay: -0.48s }
+.running-cat__frame--2 { animation-delay: -0.32s }
+.running-cat__frame--3 { animation-delay: -0.16s }
+@keyframes running-cat-frame {
+  0% { opacity: 1 }
+  25%, 100% { opacity: 0 }
+}
+@media (prefers-reduced-motion: reduce) {
+  .running-cat__frame { animation: none; opacity: 0 }
+  .running-cat__frame--0 { opacity: 1 }
+}

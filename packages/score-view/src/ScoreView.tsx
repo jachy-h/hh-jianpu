@@ -1,10 +1,11 @@
 import './style.css';
-import React, { useMemo, useEffect, useState, useRef } from 'react';
+import React, { useMemo, useEffect, useState, useRef, useCallback } from 'react';
 import { createLayout, getScoreVoices } from '@hh-jianpu/core';
-import type { Score } from '@hh-jianpu/core';
+import type { Score, PlaybackPosition, TimeCursor } from '@hh-jianpu/core';
+import { PlaybackCursor } from './PlaybackCursor.js';
 import { createSlurSegments } from './slur-segments.js';
 import MeasureView from './MeasureView.js';
-import { isPlaybackJump, playbackScrollTop } from './playback-scroll.js';
+import { isPlaybackJump, playbackScrollTop, shouldRepositionCursor } from './playback-scroll.js';
 import { createFollowResumeTimer } from './follow-resume.js';
 
 interface ScoreViewProps {
@@ -14,11 +15,13 @@ interface ScoreViewProps {
   width?: number;
   measuresPerLine?: number;
   respectSourceLineBreaks?: boolean;
-  layoutMode?: 'natural' | 'aligned';
+  layoutMode?: 'natural' | 'aligned' | 'time';
   /** 紧凑播放视图：省略重复标题和扩展说明，只保留调号与拍号。 */
   compactHeader?: boolean;
   /** 显式播放状态，区分暂停时仍保留的音符高亮。 */
   isPlaying?: boolean;
+  playbackStatus?: 'idle' | 'playing' | 'paused';
+  readPlaybackPosition?: () => PlaybackPosition | null;
   /** 手动浏览后闲置多久恢复跟随；省略或 0 表示不自动恢复。 */
   followResumeDelayMs?: number;
   noteFontSize?: number;
@@ -39,6 +42,8 @@ const ScoreView: React.FC<ScoreViewProps> = ({
   layoutMode,
   compactHeader = false,
   isPlaying = false,
+  playbackStatus = 'idle',
+  readPlaybackPosition,
   followResumeDelayMs,
   noteFontSize = 18,
   onNoteClick,
@@ -117,6 +122,8 @@ const ScoreView: React.FC<ScoreViewProps> = ({
       layoutMode,
       noteFontSize,
       lineHeight: Math.max(60, noteFontSize * 3.3),
+      // 时值模式为 1.5 倍黑猫在播放线下方保留空间，避免覆盖下一行。
+      ...(layoutMode === 'time' ? { lineGap: 50 } : {}),
       ...(compactHeader ? { marginTop: 48 } : {}),
     }),
     [score, finalWidth, measuresPerLine, respectSourceLineBreaks, layoutMode, noteFontSize, compactHeader]
@@ -146,10 +153,31 @@ const ScoreView: React.FC<ScoreViewProps> = ({
 
   const playbackMeasure = latestActive?.measureNumber ?? layout.allNotes[currentNoteIndex]?.measureNumber;
 
+  const cursorScroll = useRef<{ layout: typeof layout; line: number; measure: number; height: number } | null>(null);
+  const handleCursorPosition = useCallback((cursor: TimeCursor) => {
+    const container = containerRef.current;
+    if (!container || !followPlayback) { cursorScroll.current = null; return; }
+    const previous = cursorScroll.current;
+    const line = layout.lines[cursor.lineIndex];
+    const x = cursor.x + scoreOffset;
+    const padding = Math.min(container.clientWidth * 0.2, noteFontSize * 3);
+    const left = x < container.scrollLeft + padding || x > container.scrollLeft + container.clientWidth - padding
+      ? Math.max(0, x - container.clientWidth / 2) : container.scrollLeft;
+    const lineChanged = shouldRepositionCursor(previous, layout, cursor.lineIndex, container.clientHeight);
+    const jump = previous && (cursor.measureNumber < previous.measure || cursor.measureNumber > previous.measure + 1);
+    const top = lineChanged || jump ? playbackScrollTop(line.y, container.clientHeight, container.scrollHeight) : container.scrollTop;
+    cursorScroll.current = { layout, line: cursor.lineIndex, measure: cursor.measureNumber, height: container.clientHeight };
+    if (left !== container.scrollLeft || top !== container.scrollTop) {
+      if (typeof container.scrollTo === 'function') container.scrollTo({ top, left, behavior: 'auto' });
+      else { container.scrollTop = top; container.scrollLeft = left; }
+    }
+  }, [followPlayback, layout, noteFontSize, scoreOffset]);
+
   // 每次换行主动将播放行放到视口上方三分之一处；手动浏览后暂停跟随。
   useEffect(() => {
     const container = containerRef.current;
     const isPlayback = currentNoteIndex >= 0;
+    if (isPlayback && layoutMode === 'time' && readPlaybackPosition) return;
     if (!container || (isPlayback && !followPlayback)) { previousScroll.current = null; return; }
     const activeMeasure = isPlayback ? playbackMeasure : scrollToMeasure;
     if (!isPlayback) previousScroll.current = null;
@@ -158,19 +186,32 @@ const ScoreView: React.FC<ScoreViewProps> = ({
     const line = layout.lines[lineIndex];
     if (!line) return;
     const previous = previousScroll.current;
+    const activeNote = isPlayback ? (latestActive ?? layout.allNotes[currentNoteIndex]) : undefined;
+    const targetMeasure = line.measures.find(measure => measure.measure.number === activeMeasure);
+    let left = container.scrollLeft;
+    if (layoutMode === 'time') {
+      const targetX = isPlayback ? activeNote?.x : (targetMeasure?.notes[0]?.x ?? targetMeasure?.x);
+      if (targetX !== undefined) {
+        const position = targetX + scoreOffset;
+        const padding = Math.min(container.clientWidth * 0.2, noteFontSize * 3);
+        if (position < left + padding || position > left + container.clientWidth - padding) {
+          left = Math.max(0, position - container.clientWidth / 2);
+        }
+      }
+    }
     const jump = isPlayback && previous !== null && isPlaybackJump(previous.measure, activeMeasure, previous.line, lineIndex);
     if (isPlayback) {
       previousScroll.current = { layout, line: lineIndex, measure: activeMeasure, height: viewportHeight };
-      if (!jump && previous?.layout === layout && previous.line === lineIndex && previous.height === viewportHeight) return;
+      if (!jump && previous?.layout === layout && previous.line === lineIndex && previous.height === viewportHeight && left === container.scrollLeft) return;
     }
     const top = isPlayback
       ? playbackScrollTop(line.y, container.clientHeight, container.scrollHeight)
       : Math.max(0, line.y - 20);
     const reducedMotion = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const behavior = jump || reducedMotion ? 'auto' : 'smooth';
-    if (typeof container.scrollTo === 'function') container.scrollTo({ top, behavior });
-    else container.scrollTop = top;
-  }, [scrollToMeasure, layout, currentNoteIndex, playbackMeasure, followPlayback, viewportHeight]);
+    if (typeof container.scrollTo === 'function') container.scrollTo({ top, left, behavior });
+    else { container.scrollTop = top; container.scrollLeft = left; }
+  }, [scrollToMeasure, layout, currentNoteIndex, playbackMeasure, followPlayback, viewportHeight, layoutMode, scoreOffset, noteFontSize, latestActive, readPlaybackPosition]);
 
   return (
     <div className="score-frame">
@@ -190,7 +231,7 @@ const ScoreView: React.FC<ScoreViewProps> = ({
           touchStart.current = null;
         }
       }} onTouchEnd={() => { touchStart.current = null; }} onTouchCancel={() => { touchStart.current = null; }} onKeyDown={(event) => {
-        if (['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End', ' '].includes(event.key)) setFollowPlayback(false);
+        if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'PageUp', 'PageDown', 'Home', 'End', ' '].includes(event.key)) setFollowPlayback(false);
       }} tabIndex={0} aria-label="曲谱预览">
       <svg
         width={layout.width}
@@ -256,7 +297,7 @@ const ScoreView: React.FC<ScoreViewProps> = ({
               return <g aria-label="双声部联谱">
                 <path d={`M ${x},${top} C ${x - 12},${top} ${x},${mid - 12} ${x - 12},${mid} C ${x},${mid + 12} ${x - 12},${bottom} ${x},${bottom}`} fill="none" stroke="#57534E" strokeWidth={1.5} />
                 {[line.measures, line.secondaryMeasures].map((row, index) => <text key={index} x={row[0]?.x} y={(row[0]?.y ?? top) + noteFontSize * 0.65} fontSize={noteFontSize * 0.55} fill="#78716C">{voices[index].name}</text>)}
-                {latestActive && line.measures.some(item => item.measure.number === latestActive.measureNumber) && <rect x={latestActive.x - 3} y={top} width={6} height={bottom - top} fill="#2563EB" opacity={0.16} pointerEvents="none" />}
+                {(layoutMode !== 'time' || !readPlaybackPosition) && latestActive && line.measures.some(item => item.measure.number === latestActive.measureNumber) && <rect x={latestActive.x - 3} y={top} width={6} height={bottom - top} fill="#2563EB" opacity={0.16} pointerEvents="none" />}
               </g>;
             })()}
             {[...line.measures, ...(line.secondaryMeasures ?? [])].map((measureLayout) => (
@@ -277,6 +318,8 @@ const ScoreView: React.FC<ScoreViewProps> = ({
           </g>
         ))}
 
+        {layoutMode === 'time' && readPlaybackPosition && <PlaybackCursor layout={layout} status={playbackStatus}
+          readPosition={readPlaybackPosition} onPosition={handleCursorPosition} />}
         {/* 圆滑线（在所有音符之上渲染，支持跨小节） */}
         {slurs.map((segment) => {
           const current = voiceIndex(segment.voiceId);

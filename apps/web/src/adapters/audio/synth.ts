@@ -32,6 +32,10 @@ async function createToneRuntime(instruments: readonly InstrumentDefinition[]): 
   const ticks = (beat: number): string => `${Math.max(0, Math.round(beat * source.PPQ))}i`;
   const transport: BeatTransport = {
     get beat() { return Number(source.ticks) / source.PPQ; },
+    get presentationBeat() {
+      return typeof source.getTicksAtTime === 'function' && typeof tone.getContext === 'function'
+        ? source.getTicksAtTime(tone.getContext().immediate()) / source.PPQ : Number(source.ticks) / source.PPQ;
+    },
     set beat(value) { if (ownsTransport()) source.ticks = value * source.PPQ; },
     get bpm() { return source.bpm.value; }, set bpm(value) { if (ownsTransport()) source.bpm.value = value; },
     get loop() { return source.loop; }, set loop(value) { if (ownsTransport()) source.loop = value; },

@@ -11,6 +11,8 @@ import { ImageImportModal, ImageImportButton } from '../components/ImageImport';
 import TopBar from '../components/Layout/TopBar';
 import { getFilesystemSyncState, retryFilesystemSync, subscribeFilesystemSync, type FilesystemSyncState } from '../services/myScores';
 
+const readPlaybackPosition = () => useStore.getState().player.getPlaybackPosition();
+
 /** 处理空格键播放/暂停/取消倒计时 */
 function useKeyboardShortcut(
   playButtonRef: React.RefObject<HTMLButtonElement>,
@@ -93,7 +95,7 @@ const EditorPage: React.FC = () => {
   const [isControlPinned] = useState(true);
   const [scrollToMeasure, setScrollToMeasure] = useState<number | undefined>(undefined);
   const [respectSourceLineBreaks, setRespectSourceLineBreaks] = useState(true);
-  const [layoutMode, setLayoutMode] = useState<'natural' | 'aligned'>('natural');
+  const [layoutMode, setLayoutMode] = useState<'natural' | 'aligned' | 'time'>('natural');
   const [sourceRangeToLocate, setSourceRangeToLocate] = useState<{ from: number; to: number } | null>(null);
   const [filesystemSync, setFilesystemSync] = useState<FilesystemSyncState>(getFilesystemSyncState());
   const playButtonRef = useRef<HTMLButtonElement>(null);
@@ -210,7 +212,7 @@ const EditorPage: React.FC = () => {
                   )}
                   {/* 曲谱预览 */}
                   <div className="flex-1 overflow-auto">
-                    <ScoreView score={score} currentNoteIndex={currentNoteIndex} activeNoteIndices={activeNoteIndices} noteFontSize={noteFontSize} scrollToMeasure={scrollToMeasure} loopSelection={loopSelection} onMeasureClick={handlePreviewMeasureClick} isPlaying={playbackStatus === 'playing'} followResumeDelayMs={2000} respectSourceLineBreaks={respectSourceLineBreaks} layoutMode={layoutMode} />
+                    <ScoreView score={score} currentNoteIndex={currentNoteIndex} activeNoteIndices={activeNoteIndices} noteFontSize={noteFontSize} scrollToMeasure={scrollToMeasure} loopSelection={loopSelection} onMeasureClick={handlePreviewMeasureClick} isPlaying={playbackStatus === 'playing'} playbackStatus={playbackStatus} readPlaybackPosition={readPlaybackPosition} followResumeDelayMs={2000} respectSourceLineBreaks={respectSourceLineBreaks} layoutMode={layoutMode} />
                   </div>
                 </div>
               ) : (

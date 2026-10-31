@@ -8,6 +8,7 @@ import { scheduleNotes, selectMeasureSegment, type MeasureLoopRange, type Schedu
 import type { PlaybackRuntime, InstrumentInfo } from './contracts.js';
 import { activeNoteIndices, sustainingNotes } from './session.js';
 import type { InstrumentBank, PlaybackInstrument } from './instrument.js';
+import { createPlaybackMeasures, resolvePlaybackPosition, type PlaybackMeasure, type PlaybackPosition } from './position.js';
 
 export interface PlayerOptions {
   readonly instruments: readonly InstrumentInfo[];
@@ -32,6 +33,7 @@ export class Player {
   private scheduledNotes: ScheduledNote[] = [];
   private activePlaybackNotes: ScheduledNote[] = [];
   private playbackDelayBeats = 0;
+  private playbackMeasures: PlaybackMeasure[] = [];
   private _score: Score | null = null;  // 保存曲谱，播放时按当前 tempo 重新计算时序
   private readonly instrumentDefinitions: Map<string, InstrumentInfo>;
   private readonly voices = new Map<VoiceId, PlaybackInstrument>();
@@ -319,6 +321,7 @@ export class Player {
     const selectedNotes = segment?.events ?? this.scheduledNotes;
     const loopDurationBeats = segment?.durationBeats ?? 0;
     this.activePlaybackNotes = selectedNotes;
+    this.playbackMeasures = this._score ? createPlaybackMeasures(this._score, range, segment?.startBeat ?? 0) : [];
     // 在启动时间轴前准备声部适配器，奏法作为每个音符的发声参数传入。
     for (const event of selectedNotes) {
       if (event.frequency !== null) this.getInstrumentForEvent(event);
@@ -432,6 +435,7 @@ export class Player {
   stop(): void {
     this.playbackGeneration++;
     this.activePlaybackNotes = [];
+    this.playbackMeasures = [];
     this.clearLoopHandler();
     this.stopMetronomeWarmup();
     this.releaseVoices();
@@ -467,6 +471,14 @@ export class Player {
   /** 播放时间轴上的连续四分音符位置，从当前播放区间起算。 */
   get playbackBeat(): number {
     return Math.max(0, (this.runtime?.transport.beat ?? 0) - this.playbackDelayBeats);
+  }
+
+  /** 获取与当前播放会话关联的原谱拍点；无播放会话时返回 null。 */
+  getPlaybackPosition(): PlaybackPosition | null {
+    if (!this.runtime || this._status === 'idle') return null;
+    const beat = (this.runtime.transport.presentationBeat ?? this.runtime.transport.beat) - this.playbackDelayBeats;
+    if (beat < 0) return null;
+    return resolvePlaybackPosition(this.playbackMeasures, beat, this.playbackGeneration);
   }
 
   get tempo(): number {

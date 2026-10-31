@@ -290,6 +290,8 @@ export interface MeasureLayout {
   notes: NotePosition[];
   /** 可选的歌词位置 */
   lyrics?: LyricsPosition[];
+  /** 时值排版的记谱拍数区间及其坐标原点。 */
+  timeGeometry?: { readonly startBeat: number; readonly endBeat: number; readonly originX: number; readonly pixelsPerBeat: number };
 }
 
 /** 行布局 */

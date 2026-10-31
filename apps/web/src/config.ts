@@ -14,4 +14,4 @@ export const AUTO_SAVE_DELAY_MS = 1000;
  */
 export const APP_VERSION = `v${packageInfo.version}`;
 export const HELP_PAGE_VERSION = APP_VERSION;
-export const HELP_PAGE_UPDATED_DATE = '2026年10月30日';
+export const HELP_PAGE_UPDATED_DATE = '2026年10月31日';

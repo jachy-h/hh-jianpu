@@ -1,7 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { isPlaybackJump, playbackScrollTop } from './playback-scroll.js';
+import { isPlaybackJump, playbackScrollTop, shouldRepositionCursor } from './playback-scroll.js';
 
 describe('播放行滚动定位', () => {
+  it('同一谱行的字号或视口改变时重新跟随', () => {
+    const layout = {};
+    const previous = { layout, line: 3, height: 500 };
+    expect(shouldRepositionCursor(previous, layout, 3, 500)).toBe(false);
+    expect(shouldRepositionCursor(previous, {}, 3, 500)).toBe(true);
+    expect(shouldRepositionCursor(previous, layout, 3, 400)).toBe(true);
+  });
   it('播放行仍可见时也将新行提前移到上方三分之一处', () => {
     // 600px 视口内的第 500px 行已可见，仍需主动向前滚动。
     expect(playbackScrollTop(500, 600, 2400)).toBe(300);

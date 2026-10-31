@@ -25,8 +25,8 @@ interface PlayerBarProps {
   countdownValue?: number;
   noteFontSize: number;
   respectSourceLineBreaks: boolean;
-  layoutMode: 'natural' | 'aligned';
-  onLayoutModeChange: (mode: 'natural' | 'aligned') => void;
+  layoutMode: 'natural' | 'aligned' | 'time';
+  onLayoutModeChange: (mode: 'natural' | 'aligned' | 'time') => void;
   onRespectSourceLineBreaksChange: (value: boolean) => void;
   collapsed?: boolean;
   pinned?: boolean;
@@ -200,7 +200,7 @@ const PlayerBar: React.FC<PlayerBarProps> = ({
           <div className="space-y-5 px-6 py-5">
             <fieldset><legend className="mb-3 text-sm font-semibold">排版模式</legend>
               <div className="grid gap-2">
-                {([{ value: 'natural', label: '自然排版', description: '根据内容和节奏灵活分配空间' }, { value: 'aligned', label: '小节对齐', description: '各行对应小节和相同拍点对齐' }] as const).map(option =>
+                {([{ value: 'natural', label: '自然排版', description: '根据内容和节奏灵活分配空间' }, { value: 'aligned', label: '小节对齐', description: '各行对应小节和相同拍点对齐' }, { value: 'time', label: '时值排版', description: '音符间距与时值成比例' }] as const).map(option =>
                   <label key={option.value} className={`flex cursor-pointer items-start gap-3 rounded-xl border px-4 py-3 ${layoutMode === option.value ? 'border-blue-300 bg-blue-50' : 'border-barline hover:bg-stone-50'}`}>
                     <input type="radio" name="layout-mode" value={option.value} checked={layoutMode === option.value} onChange={() => onLayoutModeChange(option.value)} className="mt-1 accent-blue-600" />
                     <span><span className="block text-sm font-medium">{option.label}</span><span className="mt-1 block text-xs text-played">{option.description}</span></span>

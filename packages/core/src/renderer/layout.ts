@@ -14,6 +14,7 @@ import type {
 import { alignScoreLayout } from './aligned-layout.js';
 import { groupMeasures } from './line-groups.js';
 import { durationInBeats } from '../music.js';
+import { createTimeLayout } from './time-layout.js';
 import { createDuetLayout } from './duet-layout.js';
 import { calculateDynamicSpacing } from './dynamic-spacing.js';
 import { calculateNoteBoundingBox } from './bounding-box.js';
@@ -27,7 +28,7 @@ export interface LayoutConfig {
   /** 是否遵循源码中的显式换行，默认 true。 */
   respectSourceLineBreaks: boolean;
   /** 排版模式：自然间距或按小节列和拍点对齐。 */
-  layoutMode: 'natural' | 'aligned';
+  layoutMode: 'natural' | 'aligned' | 'time';
   /** 音符间距（px） */
   noteSpacing: number;
   /** 音符字号（px） */
@@ -66,6 +67,7 @@ export const DEFAULT_LAYOUT_CONFIG: LayoutConfig = {
  */
 export function createLayout(score: Score, config: Partial<LayoutConfig> = {}): ScoreLayout {
   const cfg = { ...DEFAULT_LAYOUT_CONFIG, ...config };
+  if (cfg.layoutMode === 'time') return createTimeLayout(score, cfg);
   if (score.secondaryVoice) {
     const layout = createDuetLayout(score, cfg);
     return cfg.layoutMode === 'aligned' ? alignScoreLayout(layout, cfg.noteFontSize, Math.max(cfg.marginLeft, cfg.noteFontSize * 2.2), Math.max(cfg.lineGap, cfg.noteFontSize * 2)) : layout;
