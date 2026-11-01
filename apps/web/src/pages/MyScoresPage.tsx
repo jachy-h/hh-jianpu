@@ -119,7 +119,7 @@ const MyScoresPage: React.FC = () => {
   // ---- 新建 ----
   const handleNew = useCallback(() => {
     newScore();
-    navigate('/edit');
+    navigate('/edit', { state: { openEditor: true } });
   }, [newScore, navigate]);
 
   const downloadFile = (text: string, fileName: string) => {

@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.12] - 2026-11-01
+
+### Added
+- 新增磁吸弧形菜单与交互实验页面，播放控制支持弧形选项。
+- 新增示例曲谱，歌词标点可附着在相邻歌词上而不占用音符。
+
+### Changed
+- 调整播放栏、节拍器和排版设置的交互及文案，优化练习速度与编辑区入口。
+- 优化小屏幕节拍球入口的显示和收起。
+
+### Fixed
+- 曲谱资源生成时跳过普通文件，避免 macOS 的 `.DS_Store` 导致启动失败。
+
 ## [0.8.11] - 2026-10-31
 
 ### Added

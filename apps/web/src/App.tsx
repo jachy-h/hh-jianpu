@@ -1,9 +1,11 @@
 import React, { Suspense, lazy } from 'react';
+const MagneticArcMenuDemo = lazy(() => import('./components/MagneticArcMenu/MagneticArcMenuDemo'));
 const BeatVisualizerLabPage = lazy(() => import('./pages/BeatVisualizerLabPage'));
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import MyScoresPage from './pages/MyScoresPage';
 import EditorPage from './pages/EditorPage';
 import HelpPage from './pages/HelpPage';
+import LabsPage from './pages/LabsPage';
 
 const App: React.FC = () => {
   return (
@@ -16,7 +18,12 @@ const App: React.FC = () => {
         <Route path="/edit" element={<EditorPage />} />
         <Route path="/edit/:id" element={<EditorPage />} />
 
-        <Route path="/lab/beat-visualizer" element={<Suspense fallback={<div>加载中…</div>}><BeatVisualizerLabPage /></Suspense>} />
+        <Route path="/labs" element={<LabsPage />} />
+        <Route path="/lab/beat-visualizer" element={<Navigate to="/labs/beat-visualizer" replace />} />
+        <Route path="/lab/magnetic-arc-menu" element={<Navigate to="/labs/magnetic-arc-menu" replace />} />
+        <Route path="/labs/beat-visualizer" element={<Suspense fallback={<div>加载中…</div>}><BeatVisualizerLabPage /></Suspense>} />
+
+        <Route path="/labs/magnetic-arc-menu" element={<Suspense fallback={<div>加载中…</div>}><MagneticArcMenuDemo /></Suspense>} />
 
         {/* 帮助页 */}
         <Route path="/help" element={<HelpPage />} />

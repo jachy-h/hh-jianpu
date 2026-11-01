@@ -1,6 +1,6 @@
 {
   "name": "@hh-jianpu/web",
-  "version": "0.8.11",
+  "version": "0.8.12",
   "private": true,
   "type": "module",
   "scripts": {
@@ -17,17 +17,18 @@
     "@codemirror/state": "^6.5.4",
     "@codemirror/view": "^6.39.15",
     "@floating-ui/react-dom": "^2.1.7",
+    "@hh-jianpu/beat-visualizer": "workspace:*",
     "@hh-jianpu/core": "workspace:*",
+    "@hh-jianpu/score-library": "workspace:*",
+    "@hh-jianpu/score-view": "workspace:*",
     "@lezer/highlight": "^1.2.3",
     "jsonc-parser": "^3.3.1",
+    "motion": "^14.8.0",
     "react": "^18.3.0",
     "react-dom": "^18.3.0",
     "react-router-dom": "^7.13.1",
     "tone": "^15.0.4",
-    "zustand": "^4.5.0",
-    "@hh-jianpu/score-view": "workspace:*",
-    "@hh-jianpu/score-library": "workspace:*",
-    "@hh-jianpu/beat-visualizer": "workspace:*"
+    "zustand": "^4.5.0"
   },
   "devDependencies": {
     "@types/node": "^25.3.1",

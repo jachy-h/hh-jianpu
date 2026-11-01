@@ -2,9 +2,9 @@ import fs from 'node:fs';
 import { loadScoreLibrary } from '../src/loader.ts';
 const base = new URL('../resources/scores/', import.meta.url);
 const files = {};
-for (const category of fs.readdirSync(base).sort()) {
+for (const entry of fs.readdirSync(base, { withFileTypes: true }).filter(entry => entry.isDirectory()).sort((a, b) => a.name < b.name ? -1 : a.name > b.name ? 1 : 0)) {
+  const category = entry.name;
   const dir = new URL(`${category}/`, base);
-  if (!fs.statSync(dir).isDirectory()) continue;
   for (const file of fs.readdirSync(dir).sort()) {
     if (file.endsWith('.jsonc')) files[`${category}/${file}`] = fs.readFileSync(new URL(file, dir), 'utf8');
   }

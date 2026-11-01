@@ -1,0 +1,29 @@
+.magnetic-arc-trigger { width:52px; height:52px; border:1px solid #d5d6d0; border-radius:18px; background:#202d29; color:#fff; cursor:pointer; box-shadow:0 5px 14px #17282030; transition:transform .2s,box-shadow .2s; position:relative; z-index:1001; }
+.magnetic-arc-trigger:hover { transform:scale(1.05); box-shadow:0 8px 20px #17282040; }
+.magnetic-arc-trigger:disabled { opacity:.5; cursor:not-allowed; }
+.magnetic-arc-plus { display:block; font:300 30px/1 sans-serif; transition:transform .25s; }
+.magnetic-arc-plus.is-open { transform:rotate(45deg); }
+.magnetic-arc-layer { position:fixed; z-index:1000; pointer-events:none; }
+.magnetic-arc-layer.is-open { pointer-events:auto; }
+.magnetic-arc-anchor,.magnetic-arc-position { position:absolute; width:0; height:0; }
+.magnetic-arc-item { --mx:0px; --my:0px; --mag-scale:1; position:absolute; left:0; top:0; display:flex; align-items:center; gap:8px; min-width:90px; max-width:140px; height:40px; padding:0 15px; border:1px solid rgba(95,117,105,calc(.24 + var(--emphasis, 0) * .3)); border-radius:999px; background:#fff; color:#263a31; box-shadow:0 5px 18px #1c33241c; white-space:nowrap; cursor:pointer; translate:-50% -50%; transition: border-color .2s, background-color .2s; background-color:rgba(240,247,242,calc(var(--emphasis, 0) * .8)); background-image:linear-gradient(#ffffffdd,#ffffffdd); }
+
+.magnetic-arc-label { overflow:hidden; text-overflow:ellipsis; }
+.magnetic-arc-icon { display:flex; flex:none; }
+.magnetic-arc-item:disabled { opacity:.45; cursor:not-allowed; }
+.magnetic-arc-item:focus-visible,.magnetic-arc-trigger:focus-visible { outline:3px solid #dc9a54; outline-offset:3px; }
+@media (prefers-reduced-motion:reduce) { .magnetic-arc-item,.is-open .magnetic-arc-item,.magnetic-arc-plus,.magnetic-arc-trigger { transition:none; } }
+
+/* 播放栏沿用页面的浅色、蓝色强调样式。 */
+.magnetic-arc-trigger.player-arc { width:auto; height:32px; padding:0 10px; border:1px solid #e5e7eb; border-radius:8px; background:#f3f4f6; color:#374151; box-shadow:none; }
+.magnetic-arc-trigger.player-arc:hover { background:#e5e7eb; transform:none; box-shadow:none; }
+.player-arc .magnetic-arc-plus { font-size:12px; font-weight:500; line-height:1.2; }
+.player-arc .magnetic-arc-plus.is-open { transform:none; }
+.magnetic-arc-layer.player-arc .magnetic-arc-item { border-color:#dbeafe; background:#fff; color:#374151; box-shadow:0 4px 14px #1e3a5f20; }
+.magnetic-arc-layer.player-arc .magnetic-arc-item:hover { background:#eff6ff; color:#2563eb; }
+.magnetic-arc-item.arc-debug-item { outline: 1px solid #ef4444; outline-offset: 2px; }
+/* 空白区域不拦截相邻触发按钮；只有选项本身参与命中。 */
+.magnetic-arc-layer.is-open { pointer-events: none; }
+.magnetic-arc-layer.is-open .magnetic-arc-item { pointer-events: auto; }
+.magnetic-arc-anchor:has(.magnetic-arc-item:hover),
+.magnetic-arc-anchor:has(.magnetic-arc-item:focus-visible) { z-index: 1; }

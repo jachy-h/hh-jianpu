@@ -105,6 +105,7 @@ function parseMetadata(tokens: Token[]): Metadata {
 function parseLyrics(lyricsText: string): LyricsSyllable[] {
   const syllables: LyricsSyllable[] = [];
   let i = 0;
+  let pendingPunctuation = '';
   
   while (i < lyricsText.length) {
     const ch = lyricsText[i];
@@ -115,17 +116,28 @@ function parseLyrics(lyricsText: string): LyricsSyllable[] {
       continue;
     }
     
+    // 标点附着于相邻歌词，不消费音符；保留连字符的既有歌词语义。
+    if (/\p{P}/u.test(ch) && ch !== '(' && ch !== ')' && ch !== '_' && ch !== '-') {
+      const previous = syllables[syllables.length - 1];
+      if (previous && !previous.isPlaceholder) previous.text += ch;
+      else pendingPunctuation += ch;
+      i++;
+      continue;
+    }
+
     // 分组 (多字)
     if (ch === '(') {
       const closeIdx = lyricsText.indexOf(')', i);
       if (closeIdx === -1) {
         // 未闭合，提取到结尾
         const text = lyricsText.substring(i + 1).trim();
-        syllables.push({ text, isPlaceholder: false, isGroup: true });
+        syllables.push({ text: pendingPunctuation + text, isPlaceholder: false, isGroup: true });
+        pendingPunctuation = '';
         break;
       }
       const text = lyricsText.substring(i + 1, closeIdx).trim();
-      syllables.push({ text, isPlaceholder: false, isGroup: true });
+      syllables.push({ text: pendingPunctuation + text, isPlaceholder: false, isGroup: true });
+      pendingPunctuation = '';
       i = closeIdx + 1;
       continue;
     }
@@ -138,7 +150,8 @@ function parseLyrics(lyricsText: string): LyricsSyllable[] {
     }
     
     // 普通单字
-    syllables.push({ text: ch, isPlaceholder: false, isGroup: false });
+    syllables.push({ text: pendingPunctuation + ch, isPlaceholder: false, isGroup: false });
+    pendingPunctuation = '';
     i++;
   }
   
@@ -159,21 +172,22 @@ function associateLyricsToMeasures(
   const errors: ParseError[] = [];
   
   // 同一段号的 C 行继续拼接，不同段号从曲首独立配词。
-  const verses = new Map<number, LyricsSyllable[]>();
+  const verses = new Map<number, string>();
   for (let i = 0; i < lyricsTokens.length; i++) {
     const marker = lyricsTokens[i];
     if (marker.type !== 'LYRICS_MARKER') continue;
     const text = lyricsTokens[i + 1];
     if (text?.type !== 'LYRICS_TEXT') continue;
     const verse = marker.lyricVerse ?? 1;
-    verses.set(verse, [...(verses.get(verse) ?? []), ...parseLyrics(text.value)]);
+    verses.set(verse, `${verses.get(verse) ?? ''} ${text.value}`);
   }
+  const parsedVerses = new Map([...verses].map(([verse, text]) => [verse, parseLyrics(text)]));
   const verseCount = Math.max(1, ...verses.keys());
   const cursors = Array<number>(verseCount).fill(0);
   for (const measure of measures) {
     const count = measure.notes.filter(note => note.type === 'note' && !note.isGrace).length;
     const rows = Array.from({ length: verseCount }, (_, index) => {
-      const syllables = (verses.get(index + 1) ?? []).slice(cursors[index], cursors[index] + count);
+      const syllables = (parsedVerses.get(index + 1) ?? []).slice(cursors[index], cursors[index] + count);
       cursors[index] += count;
       return { syllables };
     });

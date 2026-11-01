@@ -31,6 +31,7 @@ interface ResizablePanelsProps {
   minLeftWidth?: number;
   minRightWidth?: number;
   defaultLeftWidth?: number;
+  defaultExpanded?: boolean;
 }
 
 export const ResizablePanels: React.FC<ResizablePanelsProps> = ({
@@ -39,13 +40,14 @@ export const ResizablePanels: React.FC<ResizablePanelsProps> = ({
   minLeftWidth = 300,
   minRightWidth = 300,
   defaultLeftWidth = 50, // 默认 50%
+  defaultExpanded = false,
 }) => {
-  const [panelState, setPanelState] = useState<PanelState>(getInitialPanelState);
+  const [panelState, setPanelState] = useState<PanelState>(() => defaultExpanded ? 'expanded' : getInitialPanelState());
   const isCollapsed = panelState === 'collapsed';
   const [leftWidth, setLeftWidth] = useState(defaultLeftWidth);
   const [isDragging, setIsDragging] = useState(false);
   const [mobilePanel, setMobilePanel] = useState<'editor' | 'preview'>(() =>
-    getInitialPanelState() === 'collapsed' ? 'preview' : 'editor'
+    defaultExpanded || getInitialPanelState() === 'expanded' ? 'editor' : 'preview'
   );
   const containerRef = useRef<HTMLDivElement>(null);
 

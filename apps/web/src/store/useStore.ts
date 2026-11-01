@@ -195,7 +195,7 @@ export const useStore = create<AppState>((set, get) => {
       set({ currentScoreId: saved.id, myScores: loadMyScores() });
 
       const scoreTempo = score?.metadata?.tempo;
-      if (scoreTempo) player.setTempo(scoreTempo * get().practiceSpeed);
+      if (scoreTempo) player.setTempo(Math.round(scoreTempo * get().practiceSpeed));
       if (!savePersistedState(buildPersistedState(edit.source, scoreTempo ?? get().tempo, get().playDelay, saved.id, saved.updatedAt))) {
         throw new Error('PERSISTED_STATE_WRITE_FAILED');
       }
@@ -312,7 +312,7 @@ export const useStore = create<AppState>((set, get) => {
         const parsed = parseSource(s);
         parsedSource = s;
         const scoreTempo = parsed.score?.metadata?.tempo;
-        if (scoreTempo) player.setTempo(scoreTempo * get().practiceSpeed);
+        if (scoreTempo) player.setTempo(Math.round(scoreTempo * get().practiceSpeed));
         set({
           score: parsed.score,
           parseErrors: parsed.parseErrors,
@@ -341,7 +341,7 @@ export const useStore = create<AppState>((set, get) => {
       // 如果曲谱元数据里有速度，同步到 store
       const scoreTempo = score?.metadata?.tempo;
       if (scoreTempo) {
-        player.setTempo(scoreTempo * get().practiceSpeed);
+        player.setTempo(Math.round(scoreTempo * get().practiceSpeed));
       }
       set({ source: s, score, parseErrors, loopSelection: null, ...(scoreTempo ? { tempo: scoreTempo } : {}) });
       // setSourceImmediate 用于加载示例/已存曲谱，不触发自动保存流程
@@ -392,12 +392,12 @@ export const useStore = create<AppState>((set, get) => {
     setPracticeSpeed: (speed: number) => {
       if (!Number.isFinite(speed) || speed < 0.25 || speed > 2) return;
       set({ practiceSpeed: speed });
-      player.setTempo(get().tempo * speed);
+      player.setTempo(Math.round(get().tempo * speed));
     },
     isLoading: false,
     setTempo: (bpm: number) => {
       set({ tempo: bpm });
-      get().player.setTempo(bpm * get().practiceSpeed);
+      get().player.setTempo(Math.round(bpm * get().practiceSpeed));
       if (!savePersistedState(buildPersistedState(get().source, bpm, get().playDelay, get().currentScoreId))) {
         set({ saveStatus: 'error', saveError: '设置保存失败。' });
       }
@@ -460,7 +460,7 @@ export const useStore = create<AppState>((set, get) => {
         const parsed = parseSource(current.source);
         parsedSource = current.source;
         const scoreTempo = parsed.score?.metadata?.tempo;
-        if (scoreTempo) current.player.setTempo(scoreTempo * get().practiceSpeed);
+        if (scoreTempo) current.player.setTempo(Math.round(scoreTempo * get().practiceSpeed));
         set({ score: parsed.score, parseErrors: parsed.parseErrors, ...(scoreTempo ? { tempo: scoreTempo } : {}) });
         current = get();
       }
@@ -494,12 +494,12 @@ export const useStore = create<AppState>((set, get) => {
           player.setLoopRange(selection?.endMeasure !== null && selection
             ? { startMeasure: selection.startMeasure, endMeasure: selection.endMeasure }
             : null);
-          player.setTempo(get().tempo * get().practiceSpeed);
+          player.setTempo(Math.round(get().tempo * get().practiceSpeed));
           // 延迟已在预热节拍器期间完成，这里不再延迟
           await player.play(0);
         } catch (error) {
           console.error('播放失败:', error);
-          if (request === playbackRequest) set({ playbackError: '音色加载或播放失败，请重试，或切换为原声（合成音）。' });
+          if (request === playbackRequest) set({ playbackError: '音色加载或播放失败，请重试，或切换为默认。' });
         } finally {
           if (request === playbackRequest) set({ isLoading: false });
         }
@@ -522,7 +522,7 @@ export const useStore = create<AppState>((set, get) => {
             isLoading: false,
             countdownValue: 0,
             isMetronomeActive: false,
-            playbackError: '音色加载或节拍器启动失败，请重试，或切换为原声（合成音）。',
+            playbackError: '音色加载或节拍器启动失败，请重试，或切换为默认。',
           });
         }
         return;
@@ -561,7 +561,7 @@ export const useStore = create<AppState>((set, get) => {
       player.setLoopRange(null);
       editRevision++;
       parsedSource = template.source;
-      player.setTempo(tempo * get().practiceSpeed);
+      player.setTempo(Math.round(tempo * get().practiceSpeed));
       set({
         currentScoreId: null,
         source: template.source,
@@ -747,7 +747,7 @@ Q | |`;
       }
       const scoreTempo = score?.metadata?.tempo;
       if (scoreTempo) {
-        get().player.setTempo(scoreTempo * get().practiceSpeed);
+        get().player.setTempo(Math.round(scoreTempo * get().practiceSpeed));
       }
       set({
         loopSelection: null,

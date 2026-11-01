@@ -39,5 +39,11 @@
 .beat-ball-close { right:-9px; font-size:20px; line-height:1; }
 .beat-ball-control:focus-visible { outline:2px solid #2563eb; outline-offset:2px; }
 .beat-ball-unsupported { padding:32px 16px; background:#f8f4e9; font-size:13px; }
-@media (hover:none) { .beat-ball-open { opacity:1; transform:none; pointer-events:auto; } .beat-ball-control { opacity:1; pointer-events:auto; } }
+@media (hover:none) { .fixed:has(.cat-metronome:hover) .beat-ball-open, .beat-ball-popover:hover .beat-ball-open { opacity:0; transform:translateY(6px); pointer-events:none; } .fixed:focus-within .beat-ball-open { opacity:1; transform:translateY(0); pointer-events:auto; } .beat-ball-control { opacity:1; pointer-events:auto; } }
 @media (prefers-reduced-motion:reduce) { .beat-ball-open, .beat-ball-control { transition:none; } }
+.cat-speed-menu { position:absolute; bottom:100%; right:0; display:flex; align-items:center; gap:3px; padding:6px; margin-bottom:24px; border:1px solid #ded8ce; border-radius:12px; background:#fff; box-shadow:0 4px 16px #0002; white-space:nowrap; opacity:0; visibility:hidden; transition:opacity .2s; }
+.cat-speed-menu::after { content:''; position:absolute; top:100%; left:0; right:0; height:28px; }
+.fixed:has(.cat-metronome:hover) .cat-speed-menu, .fixed:focus-within .cat-speed-menu, .cat-speed-menu:hover { opacity:1; visibility:visible; }
+.cat-speed-menu span { padding:0 5px; font-size:11px; color:#78716c; }
+.cat-speed-menu button { padding:5px 7px; border-radius:7px; font-size:12px; color:#51483e; }
+.cat-speed-menu button:hover, .cat-speed-menu button[aria-pressed=true] { background:#e5f5f0; color:#007f70; }

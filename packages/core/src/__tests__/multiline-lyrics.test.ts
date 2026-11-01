@@ -52,3 +52,11 @@ describe('multiple lyric verses', () => {
     expect(upperBottom).toBeLessThan(layout.lines[0].secondaryMeasures![0].y);
   });
 });
+
+describe('歌词标点', () => {
+  it('保留标点且不占用音符，跨歌词行继续匹配', () => {
+    const result = parse('Q 1 2 | 3 4 |\nC 你，好。\nC 世、界！');
+    expect(result.score?.measures.flatMap(measure => measure.lyrics?.syllables.map(s => s.text) ?? []))
+      .toEqual(['你，', '好。', '世、', '界！']);
+  });
+});

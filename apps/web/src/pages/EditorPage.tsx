@@ -1,6 +1,6 @@
 import { getScoreVoices } from '@hh-jianpu/core';
 import React, { useEffect, useRef, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useLocation, useParams } from 'react-router-dom';
 import { useStore } from '../store/useStore';
 import Editor from '../components/Editor/Editor';
 import ScoreView from '../components/ScoreView/ScoreView';
@@ -50,6 +50,8 @@ function useKeyboardShortcut(
 
 const EditorPage: React.FC = () => {
   const { id } = useParams<{ id?: string }>();
+  const location = useLocation();
+  const openEditor = (location.state as { openEditor?: boolean } | null)?.openEditor === true;
 
   const {
     source,
@@ -196,6 +198,7 @@ const EditorPage: React.FC = () => {
       <main className="flex-1 overflow-hidden flex flex-col pb-32 sm:pb-24">
         <div className="flex-1 overflow-hidden">
           <ResizablePanels
+            defaultExpanded={openEditor}
           left={<Editor value={source} onChange={setSource} parseErrors={parseErrors} isAutoSaving={isAutoSaving} lastSavedAt={lastSavedAt} onTransposeApply={(s) => saveAsNewScore(s, '移调版')} onFocus={() => setIsEditorFocused(true)} onBlur={() => setIsEditorFocused(false)} onScroll={handleEditorScroll} sourceRangeToLocate={sourceRangeToLocate} />}
             right={
               score ? (
@@ -247,8 +250,6 @@ const EditorPage: React.FC = () => {
           mutedVoices={mutedVoices}
           onVoiceMutedChange={setVoiceMuted}
           isLoading={isLoading}
-          practiceSpeed={practiceSpeed}
-          onPracticeSpeedChange={setPracticeSpeed}
           playDelay={playDelay}
           isMetronomeActive={isMetronomeActive}
           countdownValue={countdownValue}
@@ -269,7 +270,7 @@ const EditorPage: React.FC = () => {
         />
 
         {/* 悬浮节拍器 */}
-        <Metronome tempo={Math.round(tempo * practiceSpeed)} status={playbackStatus} onTempoChange={(bpm) => setTempo(bpm / practiceSpeed)} />
+        <Metronome tempo={Math.round(tempo * practiceSpeed)} status={playbackStatus} onTempoChange={(bpm) => setTempo(bpm / practiceSpeed)} practiceSpeed={practiceSpeed} onPracticeSpeedChange={setPracticeSpeed} />
       </main>
 
 

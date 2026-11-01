@@ -4,7 +4,7 @@ import type { InstrumentDefinition } from './instrument.js';
 /** 原有三角波音色；每次发声有独立的包络和释放。 */
 export const TRIANGLE_INSTRUMENT: InstrumentDefinition = {
   id: 'triangle',
-  label: '原声（合成音）',
+  label: '默认',
   load: async (tone, output) => ({
     createVoice: () => {
       const notes = new Map<string, { synth: InstanceType<typeof Tone.Synth>; startTime: number }>();

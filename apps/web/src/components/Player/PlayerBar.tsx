@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { MagneticArcMenu } from '../MagneticArcMenu/MagneticArcMenu';
 import type { PlaybackStatus } from "@hh-jianpu/core";
 import { PLAYBACK_INSTRUMENTS, DEFAULT_INSTRUMENT_ID } from '../../services/playbackInstruments';
 
@@ -18,8 +19,6 @@ interface PlayerBarProps {
   isLoading?: boolean;
   instrumentId?: string;
   onInstrumentChange?: (id: string) => void;
-  practiceSpeed?: number;
-  onPracticeSpeedChange?: (speed: number) => void;
   playDelay: number;
   isMetronomeActive?: boolean;
   countdownValue?: number;
@@ -48,8 +47,6 @@ const PlayerBar: React.FC<PlayerBarProps> = ({
   isLoading = false,
   instrumentId = DEFAULT_INSTRUMENT_ID,
   onInstrumentChange,
-  practiceSpeed = 1,
-  onPracticeSpeedChange,
   playDelay,
   isMetronomeActive = false,
   countdownValue = 0,
@@ -150,29 +147,9 @@ const PlayerBar: React.FC<PlayerBarProps> = ({
           )}
         </button>
 
-        <label className="flex items-center gap-1 text-xs text-played">
-          音色
-          <select aria-label="播放音色" value={instrumentId}
-            onChange={(event) => onInstrumentChange?.(event.target.value)}
-            className="rounded bg-gray-100 px-1 py-0.5 text-ink">
-            {PLAYBACK_INSTRUMENTS.map(instrument => <option key={instrument.id} value={instrument.id} disabled={instrument.disabled}>{instrument.label}{instrument.disabled ? '（暂不可用）' : ''}</option>)}
-          </select>
-        </label>
-
-        <div className="flex items-center gap-1">
-          <span className="text-xs text-played select-none">延迟:</span>
-          {DELAY_BEATS.map((beats) => (
-            <button
-              key={beats}
-              onClick={() => onPlayDelayChange(beats)}
-              className={`px-1.5 py-0.5 text-xs rounded ${
-                playDelay === beats ? "bg-highlight text-white" : "bg-gray-100 text-played hover:bg-gray-200"
-              }`}
-            >
-              {beats === 0 ? "无" : `${beats}拍`}
-            </button>
-          ))}
-        </div>
+        <MagneticArcMenu className="player-arc" trigger={`音色 · ${PLAYBACK_INSTRUMENTS.find(i => i.id === instrumentId)?.label ?? ''}`} items={PLAYBACK_INSTRUMENTS.map(i => ({ id: i.id, label: i.label, icon: i.id === instrumentId ? '✓' : '♫', disabled: i.disabled, onClick: () => onInstrumentChange?.(i.id) }))} />
+        <MagneticArcMenu className="player-arc" trigger={`延迟 · ${playDelay ? `${playDelay}拍` : '无'}`} items={DELAY_BEATS.map(n => ({ id: String(n), label: n ? `${n}拍` : '无', icon: n === playDelay ? '✓' : '◷', onClick: () => onPlayDelayChange(n) }))} />
+        <MagneticArcMenu className="player-arc" trigger={`文字 · ${FONT_SIZES.find(i => i.value === noteFontSize)?.label ?? ''}`} items={FONT_SIZES.map(i => ({ id: String(i.value), label: i.label, icon: i.value === noteFontSize ? '✓' : '字', onClick: () => onNoteFontSizeChange(i.value) }))} />
 
         {voices?.map(voice => <button key={voice.id} type="button"
           aria-pressed={!mutedVoices.includes(voice.id)}
@@ -181,15 +158,9 @@ const PlayerBar: React.FC<PlayerBarProps> = ({
           className={`rounded border px-2 py-1 text-xs ${mutedVoices.includes(voice.id) ? 'border-barline text-played' : 'border-blue-200 bg-blue-50 text-highlight'}`}>
           {voice.name} {mutedVoices.includes(voice.id) ? '静音' : '发声'}
         </button>)}
-        <label className="flex items-center gap-1 text-xs text-played">
-          练习速度
-          <select aria-label="练习速度倍率" value={practiceSpeed} onChange={(event) => onPracticeSpeedChange?.(Number(event.target.value))} className="rounded bg-gray-100 px-1 py-0.5 text-ink">
-            {[0.5, 0.75, 1, 1.25, 1.5, 2].map((speed) => <option key={speed} value={speed}>{speed}×</option>)}
-          </select>
-        </label>
         <button type="button" title="排版设置" aria-label="排版设置" onClick={() => setSettingsOpen(true)}
-          className="grid h-9 w-9 place-items-center rounded-lg text-played hover:bg-gray-100 hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-highlight">
-          <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-1.8 3.12-.08-.02a1.7 1.7 0 0 0-1.8.64l-.05.07h-3.6l-.03-.08a1.7 1.7 0 0 0-1.53-1.02 1.7 1.7 0 0 0-1.53 1.02l-.04.08H5.76l-.05-.07a1.7 1.7 0 0 0-1.8-.64l-.08.02-1.8-3.12.06-.06A1.7 1.7 0 0 0 2.43 15l-.08-.03v-3.6l.08-.04a1.7 1.7 0 0 0 .34-1.87l-.06-.06 1.8-3.12.08.02a1.7 1.7 0 0 0 1.8-.64l.05-.07h3.6l.04.08a1.7 1.7 0 0 0 3.06 0l.03-.08h3.6l.05.07a1.7 1.7 0 0 0 1.8.64l.08-.02 1.8 3.12-.06.06a1.7 1.7 0 0 0 .34 1.87l.08.04v3.6Z" transform="translate(1 -1) scale(.92)"/></svg>
+          className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-semibold text-highlight transition-colors hover:border-blue-300 hover:bg-blue-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-highlight">
+          排版
         </button>
         {settingsOpen && <dialog ref={dialogRef} aria-labelledby="layout-settings-title" onCancel={event => { event.preventDefault(); setSettingsOpen(false); }}
           className="w-[calc(100%_-_2rem)] max-w-md rounded-2xl border border-barline bg-paper p-0 text-ink shadow-2xl backdrop:bg-black/40">
@@ -210,19 +181,6 @@ const PlayerBar: React.FC<PlayerBarProps> = ({
             <label className="flex cursor-pointer items-center justify-between gap-4 border-t border-barline pt-4"><span><span className="block text-sm font-medium">按源码换行</span><span className="mt-1 block text-xs text-played">保留谱文中指定的换行位置</span></span><input type="checkbox" checked={respectSourceLineBreaks} onChange={event => onRespectSourceLineBreaksChange(event.target.checked)} className="h-4 w-4 accent-blue-600" /></label>
           </div>
         </dialog>}
-        <div className="flex items-center gap-1">
-          {FONT_SIZES.map(({ label, value }) => (
-            <button
-              key={value}
-              onClick={() => onNoteFontSizeChange(value)}
-              className={`px-1.5 py-0.5 text-xs rounded ${
-                noteFontSize === value ? "bg-highlight text-white" : "bg-gray-100 text-played hover:bg-gray-200"
-              }`}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
         <div className={`flex flex-wrap items-center gap-2 rounded-md px-2 py-1 text-xs ${loopSelection ? 'border border-blue-200 bg-blue-50 font-semibold text-highlight' : 'text-played'}`} role="status">
           <span>
             {loopSelection
