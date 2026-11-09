@@ -15,6 +15,7 @@
 | **待办清单** | `TODO.md` | 随手记任务，说"清空 todo"时执行 |
 | **经验库** | `.agents/learnings/` | 错误、经验、功能请求记录 |
 | **架构说明** | `.agents/README.md` | 协作架构总览 |
+| **AI 转写 Prompt** | `apps/web/public/prompts/hh-jianpu-transcribe.md` | 顶栏「复制 Prompt（BETA）」读取 |
 
 ---
 
@@ -64,6 +65,15 @@ pnpm lint         # Lint 检查
 | `bug:` | 验证→修复→回归 | `.agents/skills/bug-fix/SKILL.md` |
 | `feedback:` | 理解→评估→实施→验证 | `.agents/skills/user-feedback/SKILL.md` |
 | `清空todo`/`clear todo` | 分类→逐个完成 | `.agents/skills/clear-todo/SKILL.md` |
+
+---
+
+## Prompt 同步
+
+- AI 识谱 Prompt 位于 `apps/web/public/prompts/hh-jianpu-transcribe.md`，由全局顶栏「复制 Prompt（BETA）」按钮读取。
+- **每次功能修改后**都要检查该 Prompt 是否仍与当前规则一致，尤其是解析器语法、元信息字段、歌词与双声部规则、支持/不支持的记号。
+- 同步参考 `packages/core/src/parser/`、`docs/user-guide/notation-syntax.md` 与 core 回归测试；只改界面或样式时也顺手核对一次。
+- Prompt 中的完整示例必须能通过 `parse(source)` 且无诊断信息。
 
 ---
 
