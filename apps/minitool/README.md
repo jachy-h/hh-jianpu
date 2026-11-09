@@ -11,7 +11,7 @@ pnpm audit:minitool
 pnpm package:minitool
 ```
 
-H5 开发地址是 `http://127.0.0.1:5174`；Web 为 `pnpm dev`，地址 `http://127.0.0.1:5173`。同时开发使用 `pnpm dev:all`，共用一组共享包监听。端口占用时可用 `pnpm dev:minitool --port 5184`；按 Ctrl+C 会停止本次开发任务。
+H5 开发地址是 `http://127.0.0.1:4001`；Web 为 `pnpm dev`，地址 `http://127.0.0.1:4000`。同时开发使用 `pnpm dev:all`，共用一组共享包监听。端口占用时可用 `pnpm dev:minitool --port 4201`；按 Ctrl+C 会停止本次开发任务。默认端口定义在 `vite.config.ts`。
 
 正式包位于 `artifacts/hh-jianpu-minitool-v0.8.4.zip`，校验摘要在同级。不要直接压缩本目录或使用 Web 网站 dist。
 

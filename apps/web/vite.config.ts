@@ -5,9 +5,14 @@ export default defineConfig({
   // GitHub Pages 部署时使用仓库名作为 base 路径, 这里用子域名了，所以直接设置为根路径
   base: '/',
   plugins: [react()],
+  server: {
+    host: '127.0.0.1',
+    port: 4000,
+    strictPort: true,
+  },
   resolve: {
     alias: {
       '@': '/src',
     },
-  },
+  }
 });

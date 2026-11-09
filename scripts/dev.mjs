@@ -8,7 +8,7 @@ const target = process.argv[2] ?? 'web';
 if (!['web', 'minitool', 'all'].includes(target)) throw new Error(`未知开发目标：${target}`);
 const targets = target === 'all' ? ['web', 'minitool'] : [target];
 const args = process.argv.slice(3).filter(arg => arg !== '--');
-if (target === 'all' && args.length) throw new Error('dev:all 使用 Web 5173 / H5 5174；自定义端口请分别启动');
+if (target === 'all' && args.length) throw new Error('dev:all 不支持额外参数；自定义端口请分别启动');
 const children = [];
 const watchers = [];
 let closing = false;
@@ -60,10 +60,8 @@ try {
     const directory = resolve(workspace, 'apps', name);
     const require = createRequire(resolve(directory, 'package.json'));
     const vite = resolve(dirname(require.resolve('vite/package.json')), 'bin/vite.js');
-    const customPort = args.some(arg => arg === '--port' || arg.startsWith('--port='));
-    const port = name === 'web' ? '5173' : '5174';
-    console.log(`[dev] 启动 ${name}${customPort ? '（自定义端口）' : ` → http://127.0.0.1:${port}`}`);
-    start([vite, '--host', '127.0.0.1', '--strictPort', ...(customPort ? [] : ['--port', port]), ...args], directory);
+    console.log(`[dev] 启动 ${name}`);
+    start([vite, ...args], directory);
   }
 } catch (error) {
   console.error(`[dev] 启动失败：${error.message}`);

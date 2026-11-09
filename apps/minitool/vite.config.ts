@@ -6,6 +6,7 @@ export default defineConfig(({ mode }) => {
   const probe = mode === 'probe';
   return {
   base: './',
+  server: { host: '127.0.0.1', port: 4001, strictPort: true },
   define: { 'process.env.NODE_ENV': JSON.stringify('production') },
   build: {
     outDir: probe ? 'audio-probe-dist' : 'dist', target: ['es2017', 'chrome61'], cssTarget: 'chrome61', sourcemap: false,
