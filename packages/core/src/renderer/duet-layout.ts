@@ -15,11 +15,11 @@ interface TimedNote {
 export function createDuetLayout(score: Score, cfg: LayoutConfig): ScoreLayout {
   const voices = getScoreVoices(score);
   const font = cfg.noteFontSize;
-  const margin = Math.max(cfg.marginLeft, font * 2.2);
+  const margin = Math.max(cfg.marginLeft, 18 * 2.2);
   const available = Math.max(font * 2, cfg.width - margin * 2);
   const maxMeasures = cfg.measuresPerLine === undefined ? Infinity : Math.max(1, Math.floor(cfg.measuresPerLine));
-  const gap = font * 0.7;
-  const padding = font;
+  const gap = 18 * 0.7;
+  const padding = 18;
   const indices = voices.map(voice => voice.indexOffset);
   const count = Math.max(...voices.map(voice => voice.measures.length));
   let measureBeat = 0;
@@ -68,10 +68,10 @@ export function createDuetLayout(score: Score, cfg: LayoutConfig): ScoreLayout {
         const box = calculateNoteBoundingBox(entry.position.note, font, entry.offset, 0).horizontal;
         const lyricWidth = Math.max(0, ...entry.lyrics.map(lyric => lyric && !lyric.isPlaceholder
           ? Array.from(lyric.text).reduce((sum, char) => sum + (char.codePointAt(0)! > 255 ? 1 : 0.65), 0) * font * cfg.lyricsFontSizeRatio : 0));
-        left = Math.max(left, -box.left, lyricWidth / 2 - entry.offset, entry.position.note.type === 'note' && entry.position.note.accidental ? font * 1.3 - entry.offset : 0);
+        left = Math.max(left, -box.left, lyricWidth / 2 - entry.offset, entry.position.note.type === 'note' && entry.position.note.accidental ? font * 0.625 - entry.offset : 0);
         right = Math.max(right, box.right, lyricWidth / 2 + entry.offset);
       }
-      cursor += centers.size ? Math.max(previousRight + gap + left, (beat - previousBeat) * font * 2) : left;
+      cursor += centers.size ? Math.max(previousRight + gap + left, (beat - previousBeat) * 18 * 2) : left;
       centers.set(beat, cursor);
       previousRight = right;
       previousBeat = beat;
@@ -101,8 +101,8 @@ export function createDuetLayout(score: Score, cfg: LayoutConfig): ScoreLayout {
     }
     rowExtras.push(extraWidth);
     const geometry = voices.map((_, voiceIndex) => {
-      let top = font * 1.7;
-      let bottom = font * 1.5;
+      let top = 18 * 1.7;
+      let bottom = 18 * 1.5;
       let hasLyrics = false;
       let lyricRows = 1;
       for (const metric of lineGroup) for (const entry of metric.rows[voiceIndex].notes) {
@@ -145,7 +145,7 @@ export function createDuetLayout(score: Score, cfg: LayoutConfig): ScoreLayout {
     const height = geometry[0].height + gap + geometry[1].height;
     lines.push({ measures: measures[0], secondaryMeasures: measures[1], y, height });
     width = Math.max(width, x + margin);
-    y += height + Math.max(cfg.lineGap, font * 2);
+    y += height + Math.max(cfg.lineGap, 36);
   }
   // 全曲索引按声部连续排列，和调度、编辑器源码映射共享同一规则。
   allNotes.sort((a, b) => a.index - b.index);

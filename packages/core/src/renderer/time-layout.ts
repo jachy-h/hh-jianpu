@@ -11,7 +11,7 @@ const TIME_LAYOUT_SPACING = {
   minAvailableWidth: 2,     // 分行计算的最小可用宽度
   noteGap: 0.4,             // 相邻符号或歌词之间的额外间隙
   graceStep: 1.4,           // 同拍附件的逐个横向偏移
-  accidentalLeft: 1.3,      // 升降号左侧预留
+  accidentalLeft: 0.625,      // 升降号左侧预留
   minInset: 1,              // 小节线到起音位置的最小偏移
   insetPadding: 0.25,      // 最宽左侧内容与普通小节线之间的额外留白
   minPixelsPerBeat: 1.4,   // 每拍宽度的基础下限
@@ -31,10 +31,10 @@ interface TimedNote {
 export function createTimeLayout(score: Score, cfg: LayoutConfig): ScoreLayout {
   const voices = getScoreVoices(score);
   const font = cfg.noteFontSize;
-  const margin = Math.max(cfg.marginLeft, font * TIME_LAYOUT_SPACING.minMargin);
+  const margin = Math.max(cfg.marginLeft, 18 * TIME_LAYOUT_SPACING.minMargin);
   const available = Math.max(font * TIME_LAYOUT_SPACING.minAvailableWidth, cfg.width - margin * 2);
   const maxMeasures = cfg.measuresPerLine === undefined ? Infinity : Math.max(1, Math.floor(cfg.measuresPerLine));
-  const gap = font * TIME_LAYOUT_SPACING.noteGap;
+  const gap = 18 * TIME_LAYOUT_SPACING.noteGap;
   const indices = voices.map(voice => voice.indexOffset);
   const count = Math.max(...voices.map(voice => voice.measures.length));
   let measureBeat = 0;
@@ -106,7 +106,7 @@ export function createTimeLayout(score: Score, cfg: LayoutConfig): ScoreLayout {
   }));
   const inset = Math.max(font * TIME_LAYOUT_SPACING.minInset, ...allGroups.map(group => group.left + font * TIME_LAYOUT_SPACING.insetPadding), ...repeatInsets);
   const edgeSpace = Math.max(inset, ...allGroups.map(group => group.right + gap));
-  let pixelsPerBeat = font * TIME_LAYOUT_SPACING.minPixelsPerBeat;
+  let pixelsPerBeat = 18 * TIME_LAYOUT_SPACING.minPixelsPerBeat;
   for (const [voiceIndex, voiceGroups] of groupsByVoice.entries()) {
     let previous: { beat: number; right: number } | undefined;
     let endBeat = 0;
@@ -137,8 +137,8 @@ export function createTimeLayout(score: Score, cfg: LayoutConfig): ScoreLayout {
   let width = cfg.width;
   for (const lineGroup of groups) {
     const geometry = voices.map((_, voiceIndex) => {
-      let top = font * 1.7;
-      let bottom = font * 1.5;
+      let top = 18 * 1.7;
+      let bottom = 18 * 1.5;
       let hasLyrics = false;
       let lyricRows = 1;
       for (const metric of lineGroup) for (const entry of metric.rows[voiceIndex].notes) {
@@ -181,7 +181,7 @@ export function createTimeLayout(score: Score, cfg: LayoutConfig): ScoreLayout {
     const height = geometry[0].height + (geometry[1] ? gap + geometry[1].height : 0);
     lines.push({ measures: measures[0], secondaryMeasures: measures[1], y, height });
     width = Math.max(width, x + edgeSpace + margin);
-    y += height + Math.max(cfg.lineGap, font * 2);
+    y += height + Math.max(cfg.lineGap, 36);
   }
   // 全曲索引按声部连续排列，和调度、编辑器源码映射共享同一规则。
   allNotes.sort((a, b) => a.index - b.index);

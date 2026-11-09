@@ -46,7 +46,7 @@ export function alignScoreLayout(layout: ScoreLayout, font: number, margin: numb
       for (const beat of beats) {
         const atBeat = all.filter(item => item.beat === beat);
         const left = Math.max(...atBeat.map(item => item.left));
-        cursor += centers.size ? Math.max(right + left + font * 0.4, Math.sqrt(beat - prev) * font * 1.8) : left;
+        cursor += centers.size ? Math.max(right + left + 18 * 0.4, Math.sqrt(beat - prev) * 18 * 1.8) : left;
         centers.set(beat, cursor);
         right = Math.max(...atBeat.map(item => item.right));
         prev = beat;

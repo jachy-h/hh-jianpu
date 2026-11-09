@@ -104,7 +104,7 @@ describe('Dynamic Layout Integration', () => {
     expect(distance).toBeGreaterThan(30); // 至少30px间距
   });
 
-  it('should respect noteFontSize configuration', () => {
+  it('should keep ordinary note spacing stable as the font grows', () => {
     const metadata: Metadata = {
       key: 'C',
       timeSignature: { beats: 4, beatValue: 4 },
@@ -139,13 +139,13 @@ describe('Dynamic Layout Integration', () => {
     const layout1 = createLayout(score, { width: 800, noteFontSize: 18 });
     const layout2 = createLayout(score, { width: 800, noteFontSize: 24 });
     
-    // 更大的字体应该导致更大的间距
+    // 空间足够时，增大字号不需要扩大音符间距
     const notes1 = layout1.allNotes;
     const notes2 = layout2.allNotes;
     
     const distance1 = Math.abs(notes1[1].x - notes1[0].x);
     const distance2 = Math.abs(notes2[1].x - notes2[0].x);
     
-    expect(distance2).toBeGreaterThan(distance1);
+    expect(distance2).toBeCloseTo(distance1);
   });
 });

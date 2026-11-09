@@ -78,10 +78,10 @@ export function createLayout(score: Score, config: Partial<LayoutConfig> = {}): 
   const availableWidth = Math.max(cfg.noteFontSize * 2, cfg.width - cfg.marginLeft * 2);
   const maxMeasures = cfg.measuresPerLine === undefined ? Infinity : Math.max(1, Math.floor(cfg.measuresPerLine));
   const baseWidth = availableWidth / maxMeasures;
-  const padding = cfg.noteFontSize * 0.8;
+  const padding = 18 * 0.8;
   // 每个音符拥有独立的空间；长歌词组会扩展该音符的空间，避免与相邻歌词重叠。
   const metrics = score.measures.map((measure) => {
-    const spacing = calculateDynamicSpacing(measure.notes.filter(note => note.type !== 'breath' || !note.barlineSide), cfg.noteFontSize);
+    const spacing = calculateDynamicSpacing(measure.notes.filter(note => note.type !== 'breath' || !note.barlineSide), 18);
     let syllableIndex = 0;
     const slots = measure.notes.map((note) => {
       if (note.type === 'breath' && note.barlineSide) return 0;
@@ -96,11 +96,11 @@ export function createLayout(score: Score, config: Partial<LayoutConfig> = {}): 
           lyricWidth = Math.max(lyricWidth, units * cfg.noteFontSize * cfg.lyricsFontSizeRatio);
         }
       }
-      return Math.max(spacing, 2 * Math.max(-box.left, box.right), note.type === 'note' && note.accidental ? cfg.noteFontSize * 1.5 : 0, lyricWidth + cfg.noteFontSize * 0.4);
+      return Math.max(spacing, 2 * Math.max(-box.left, box.right), note.type === 'note' && note.accidental ? cfg.noteFontSize * 1.25 : 0, lyricWidth + 18 * 0.4);
     });
     const leftPadding = padding + (measure.repeatStart ? cfg.noteFontSize : 0);
     const rightPadding = padding + (measure.repeatEnd ? cfg.noteFontSize : 0);
-    const weights = measure.notes.map((note, index) => slots[index] === 0 ? 0 : Math.sqrt(Math.max(0.25, durationInBeats(note))) * cfg.noteFontSize * 1.8);
+    const weights = measure.notes.map((note, index) => slots[index] === 0 ? 0 : Math.sqrt(Math.max(0.25, durationInBeats(note))) * 18 * 1.8);
     return { measure, slots, weights, leftPadding, rightPadding, width: Math.max(baseWidth, leftPadding + rightPadding + slots.reduce((sum, slot) => sum + slot, 0)) };
   });
 

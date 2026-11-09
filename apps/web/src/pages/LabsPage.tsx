@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import './labs.css';
 
 const experiments = [
+  { path: '/labs/layout', number: '03', title: '曲谱排版', description: '对比字号、排版模式与谱面间距。', tag: 'NOTATION' },
   { path: '/labs/beat-visualizer', number: '01', title: '节拍可视化', description: '探索节拍、节奏与动态视觉的关系。', tag: 'MUSIC' },
   { path: '/labs/magnetic-arc-menu', number: '02', title: '磁吸弧形菜单', description: '体验沿弧线展开、随指针轻盈响应的操作菜单。', tag: 'INTERACTION' },
 ];

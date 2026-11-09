@@ -23,7 +23,8 @@ export function calculateNoteBoundingBox(
     return boundingBoxCache.get(cacheKey)!;
   }
   
-  const noteWidth = calculateSymbolWidth('noteDigit', fontSize);
+  // 数字使用等宽字体，字形宽度约为字号的 0.6；升降号与数字居中组合。
+  const noteWidth = Math.max(18, fontSize * 0.65) * (note.type === 'note' && note.accidental ? 2 : 1);
   const noteHeight = fontSize;
   
   // 基础边界框（音符数字）
@@ -71,7 +72,7 @@ export function calculateNoteBoundingBox(
   
   // 处理减时线
   if (note.type === 'note' && note.duration.base >= 8) {
-    const beamWidth = calculateSymbolWidth('beamLine', fontSize);
+    const beamWidth = Math.max(21.6, fontSize * 0.65); // 兼容默认字号，较大字号按实际线长和字形宽度计算
     right = Math.max(right, x + beamWidth / 2);
     left = Math.min(left, x - beamWidth / 2);
     const beamsCount = note.duration.base >= 16 ? 2 : 1;

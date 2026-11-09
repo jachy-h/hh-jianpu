@@ -49,7 +49,7 @@ describe('容器自适应排版', () => {
     const c = { ...measure(3), lineBreakBefore: true };
     const original = score([a, b, c]);
     expect(createLayout(original, { width: 400 }).lines.map(line => line.measures.length)).toEqual([2, 1]);
-    expect(createLayout(original, { width: 400, noteFontSize: 36 }).lines.map(line => line.measures.length)).toEqual([1, 1, 1]);
+    expect(createLayout(original, { width: 400, noteFontSize: 36 }).lines.map(line => line.measures.length)).toEqual([2, 1]);
     a.lyrics = { syllables: [{ text: '需要预留宽度的一组长歌词', isGroup: true, isPlaceholder: false }] };
     expect(createLayout(original, { width: 400 }).lines.map(line => line.measures.length)).toEqual([1, 1, 1]);
   });

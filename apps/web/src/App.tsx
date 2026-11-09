@@ -1,5 +1,6 @@
 import React, { Suspense, lazy } from 'react';
 const MagneticArcMenuDemo = lazy(() => import('./components/MagneticArcMenu/MagneticArcMenuDemo'));
+const LayoutLabPage = lazy(() => import('./pages/LayoutLabPage'));
 const BeatVisualizerLabPage = lazy(() => import('./pages/BeatVisualizerLabPage'));
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import MyScoresPage from './pages/MyScoresPage';
@@ -19,6 +20,7 @@ const App: React.FC = () => {
         <Route path="/edit/:id" element={<EditorPage />} />
 
         <Route path="/labs" element={<LabsPage />} />
+        <Route path="/labs/layout" element={<Suspense fallback={<div>加载中…</div>}><LayoutLabPage /></Suspense>} />
         <Route path="/lab/beat-visualizer" element={<Navigate to="/labs/beat-visualizer" replace />} />
         <Route path="/lab/magnetic-arc-menu" element={<Navigate to="/labs/magnetic-arc-menu" replace />} />
         <Route path="/labs/beat-visualizer" element={<Suspense fallback={<div>加载中…</div>}><BeatVisualizerLabPage /></Suspense>} />
